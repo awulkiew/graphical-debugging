@@ -1,0 +1,86 @@
+<!--
+Copyright (c) Adam Wulkiewicz 2015
+Distributed under the Boost Software License, Version 1.0.
+(See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt)
+-->
+
+<?xml version="1.0" encoding="utf-8"?> 
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+	<!-- boost::variant -->
+	<Type Name="boost::variant&lt;*,boost::detail::variant::void_,*&gt;">
+		<DisplayString Condition="which_ == 0">{{ which={which_} {*($T1 *)storage_.data_.buf} }}</DisplayString>
+		<Expand>
+			<Item Name="[which]">which_</Item>
+			<Item Name="[value]" Condition="which_ == 0">*($T1 *)storage_.data_.buf</Item>
+		</Expand>
+	</Type>
+	<Type Name="boost::variant&lt;*,*,boost::detail::variant::void_,*&gt;">
+		<DisplayString Condition="which_ == 0">{{ which={which_} {*($T1 *)storage_.data_.buf} }}</DisplayString>
+		<DisplayString Condition="which_ == 1">{{ which={which_} {*($T2 *)storage_.data_.buf} }}</DisplayString>
+		<Expand>
+			<Item Name="[which]">which_</Item>
+			<Item Name="[value]" Condition="which_ == 0">*($T1 *)storage_.data_.buf</Item>
+			<Item Name="[value]" Condition="which_ == 1">*($T2 *)storage_.data_.buf</Item>
+		</Expand>
+	</Type>
+	<Type Name="boost::variant&lt;*,*,*,boost::detail::variant::void_,*&gt;">
+		<DisplayString Condition="which_ == 0">{{ which={which_} {*($T1 *)storage_.data_.buf} }}</DisplayString>
+		<DisplayString Condition="which_ == 1">{{ which={which_} {*($T2 *)storage_.data_.buf} }}</DisplayString>
+		<DisplayString Condition="which_ == 2">{{ which={which_} {*($T3 *)storage_.data_.buf} }}</DisplayString>
+		<Expand>
+			<Item Name="[which]">which_</Item>
+			<Item Name="[value]" Condition="which_ == 0">*($T1 *)storage_.data_.buf</Item>
+			<Item Name="[value]" Condition="which_ == 1">*($T2 *)storage_.data_.buf</Item>
+			<Item Name="[value]" Condition="which_ == 2">*($T3 *)storage_.data_.buf</Item>
+		</Expand>
+	</Type>
+	<Type Name="boost::variant&lt;*,*,*,*,boost::detail::variant::void_,*&gt;">
+		<DisplayString Condition="which_ == 0">{{ which={which_} {*($T1 *)storage_.data_.buf} }}</DisplayString>
+		<DisplayString Condition="which_ == 1">{{ which={which_} {*($T2 *)storage_.data_.buf} }}</DisplayString>
+		<DisplayString Condition="which_ == 2">{{ which={which_} {*($T3 *)storage_.data_.buf} }}</DisplayString>
+		<DisplayString Condition="which_ == 3">{{ which={which_} {*($T4 *)storage_.data_.buf} }}</DisplayString>
+		<Expand>
+			<Item Name="[which]">which_</Item>
+			<Item Name="[value]" Condition="which_ == 0">*($T1 *)storage_.data_.buf</Item>
+			<Item Name="[value]" Condition="which_ == 1">*($T2 *)storage_.data_.buf</Item>
+			<Item Name="[value]" Condition="which_ == 2">*($T3 *)storage_.data_.buf</Item>
+			<Item Name="[value]" Condition="which_ == 3">*($T4 *)storage_.data_.buf</Item>
+		</Expand>
+	</Type>
+	<Type Name="boost::variant&lt;*,*,*,*,*,boost::detail::variant::void_,*&gt;">
+		<DisplayString Condition="which_ == 0">{{ which={which_} {*($T1 *)storage_.data_.buf} }}</DisplayString>
+		<DisplayString Condition="which_ == 1">{{ which={which_} {*($T2 *)storage_.data_.buf} }}</DisplayString>
+		<DisplayString Condition="which_ == 2">{{ which={which_} {*($T3 *)storage_.data_.buf} }}</DisplayString>
+		<DisplayString Condition="which_ == 3">{{ which={which_} {*($T4 *)storage_.data_.buf} }}</DisplayString>
+		<DisplayString Condition="which_ == 4">{{ which={which_} {*($T5 *)storage_.data_.buf} }}</DisplayString>
+		<Expand>
+			<Item Name="[which]">which_</Item>
+			<Item Name="[value]" Condition="which_ == 0">*($T1 *)storage_.data_.buf</Item>
+			<Item Name="[value]" Condition="which_ == 1">*($T2 *)storage_.data_.buf</Item>
+			<Item Name="[value]" Condition="which_ == 2">*($T3 *)storage_.data_.buf</Item>
+			<Item Name="[value]" Condition="which_ == 3">*($T4 *)storage_.data_.buf</Item>
+			<Item Name="[value]" Condition="which_ == 4">*($T5 *)storage_.data_.buf</Item>
+		</Expand>
+	</Type>
+	<Type Name="boost::variant&lt;*,*,*,*,*,*,boost::detail::variant::void_,*&gt;">
+		<DisplayString Condition="which_ == 0">{{ which={which_} {*($T1 *)storage_.data_.buf} }}</DisplayString>
+		<DisplayString Condition="which_ == 1">{{ which={which_} {*($T2 *)storage_.data_.buf} }}</DisplayString>
+		<DisplayString Condition="which_ == 2">{{ which={which_} {*($T3 *)storage_.data_.buf} }}</DisplayString>
+		<DisplayString Condition="which_ == 3">{{ which={which_} {*($T4 *)storage_.data_.buf} }}</DisplayString>
+		<DisplayString Condition="which_ == 4">{{ which={which_} {*($T5 *)storage_.data_.buf} }}</DisplayString>
+		<DisplayString Condition="which_ == 5">{{ which={which_} {*($T6 *)storage_.data_.buf} }}</DisplayString>
+		<Expand>
+			<Item Name="[which]">which_</Item>
+			<Item Name="[value]" Condition="which_ == 0">*($T1 *)storage_.data_.buf</Item>
+			<Item Name="[value]" Condition="which_ == 1">*($T2 *)storage_.data_.buf</Item>
+			<Item Name="[value]" Condition="which_ == 2">*($T3 *)storage_.data_.buf</Item>
+			<Item Name="[value]" Condition="which_ == 3">*($T4 *)storage_.data_.buf</Item>
+			<Item Name="[value]" Condition="which_ == 4">*($T5 *)storage_.data_.buf</Item>
+			<Item Name="[value]" Condition="which_ == 5">*($T6 *)storage_.data_.buf</Item>
+		</Expand>
+	</Type>	
+	<!-- TODO, the rest -->
+	
+</AutoVisualizer>

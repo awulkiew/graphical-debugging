@@ -1,0 +1,116 @@
+<!--
+Copyright (c) Adam Wulkiewicz 2015
+Distributed under the Boost Software License, Version 1.0.
+(See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt)
+-->
+
+<?xml version="1.0" encoding="utf-8"?> 
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+	<!-- boost::geometry::model::point -->
+	<Type Name="boost::geometry::model::point&lt;*,1,*&gt;">
+		<DisplayString>{{{m_values[0]}}}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>1</Size>
+				<ValuePointer>m_values</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+	<Type Name="boost::geometry::model::point&lt;*,2,*&gt;">
+		<DisplayString>{{{m_values[0]}, {m_values[1]}}}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>2</Size>
+				<ValuePointer>m_values</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+	<Type Name="boost::geometry::model::point&lt;*,3,*&gt;">
+		<DisplayString>{{{m_values[0]}, {m_values[1]}, {m_values[2]}}}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>3</Size>
+				<ValuePointer>m_values</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+	<Type Name="boost::geometry::model::point&lt;*&gt;">
+		<DisplayString>{{{m_values[0]}, {m_values[1]}, {m_values[2]}, ...}}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>$T2</Size>
+				<ValuePointer>m_values</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+
+	<!-- boost::geometry::model::d2::point_xy -->
+	<Type Name="boost::geometry::model::d2::point_xy&lt;*&gt;">
+		<DisplayString>{{{m_values[0]}, {m_values[1]}}}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>2</Size>
+				<ValuePointer>m_values</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+
+	<!-- boost::geometry::model::box -->
+	<Type Name="boost::geometry::model::box&lt;*&gt;">
+		<DisplayString>{{{m_min_corner}, {m_max_corner}}}</DisplayString>
+		<Expand>
+			<Item Name="&lt;0&gt;">m_min_corner</Item>
+			<Item Name="&lt;1&gt;">m_max_corner</Item>
+		</Expand>
+	</Type>
+
+	<!-- boost::geometry::model::segment -->
+	<Type Name="boost::geometry::model::segment&lt;*&gt;">
+		<DisplayString>{{{first}, {second}}}</DisplayString>
+		<Expand>
+			<Item Name="&lt;0&gt;">first</Item>
+			<Item Name="&lt;1&gt;">second</Item>
+		</Expand>
+	</Type>
+
+	<!-- boost::geometry::model::referring_segment -->
+	<Type Name="boost::geometry::model::referring_segment&lt;*&gt;">
+		<DisplayString>{{{first}, {second}}}</DisplayString>
+		<Expand>
+			<Item Name="&lt;0&gt;">first</Item>
+			<Item Name="&lt;1&gt;">second</Item>
+		</Expand>
+	</Type>
+
+	<!-- boost::geometry::model::polygon -->
+	<Type Name="boost::geometry::model::polygon&lt;*&gt;">
+		<DisplayString>{{outer={m_outer}, inners={m_inners}}}</DisplayString>
+		<Expand>
+			<Item Name="outer">m_outer</Item>
+			<Item Name="inners">m_inners</Item>
+		</Expand>
+	</Type>
+
+	<!-- boost::geometry::index::rtree -->
+	<Type Name="boost::geometry::index::rtree&lt;*&gt;">
+		<DisplayString>{{ size = {m_members.values_count} }}</DisplayString>
+		<Expand>
+			<Item Name="root">m_members.root</Item>
+			<Item Name="leafs_level">m_members.leafs_level</Item>
+		</Expand>
+	</Type>
+
+	<!-- boost::geometry::index::detail::varray -->
+	<Type Name="boost::geometry::index::detail::varray&lt;*&gt;">
+		<DisplayString>{{ size = {m_size} }}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>m_size</Size>
+				<ValuePointer>($T1 *)m_storage.data_.buf</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+	
+</AutoVisualizer>
