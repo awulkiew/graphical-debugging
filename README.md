@@ -7,7 +7,7 @@ This extension contains:
 * GeometryWatch tool window allowing to view Boost.Geometry 2D models drawn on a common plane
 
 To build you need e.g. Microsoft Visual Studio 2015 Community, .NET Framework 4.5.2 and Visual Studio 2015 SDK.
-To install double click the GraphicalDebugging.vsix file in bin/Debug or bin/Relase directory.
+To install double click the GraphicalDebugging.vsix file in bin/Debug or bin/Relase directory, those files can also be found in bin branch of this repository.
 
 #### Debugging vizualizers
 
