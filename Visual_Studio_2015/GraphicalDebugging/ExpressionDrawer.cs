@@ -601,6 +601,72 @@ namespace GraphicalDebugging
             private List<double> values;
         }
 
+        public class TurnsContainer : IDrawable
+        {
+            private TurnsContainer() { }
+
+            public static TurnsContainer Load(Debugger debugger, string name, int size, bool verbose)
+            {
+                TurnsContainer result = new TurnsContainer();
+                result.turns = new List<Point>();
+                result.box = Box.Inverted();
+                result.verbose = verbose;
+
+                for (int i = 0; i < size; ++i)
+                {
+                    Point p = Point.Load(debugger, name + "[" + i + "].point");
+
+                    result.turns.Add(p);
+                    result.box.Expand(p);
+                }
+
+                return result;
+            }
+
+            public void Draw(Graphics graphics)
+            {
+                this.Draw(Aabb, graphics);
+            }
+
+            public void Draw(Box box, Graphics graphics)
+            {
+                this.Draw(box, graphics, Color.DarkOrange);
+            }
+
+            public void Draw(Box box, Graphics graphics, Color color)
+            {
+                LocalCS cs = new LocalCS(box, graphics);
+
+                Pen pen = new Pen(Color.FromArgb(112, color), 2);
+                SolidBrush brush = new SolidBrush(Color.FromArgb(64, color));
+                SolidBrush text_brush = new SolidBrush(Color.Black);
+
+                int index = 0;
+                foreach (Point turn in turns)
+                {
+                    float x = cs.ConvertX(turn[0]);
+                    float y = cs.ConvertY(turn[1]);
+                    graphics.FillEllipse(brush, x - 2.5f, y - 2.5f, 5, 5);
+                    graphics.DrawEllipse(pen, x - 2.5f, y - 2.5f, 5, 5);
+
+                    if (verbose)
+                    {
+                        Font font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), 10);
+                        graphics.DrawString(index.ToString(), font, text_brush, x, y);
+                    }
+                    ++index;
+                }
+            }
+
+            public Box Aabb { get { return box; } }
+
+            private Box box;
+
+            private List<Point> turns;
+
+            private bool verbose;
+        }
+
         private static List<string> Tparams(string type)
         {
             List<string> result = new List<string>();
@@ -646,15 +712,25 @@ namespace GraphicalDebugging
             return result;
         }
 
+        private static string BaseType(string type)
+        {
+            if (type.StartsWith("const "))
+                type = type.Remove(0, 6);
+            int i = type.IndexOf('<');
+            if (i > 0)
+                type = type.Remove(i);
+            return type;
+        }
+
         // For now the list of handled types is hardcoded
         private static bool IsGeometry(string type)
         {
-            if (type.StartsWith("boost::geometry::model::point"))
+            if (BaseType(type) == "boost::geometry::model::point")
             {
                 List<string> tparams = Tparams(type);
                 return tparams.Count == 3 && tparams[1] == "2"; // 2D only for now
             }
-            else if (type.StartsWith("boost::geometry::model::d2::point_xy"))
+            else if (BaseType(type) == "boost::geometry::model::d2::point_xy")
             {
                 return true;
             }
@@ -664,7 +740,7 @@ namespace GraphicalDebugging
 
         private static bool IsGeometry(string type, string single_type)
         {
-            if (!type.StartsWith(single_type))
+            if (BaseType(type) != single_type)
                 return false;
             List<string> tparams = Tparams(type);
             return tparams.Count > 0 && IsGeometry(tparams[0]);
@@ -672,13 +748,31 @@ namespace GraphicalDebugging
 
         private static bool IsGeometry(string type, string multi_type, string single_type)
         {
-            if (!type.StartsWith(multi_type))
+            if (BaseType(type) != multi_type)
                 return false;
+
             List<string> tparams = Tparams(type);
             if (!(tparams.Count > 0 && IsGeometry(tparams[0], single_type)))
                 return false;
-            List<string> tparams2 = Tparams(tparams[0]);
-            return tparams2.Count > 0 && IsGeometry(tparams2[0]);
+
+            tparams = Tparams(tparams[0]);
+            return tparams.Count > 0 && IsGeometry(tparams[0]);
+        }
+
+        private static bool IsTurnsContainer(string type)
+        {
+            if (! (BaseType(type) == "std::vector"
+                || BaseType(type) == "std::deque") )
+                return false;
+
+            List<string> tparams = Tparams(type);
+            if (! (tparams.Count > 0
+                && (BaseType(tparams[0]) == "boost::geometry::detail::overlay::turn_info"
+                 || BaseType(tparams[0]) == "boost::geometry::detail::overlay::traversal_turn_info")) )
+                return false;
+
+            tparams = Tparams(tparams[0]);
+            return tparams.Count > 0 && IsGeometry(tparams[0]);
         }
 
         private static IDrawable LoadGeometry(Debugger debugger, string name, string type)
@@ -718,7 +812,7 @@ namespace GraphicalDebugging
             if (d == null)
             {
                 // Boost.Variant containing a Boost.Geometry model
-                if (type.StartsWith("boost::variant"))
+                if (BaseType(type) == "boost::variant")
                 {
                     Expression expr_which = debugger.GetExpression(name + ".which_");
                     if (!expr_which.IsValidValue)
@@ -738,21 +832,38 @@ namespace GraphicalDebugging
             return d;
         }
 
+        private static IDrawable LoadTurnsContainer(Debugger debugger, string name, string type, bool verbose)
+        {
+            // STL RandomAccess container of Turns
+            IDrawable d = null;
+
+            if (IsTurnsContainer(type))
+            {
+                int size = LoadSize(debugger, name);
+                d = TurnsContainer.Load(debugger, name, size, verbose);
+            }
+
+            return d;
+        }
+
         private static IDrawable LoadDrawable(Debugger debugger, string name, string type)
         {
             IDrawable d = LoadGeometryOrVariant(debugger, name, type);
 
             if (d == null)
+                d = LoadTurnsContainer(debugger, name, type, false);
+
+            if (d == null)
             {
                 // STL RandomAccess container of 1D values convertible to double
-                if (type.StartsWith("std::vector")
-                    || type.StartsWith("std::deque"))
+                if (BaseType(type) == "std::vector"
+                 || BaseType(type) == "std::deque")
                 {
                     int size = LoadSize(debugger, name);
                     d = ValuesContainer.Load(debugger, name, size);
                 }
                 // Boost.Array of 1D values convertible to double
-                else if (type.StartsWith("boost::array"))
+                else if (BaseType(type) == "boost::array")
                 {
                     List<string> tparams = Tparams(type);
                     int size = int.Parse(tparams[1]);
@@ -763,15 +874,21 @@ namespace GraphicalDebugging
             return d;
         }
 
+        // For GeometryWatch
         public static IDrawable MakeGeometry(Debugger debugger, string name)
         {
             Expression expr = debugger.GetExpression(name);
             if (!expr.IsValidValue)
                 return null;
 
-            return LoadGeometryOrVariant(debugger, expr.Name, expr.Type);
+            IDrawable d = LoadGeometryOrVariant(debugger, expr.Name, expr.Type);
+            if (d != null)
+                return d;
+
+            return LoadTurnsContainer(debugger, expr.Name, expr.Type, true);
         }
 
+        // For GraphicalWatch
         public static IDrawable MakeDrawable(Debugger debugger, string name)
         {
             Expression expr = debugger.GetExpression(name);
@@ -781,6 +898,7 @@ namespace GraphicalDebugging
             return LoadDrawable(debugger, expr.Name, expr.Type);
         }
 
+        // For GeometryWatch
         public static bool DrawGeometry(Graphics graphics, Debugger debugger, string name)
         {
             IDrawable d = MakeGeometry(debugger, name);
@@ -790,6 +908,7 @@ namespace GraphicalDebugging
             return true;
         }
 
+        // For GraphicalWatch
         public static bool Draw(Graphics graphics, Debugger debugger, string name)
         {
             IDrawable d = MakeDrawable(debugger, name);
@@ -848,12 +967,20 @@ namespace GraphicalDebugging
         private static int LoadSize(Debugger debugger, string name)
         {
             // VS2015 vector
-            Expression expr_inners_size = debugger.GetExpression(name + "._Mypair._Myval2._Mylast-" + name + "._Mypair._Myval2._Myfirst");
-            if (expr_inners_size.IsValidValue)
+            Expression expr_inners_size0 = debugger.GetExpression(name + "._Mypair._Myval2._Mylast-" + name + "._Mypair._Myval2._Myfirst");
+            if (expr_inners_size0.IsValidValue)
             {
-                int result = int.Parse(expr_inners_size.Value);
+                int result = int.Parse(expr_inners_size0.Value);
                 return Math.Max(result, 0);
             }
+            // VS2015 deque, list
+            Expression expr_inners_size1 = debugger.GetExpression(name + "._Mypair._Myval2._Mysize");
+            if (expr_inners_size1.IsValidValue)
+            {
+                int result = int.Parse(expr_inners_size1.Value);
+                return Math.Max(result, 0);
+            }
+            /*
             // VS2013 vector
             Expression expr_inners_size2 = debugger.GetExpression(name + "._Mylast-" + name + "._Myfirst");
             if (expr_inners_size2.IsValidValue)
@@ -861,13 +988,13 @@ namespace GraphicalDebugging
                 int result = int.Parse(expr_inners_size2.Value);
                 return Math.Max(result, 0);
             }
-            // deque, list, etc.
+            // VS2013 deque, list
             Expression expr_inners_size3 = debugger.GetExpression(name + "._Mysize");
             if (expr_inners_size3.IsValidValue)
             {
                 int result = int.Parse(expr_inners_size3.Value);
                 return Math.Max(result, 0);
-            }
+            }*/
 
             return 0;
         }

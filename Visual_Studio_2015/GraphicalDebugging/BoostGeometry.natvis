@@ -1,10 +1,3 @@
-<!--
-Copyright (c) Adam Wulkiewicz 2015
-Distributed under the Boost Software License, Version 1.0.
-(See accompanying file LICENSE_1_0.txt or copy at
-http://www.boost.org/LICENSE_1_0.txt)
--->
-
 <?xml version="1.0" encoding="utf-8"?> 
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
 
@@ -104,12 +97,28 @@ http://www.boost.org/LICENSE_1_0.txt)
 
 	<!-- boost::geometry::index::detail::varray -->
 	<Type Name="boost::geometry::index::detail::varray&lt;*&gt;">
-		<DisplayString>{{ size = {m_size} }}</DisplayString>
+		<DisplayString>{{ size={m_size} }}</DisplayString>
 		<Expand>
 			<ArrayItems>
 				<Size>m_size</Size>
 				<ValuePointer>($T1 *)m_storage.data_.buf</ValuePointer>
 			</ArrayItems>
+		</Expand>
+	</Type>
+
+	<!-- boost::geometry::detail::overlay::turn_info -->
+	<Type Name="boost::geometry::detail::overlay::turn_info&lt;*&gt;">
+		<DisplayString>{{ {method} {operations.elems[0].operation}/{operations.elems[1].operation} }}</DisplayString>
+	</Type>
+	<!-- boost::geometry::detail::overlay::traversal_turn_info -->
+	<Type Name="boost::geometry::detail::overlay::traversal_turn_info&lt;*&gt;">
+		<DisplayString>{{ {method} {operations.elems[0].operation}/{operations.elems[1].operation} }}</DisplayString>
+		<Expand>
+			<Item Name="point">point</Item>
+			<Item Name="method">method</Item>
+			<Item Name="discarded">discarded</Item>
+			<Item Name="selectable_start">selectable_start</Item>
+			<Item Name="operations">operations</Item>
 		</Expand>
 	</Type>
 	

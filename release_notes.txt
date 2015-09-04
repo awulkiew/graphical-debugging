@@ -1,0 +1,17 @@
+version 0.1
+
+Debug visualizers for Boost.Array, Boost.Geometry, Boost.Variant
+GraphicalWatch
+GeometryWatch
+
+version 0.2
+
+additions:
+- debug visualizers for boost::geometry::debug::overlay::turn_info and boost::geometry::debug::overlay::traversal_turn_info
+- displaying Turns Containers in GraphicalWatch and GeometryWatch
+
+bugfixes:
+- removed invalid comments at the beginning of natvis files
+- reusing color in GeometryWatch until a geometry is removed from the list
+- fix std::deque support in GraphicalWatch
+- support const types

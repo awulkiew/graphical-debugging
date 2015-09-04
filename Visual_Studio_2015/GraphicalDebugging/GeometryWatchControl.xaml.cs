@@ -95,7 +95,7 @@ namespace GraphicalDebugging
                 listView.Items.Add(empty_variable);
             }
 
-            System.Windows.Media.Color color = Util.ConvertColor(Color.Transparent);
+            System.Windows.Media.Color color = geometry.Color;
             ExpressionDrawer.IDrawable drawable = null;
             string type = null;
 
@@ -110,14 +110,8 @@ namespace GraphicalDebugging
 
                     if (drawable != null)
                     {
-                        if (geometry.Color != Util.ConvertColor(Color.Transparent))
-                            color = geometry.Color;
-                        else
+                        if (color == Util.ConvertColor(Color.Transparent))
                             color = Util.ConvertColor(m_colorsPool.Pull());
-                    }
-                    else
-                    {
-                        m_colorsPool.Push(Util.ConvertColor(geometry.Color));
                     }
                 }
             }
@@ -176,7 +170,7 @@ namespace GraphicalDebugging
                 {
                     GeometryItem geometry = (GeometryItem)listView.Items[index];
 
-                    System.Windows.Media.Color color = Util.ConvertColor(Color.Transparent);
+                    System.Windows.Media.Color color = geometry.Color;
                     ExpressionDrawer.IDrawable drawable = null;
                     string type = null;
 
@@ -192,8 +186,7 @@ namespace GraphicalDebugging
                             {
                                 if (geometry.Color == Util.ConvertColor(Color.Transparent))
                                     color = Util.ConvertColor(m_colorsPool.Pull());
-                                else
-                                    color = geometry.Color;
+                                
                                 aabb.Expand(drawable.Aabb);
                                 ++drawnCount;
                             }
