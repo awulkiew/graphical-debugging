@@ -84,6 +84,8 @@ namespace GraphicalDebugging
             {
                 m_colorsPool.Push(Util.ConvertColor(geometry.Color));
                 listView.Items.RemoveAt(index);
+                if (index >= 0)
+                    RedrawGeometries();
                 return;
             }
 
@@ -256,6 +258,7 @@ namespace GraphicalDebugging
                     return -l.CompareTo(r);
                 });
 
+                bool removed = false;
                 foreach (int index in indexes)
                 {
                     if (index + 1 < listView.Items.Count)
@@ -263,8 +266,13 @@ namespace GraphicalDebugging
                         GeometryItem geometry = (GeometryItem)listView.Items[index];
                         m_colorsPool.Push(Util.ConvertColor(geometry.Color));
                         listView.Items.RemoveAt(index);
+
+                        removed = true;
                     }
                 }
+
+                if (removed)
+                    RedrawGeometries();
             }
         }
     }
