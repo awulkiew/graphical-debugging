@@ -22,18 +22,16 @@ namespace GraphicalDebugging
     {
         public interface IDrawable
         {
-            void Draw(Graphics graphics);
-            void Draw(Box box, Graphics graphics);
-            void Draw(Box box, Graphics graphics, Color color);
-            Box Aabb { get; }
+            void Draw(Geometry.Box box, Graphics graphics);
+            void Draw(Geometry.Box box, Graphics graphics, Color color);
+            Geometry.Box Aabb { get; }
         }
 
-        public class Point : IDrawable
+        public class Point : Geometry.Point, IDrawable
         {
             public Point(double x, double y)
-            {
-                coords = new double[2] { x, y };
-            }
+                : base(x, y)
+            {}
 
             public static Point Load(Debugger debugger, string name)
             {
@@ -74,70 +72,32 @@ namespace GraphicalDebugging
                 return result;
             }*/
 
-            public void Draw(Graphics graphics)
-            {
-                this.Draw(new Box(this, this), graphics);
-            }
-
-            public void Draw(Box box, Graphics graphics)
+            public void Draw(Geometry.Box box, Graphics graphics)
             {
                 this.Draw(box, graphics, Color.Orange);
             }
 
-            public void Draw(Box box, Graphics graphics, Color color)
+            public void Draw(Geometry.Box box, Graphics graphics, Color color)
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
                 Pen pen = new Pen(Color.FromArgb(112, color), 2);
                 SolidBrush brush = new SolidBrush(Color.FromArgb(64, color));
 
-                float x = cs.ConvertX(coords[0]);
-                float y = cs.ConvertY(coords[1]);
+                float x = cs.ConvertX(this[0]);
+                float y = cs.ConvertY(this[1]);
                 graphics.FillEllipse(brush, x - 2.5f, y - 2.5f, 5, 5);
                 graphics.DrawEllipse(pen, x - 2.5f, y - 2.5f, 5, 5);
             }
 
-            public Box Aabb { get { return new Box(this, this); } }
-
-            public double this[int i]
-            {
-                get { return coords[i]; }
-                set { coords[i] = value; }
-            }
-
-            private double[] coords;
+            public Geometry.Box Aabb { get { return new Geometry.Box(this, this); } }
         }
 
-        public class Box : IDrawable
+        public class Box : Geometry.Box, IDrawable
         {
-            public static Box Inverted()
-            {
-                return new Box(
-                    new Point(double.MaxValue, double.MaxValue),
-                    new Point(double.MinValue, double.MinValue));
-            }
-
             public Box(Point min, Point max)
-            {
-                this.min = min;
-                this.max = max;
-            }
-
-            public void Expand(Point p)
-            {
-                if (p[0] < min[0]) min[0] = p[0];
-                if (p[1] < min[1]) min[1] = p[1];
-                if (p[0] > max[0]) max[0] = p[0];
-                if (p[1] > max[1]) max[1] = p[1];
-            }
-
-            public void Expand(Box b)
-            {
-                if (b.min[0] < min[0]) min[0] = b.min[0];
-                if (b.min[1] < min[1]) min[1] = b.min[1];
-                if (b.max[0] > max[0]) max[0] = b.max[0];
-                if (b.max[1] > max[1]) max[1] = b.max[1];
-            }
+                : base(min, max)
+            {}
 
             public static Box Load(Debugger debugger, string name)
             {
@@ -148,17 +108,12 @@ namespace GraphicalDebugging
                 return result;
             }
 
-            public void Draw(Graphics graphics)
-            {
-                this.Draw(this, graphics);
-            }
-
-            public void Draw(Box box, Graphics graphics)
+            public void Draw(Geometry.Box box, Graphics graphics)
             {
                 this.Draw(box, graphics, Color.Red);
             }
 
-            public void Draw(Box box, Graphics graphics, Color color)
+            public void Draw(Geometry.Box box, Graphics graphics, Color color)
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
@@ -186,18 +141,11 @@ namespace GraphicalDebugging
                 }
             }
 
-            public Box Aabb { get { return this; } }
-
-            public double Width { get { return max[0] - min[0]; } }
-            public double Height { get { return max[1] - min[1]; } }
-
-            public Point min, max;
+            public Geometry.Box Aabb { get { return this; } }
         }
 
-        public class Segment : IDrawable
+        public class Segment : Geometry.Segment, IDrawable
         {
-            private Segment() { }
-
             public static Segment Load(Debugger debugger, string name)
             {
                 Segment result = new Segment();
@@ -205,52 +153,32 @@ namespace GraphicalDebugging
                 result.p0 = Point.Load(debugger, name + ".first");
                 result.p1 = Point.Load(debugger, name + ".second");
 
-                result.box = Box.Inverted();
-                result.box.Expand(result.p0);
-                result.box.Expand(result.p1);
-
                 return result;
             }
 
-            public void Draw(Graphics graphics)
-            {
-                this.Draw(box, graphics);
-            }
-
-            public void Draw(Box box, Graphics graphics)
+            public void Draw(Geometry.Box box, Graphics graphics)
             {
                 this.Draw(box, graphics, Color.YellowGreen);
             }
 
-            public void Draw(Box box, Graphics graphics, Color color)
+            public void Draw(Geometry.Box box, Graphics graphics, Color color)
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
                 Pen pen = new Pen(Color.FromArgb(112, color), 2);
 
-                graphics.DrawLine(pen, cs.ConvertX(p0[0]), cs.ConvertY(p0[1]),
-                                       cs.ConvertX(p1[0]), cs.ConvertY(p1[1]));
+                graphics.DrawLine(pen, cs.Convert(this[0]), cs.Convert(this[1]));
             }
 
-            public Box Aabb { get { return box; } }
-
-            public Point this[int i] { get { return i == 0 ? p0 : p1; } }
-            public int Count { get { return 2; } }
-
-            private Box box;
-            private Point p0;
-            private Point p1;
+            public Geometry.Box Aabb{ get { return Envelope(); } }
         }
 
-        public class Linestring : IDrawable
+        public class Linestring : Geometry.Linestring, IDrawable
         {
-            private Linestring() { }
-
             public static Linestring Load(Debugger debugger, string name)
             {
                 Linestring result = new Linestring();
-                result.box = Box.Inverted();
-                result.points = new List<Point>();
+                result.box = Geometry.Box.Inverted();
 
                 // Traversing the Expression is even slower than the currently used solution
                 /*Expression expr = debugger.GetExpression(name);
@@ -278,96 +206,60 @@ namespace GraphicalDebugging
                 for (int i = 0; i < size; ++i)
                 {
                     Point p = Point.Load(debugger, name + "[" + i + "]");
-                    result.points.Add(p);
+                    result.Add(p);
                     result.box.Expand(p);
                 }
 
                 return result;
             }
 
-            public void Draw(Graphics graphics)
-            {
-                this.Draw(box, graphics);
-            }
-
-            public void Draw(Box box, Graphics graphics)
+            public void Draw(Geometry.Box box, Graphics graphics)
             {
                 this.Draw(box, graphics, Color.Green);
             }
 
-            public void Draw(Box box, Graphics graphics, Color color)
+            public void Draw(Geometry.Box box, Graphics graphics, Color color)
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
                 Pen pen = new Pen(Color.FromArgb(112, color), 2);
 
-                for (int i = 1; i < points.Count; ++i)
+                for (int i = 1; i < Count; ++i)
                 {
-                    Point p0 = points[i - 1];
-                    Point p1 = points[i];
+                    Geometry.Point p0 = this[i - 1];
+                    Geometry.Point p1 = this[i];
                     graphics.DrawLine(pen, cs.ConvertX(p0[0]), cs.ConvertY(p0[1]),
                                            cs.ConvertX(p1[0]), cs.ConvertY(p1[1]));
                 }
             }
 
-            public Box Aabb { get { return box; } }
-
-            public Point this[int i] { get { return points[i]; } }
-            public int Count { get { return points.Count; } }
-
-            private Box box;
-            private List<Point> points;
+            public Geometry.Box Aabb { get { return box; } }
+            
+            private Geometry.Box box;
         }
 
-        public class Ring : IDrawable
+        public class Ring : Geometry.Ring, IDrawable
         {
-            private Ring() { }
-
             public static Ring Load(Debugger debugger, string name)
             {
+                Linestring ls = Linestring.Load(debugger, name);
+
                 Ring result = new Ring();
-                result.linestring = Linestring.Load(debugger, name);
+                result.linestring = ls;
+                result.box = ls.Aabb;
                 return result;
             }
 
-            public PointF[] Convert(Box box, Graphics graphics)
-            {
-                LocalCS cs = new LocalCS(box, graphics);
-
-                if (this.Count <= 0)
-                    return null;
-
-                int dst_count = this.Count + (this[0] == this[this.Count - 1] ? 0 : 1);
-
-                PointF[] dst_points = new PointF[dst_count];
-                int i = 0;
-                for (; i < this.Count; ++i)
-                {
-                    Point p = this[i];
-                    dst_points[i] = new PointF(cs.ConvertX(p[0]), cs.ConvertY(p[1]));
-                }
-                if (i < dst_count)
-                {
-                    Point p = this[0];
-                    dst_points[i] = new PointF(cs.ConvertX(p[0]), cs.ConvertY(p[1]));
-                }
-
-                return dst_points;
-            }
-
-            public void Draw(Graphics graphics)
-            {
-                this.Draw(Aabb, graphics);
-            }
-
-            public void Draw(Box box, Graphics graphics)
+            public void Draw(Geometry.Box box, Graphics graphics)
             {
                 this.Draw(box, graphics, Color.SlateBlue);
             }
 
-            public void Draw(Box box, Graphics graphics, Color color)
+            public void Draw(Geometry.Box box, Graphics graphics, Color color)
             {
-                PointF[] dst_points = Convert(box, graphics);
+                LocalCS cs = new LocalCS(box, graphics);
+
+                PointF[] dst_points = cs.Convert(this);
 
                 if (dst_points != null)
                 {
@@ -379,31 +271,29 @@ namespace GraphicalDebugging
                 }
             }
 
-            public Box Aabb { get { return linestring.Aabb; } }
+            public Geometry.Box Aabb { get { return box; } }
 
-            public Point this[int i] { get { return linestring[i]; } }
-            public int Count { get { return linestring.Count; } }
-
-            private Linestring linestring;
+            private Geometry.Box box;
         }
 
-        public class Polygon : IDrawable
+        public class Polygon : Geometry.Polygon, IDrawable
         {
-            private Polygon() {}
-
             public static Polygon Load(Debugger debugger, string name)
             {
                 Polygon result = new Polygon();
 
-                result.outer = Ring.Load(debugger, name + ".m_outer");
-                result.inners = new List<Ring>();
-                result.box = Box.Inverted();
-                result.box.Expand(result.outer.Aabb);
+                Ring r = Ring.Load(debugger, name + ".m_outer");
+
+                result.box = Geometry.Box.Inverted();
+                result.box.Expand(r.Aabb);
+
+                result.outer = r;
 
                 int inners_size = LoadSize(debugger, name + ".m_inners");                
                 for (int i = 0; i < inners_size; ++i)
                 {
-                    Ring r = Ring.Load(debugger, name + ".m_inners[" + i + "]");
+                    r = Ring.Load(debugger, name + ".m_inners[" + i + "]");
+
                     result.inners.Add(r);
                     result.box.Expand(r.Aabb);
                 }
@@ -411,19 +301,16 @@ namespace GraphicalDebugging
                 return result;
             }
 
-            public void Draw(Graphics graphics)
-            {
-                this.Draw(Aabb, graphics);
-            }
-
-            public void Draw(Box box, Graphics graphics)
+            public void Draw(Geometry.Box box, Graphics graphics)
             {
                 this.Draw(box, graphics, Color.RoyalBlue);
             }
 
-            public void Draw(Box box, Graphics graphics, Color color)
+            public void Draw(Geometry.Box box, Graphics graphics, Color color)
             {
-                PointF[] dst_outer_points = outer.Convert(box, graphics);
+                LocalCS cs = new LocalCS(box, graphics);
+
+                PointF[] dst_outer_points = cs.Convert(outer);
                 if (dst_outer_points != null)
                 {
                     Pen pen = new Pen(Color.FromArgb(112, color), 2);
@@ -434,7 +321,7 @@ namespace GraphicalDebugging
 
                     foreach(Ring inner in inners)
                     {
-                        PointF[] dst_inner_points = inner.Convert(Aabb, graphics);
+                        PointF[] dst_inner_points = cs.Convert(inner);
                         if (dst_inner_points != null)
                         {
                             gp.AddPolygon(dst_inner_points);
@@ -446,11 +333,9 @@ namespace GraphicalDebugging
                 }
             }
 
-            public Box Aabb { get { return box; } }
+            public Geometry.Box Aabb { get { return box; } }
 
-            private Box box;
-            private Ring outer;
-            private List<Ring> inners;
+            private Geometry.Box box;
         }
 
         public class Multi : IDrawable
@@ -468,7 +353,7 @@ namespace GraphicalDebugging
             {
                 Multi result = new Multi();
                 result.singles = new List<IDrawable>();
-                result.box = Box.Inverted();
+                result.box = Geometry.Box.Inverted();
 
                 int size = LoadSize(debugger, name);
                 
@@ -503,12 +388,7 @@ namespace GraphicalDebugging
                 return result;
             }
 
-            public void Draw(Graphics graphics)
-            {
-                this.Draw(Aabb, graphics);
-            }
-
-            public void Draw(Box box, Graphics graphics)
+            public void Draw(Geometry.Box box, Graphics graphics)
             {
                 foreach (IDrawable single in singles)
                 {
@@ -516,7 +396,7 @@ namespace GraphicalDebugging
                 }
             }
 
-            public void Draw(Box box, Graphics graphics, Color color)
+            public void Draw(Geometry.Box box, Graphics graphics, Color color)
             {
                 foreach (IDrawable single in singles)
                 {
@@ -524,9 +404,9 @@ namespace GraphicalDebugging
                 }
             }
 
-            public Box Aabb { get { return box; } }
+            public Geometry.Box Aabb { get { return box; } }
 
-            private Box box;
+            private Geometry.Box box;
 
             private List<IDrawable> singles;
         }
@@ -539,7 +419,7 @@ namespace GraphicalDebugging
             {
                 ValuesContainer result = new ValuesContainer();
                 result.values = new List<double>();
-                result.box = Box.Inverted();
+                result.box = Geometry.Box.Inverted();
 
                 if (size > 0)
                     result.box.Expand(new Point(0.0, 0.0));
@@ -561,17 +441,12 @@ namespace GraphicalDebugging
                 return result;
             }
 
-            public void Draw(Graphics graphics)
-            {
-                this.Draw(Aabb, graphics);
-            }
-
-            public void Draw(Box box, Graphics graphics)
+            public void Draw(Geometry.Box box, Graphics graphics)
             {
                 this.Draw(box, graphics, Color.Black);
             }
 
-            public void Draw(Box box, Graphics graphics, Color color)
+            public void Draw(Geometry.Box box, Graphics graphics, Color color)
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
@@ -594,9 +469,9 @@ namespace GraphicalDebugging
                 }
             }
 
-            public Box Aabb { get { return box; } }
+            public Geometry.Box Aabb { get { return box; } }
 
-            private Box box;
+            private Geometry.Box box;
 
             private List<double> values;
         }
@@ -608,8 +483,8 @@ namespace GraphicalDebugging
             public static TurnsContainer Load(Debugger debugger, string name, int size, bool verbose)
             {
                 TurnsContainer result = new TurnsContainer();
-                result.turns = new List<Point>();
-                result.box = Box.Inverted();
+                result.turns = new List<Geometry.Point>();
+                result.box = Geometry.Box.Inverted();
                 result.verbose = verbose;
 
                 for (int i = 0; i < size; ++i)
@@ -623,17 +498,12 @@ namespace GraphicalDebugging
                 return result;
             }
 
-            public void Draw(Graphics graphics)
-            {
-                this.Draw(Aabb, graphics);
-            }
-
-            public void Draw(Box box, Graphics graphics)
+            public void Draw(Geometry.Box box, Graphics graphics)
             {
                 this.Draw(box, graphics, Color.DarkOrange);
             }
 
-            public void Draw(Box box, Graphics graphics, Color color)
+            public void Draw(Geometry.Box box, Graphics graphics, Color color)
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
@@ -642,7 +512,7 @@ namespace GraphicalDebugging
                 SolidBrush text_brush = new SolidBrush(Color.Black);
 
                 int index = 0;
-                foreach (Point turn in turns)
+                foreach (Geometry.Point turn in turns)
                 {
                     float x = cs.ConvertX(turn[0]);
                     float y = cs.ConvertY(turn[1]);
@@ -658,11 +528,11 @@ namespace GraphicalDebugging
                 }
             }
 
-            public Box Aabb { get { return box; } }
+            public Geometry.Box Aabb { get { return box; } }
 
-            private Box box;
+            private Geometry.Box box;
 
-            private List<Point> turns;
+            private List<Geometry.Point> turns;
 
             private bool verbose;
         }
@@ -904,7 +774,7 @@ namespace GraphicalDebugging
             IDrawable d = MakeGeometry(debugger, name);
             if (d == null)
                 return false;
-            d.Draw(graphics);
+            d.Draw(d.Aabb, graphics);
             return true;
         }
 
@@ -914,11 +784,11 @@ namespace GraphicalDebugging
             IDrawable d = MakeDrawable(debugger, name);
             if (d == null)
                 return false;
-            d.Draw(graphics);
+            d.Draw(d.Aabb, graphics);
             return true;
         }
 
-        public static bool DrawAabb(Graphics graphics, Box box)
+        public static bool DrawAabb(Graphics graphics, Geometry.Box box)
         {
             LocalCS cs = new LocalCS(box, graphics);
 
@@ -1001,7 +871,7 @@ namespace GraphicalDebugging
 
         private class LocalCS
         {
-            public LocalCS(Box src_box, Graphics dst_graphics)
+            public LocalCS(Geometry.Box src_box, Graphics dst_graphics)
             {
                 float w = dst_graphics.VisibleClipBounds.Width;
                 float h = dst_graphics.VisibleClipBounds.Height;
@@ -1042,6 +912,32 @@ namespace GraphicalDebugging
             public float ConvertDimension(double src)
             {
                 return (float)(src * scale);
+            }
+
+            public PointF Convert(Geometry.Point p)
+            {
+                return new PointF(ConvertX(p[0]), ConvertY(p[1]));
+            }
+
+            public PointF[] Convert(Geometry.Ring ring)
+            {
+                if (ring.Count <= 0)
+                    return null;
+
+                int dst_count = ring.Count + (ring[0] == ring[ring.Count - 1] ? 0 : 1);
+
+                PointF[] dst_points = new PointF[dst_count];
+                int i = 0;
+                for (; i < ring.Count; ++i)
+                {
+                    dst_points[i] = Convert(ring[i]);
+                }
+                if (i < dst_count)
+                {
+                    dst_points[i] = Convert(ring[0]);
+                }
+
+                return dst_points;
             }
 
             float dst_x0, dst_y0;

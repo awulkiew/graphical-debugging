@@ -124,7 +124,7 @@ namespace GraphicalDebugging
 
             if (drawable != null)
             {
-                ExpressionDrawer.Box aabb = ExpressionDrawer.Box.Inverted();
+                Geometry.Box aabb = Geometry.Box.Inverted();
                 int drawnCount = 0;
                 foreach (GeometryItem g in listView.Items)
                 {
@@ -164,7 +164,7 @@ namespace GraphicalDebugging
         {
             if (m_debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
             {
-                ExpressionDrawer.Box aabb = ExpressionDrawer.Box.Inverted();
+                Geometry.Box aabb = Geometry.Box.Inverted();
                 int drawnCount = 0;
                 for (int index = 0; index < listView.Items.Count; ++index)
                 {
