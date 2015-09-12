@@ -46,32 +46,6 @@ namespace GraphicalDebugging
                 return result;
             }
 
-            // Traversing the Expression is even slower than the currently used solution
-            /*public static Point Load(Expression expr)
-            {
-                double x = 0, y = 0;
-
-                int index = 0;
-                foreach(Expression e in expr.DataMembers)
-                {
-                    if (index > 1)
-                        break;
-
-                    if ( e.IsValidValue )
-                    {
-                        if (index == 0)
-                            x = double.Parse(e.Value, System.Globalization.CultureInfo.InvariantCulture);
-                        else if (index == 1)
-                            y = double.Parse(e.Value, System.Globalization.CultureInfo.InvariantCulture);
-                    }
-
-                    ++index;
-                }
-                
-                Point result = new Point(x, y);
-                return result;
-            }*/
-
             public void Draw(Geometry.Box box, Graphics graphics)
             {
                 this.Draw(box, graphics, Color.Orange);
@@ -179,28 +153,6 @@ namespace GraphicalDebugging
             {
                 Linestring result = new Linestring();
                 result.box = Geometry.Box.Inverted();
-
-                // Traversing the Expression is even slower than the currently used solution
-                /*Expression expr = debugger.GetExpression(name);
-                if (!expr.IsValidValue)
-                    return result;
-
-                // capacity, allocator, N elements, Raw view
-                int index = 0;
-                foreach (Expression e in expr.DataMembers)
-                {
-                    if ( e.IsValidValue )
-                    {
-                        if ( index >= 2 && index < expr.DataMembers.Count - 1)
-                        {
-                            Point p = Point.Load(e);
-                            result.points.Add(p);
-                            result.box.Expand(p);
-                        }
-                    }
-
-                    ++index;
-                }*/
 
                 int size = LoadSize(debugger, name);
                 for (int i = 0; i < size; ++i)
