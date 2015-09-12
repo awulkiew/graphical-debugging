@@ -20,10 +20,28 @@ namespace GraphicalDebugging
 {
     class ExpressionDrawer
     {
+        public class Settings
+        {
+            public Settings()
+                : this(Color.Black)
+            { }
+
+            public Settings(Color color, bool showDir = false, bool showLabels = false)
+            {
+                this.color = color;
+                this.showDir = showDir;
+                this.showLabels = showLabels;
+            }
+
+            public Color color;
+            public bool showDir;
+            public bool showLabels;
+        }
+
         public interface IDrawable
         {
             void Draw(Geometry.Box box, Graphics graphics);
-            void Draw(Geometry.Box box, Graphics graphics, Color color);
+            void Draw(Geometry.Box box, Graphics graphics, Settings settings);
             Geometry.Box Aabb { get; }
         }
 
@@ -48,15 +66,15 @@ namespace GraphicalDebugging
 
             public void Draw(Geometry.Box box, Graphics graphics)
             {
-                this.Draw(box, graphics, Color.Orange);
+                this.Draw(box, graphics, new Settings(Color.Orange));
             }
 
-            public void Draw(Geometry.Box box, Graphics graphics, Color color)
+            public void Draw(Geometry.Box box, Graphics graphics, Settings settings)
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
-                Pen pen = new Pen(Color.FromArgb(112, color), 2);
-                SolidBrush brush = new SolidBrush(Color.FromArgb(64, color));
+                Pen pen = new Pen(Color.FromArgb(112, settings.color), 2);
+                SolidBrush brush = new SolidBrush(Color.FromArgb(64, settings.color));
 
                 float x = cs.ConvertX(this[0]);
                 float y = cs.ConvertY(this[1]);
@@ -84,15 +102,15 @@ namespace GraphicalDebugging
 
             public void Draw(Geometry.Box box, Graphics graphics)
             {
-                this.Draw(box, graphics, Color.Red);
+                this.Draw(box, graphics, new Settings(Color.Red));
             }
 
-            public void Draw(Geometry.Box box, Graphics graphics, Color color)
+            public void Draw(Geometry.Box box, Graphics graphics, Settings settings)
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
-                Pen pen = new Pen(Color.FromArgb(112, color), 2);
-                SolidBrush brush = new SolidBrush(Color.FromArgb(64, color));
+                Pen pen = new Pen(Color.FromArgb(112, settings.color), 2);
+                SolidBrush brush = new SolidBrush(Color.FromArgb(64, settings.color));
 
                 float rx = cs.ConvertX(min[0]);
                 float ry = cs.ConvertY(max[1]);
@@ -132,16 +150,21 @@ namespace GraphicalDebugging
 
             public void Draw(Geometry.Box box, Graphics graphics)
             {
-                this.Draw(box, graphics, Color.YellowGreen);
+                this.Draw(box, graphics, new Settings(Color.YellowGreen));
             }
 
-            public void Draw(Geometry.Box box, Graphics graphics, Color color)
+            public void Draw(Geometry.Box box, Graphics graphics, Settings settings)
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
-                Pen pen = new Pen(Color.FromArgb(112, color), 2);
+                Pen pen = new Pen(Color.FromArgb(112, settings.color), 2);
 
-                graphics.DrawLine(pen, cs.Convert(this[0]), cs.Convert(this[1]));
+                PointF p0 = cs.Convert(this[0]);
+                PointF p1 = cs.Convert(this[1]);
+                graphics.DrawLine(pen, p0, p1);
+
+                if (settings.showDir)
+                    DrawDir(p0, p1, graphics, pen);
             }
 
             public Geometry.Box Aabb{ get { return Envelope(); } }
@@ -167,21 +190,23 @@ namespace GraphicalDebugging
 
             public void Draw(Geometry.Box box, Graphics graphics)
             {
-                this.Draw(box, graphics, Color.Green);
+                this.Draw(box, graphics, new Settings(Color.Green));
             }
 
-            public void Draw(Geometry.Box box, Graphics graphics, Color color)
+            public void Draw(Geometry.Box box, Graphics graphics, Settings settings)
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
-                Pen pen = new Pen(Color.FromArgb(112, color), 2);
+                Pen pen = new Pen(Color.FromArgb(112, settings.color), 2);
 
                 for (int i = 1; i < Count; ++i)
                 {
-                    Geometry.Point p0 = this[i - 1];
-                    Geometry.Point p1 = this[i];
-                    graphics.DrawLine(pen, cs.ConvertX(p0[0]), cs.ConvertY(p0[1]),
-                                           cs.ConvertX(p1[0]), cs.ConvertY(p1[1]));
+                    PointF p0 = cs.Convert(this[i - 1]);
+                    PointF p1 = cs.Convert(this[i]);
+                    graphics.DrawLine(pen, p0, p1);
+
+                    if (settings.showDir)
+                        DrawDir(p0, p1, graphics, pen);
                 }
             }
 
@@ -204,10 +229,10 @@ namespace GraphicalDebugging
 
             public void Draw(Geometry.Box box, Graphics graphics)
             {
-                this.Draw(box, graphics, Color.SlateBlue);
+                this.Draw(box, graphics, new Settings(Color.SlateBlue));
             }
 
-            public void Draw(Geometry.Box box, Graphics graphics, Color color)
+            public void Draw(Geometry.Box box, Graphics graphics, Settings settings)
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
@@ -215,11 +240,14 @@ namespace GraphicalDebugging
 
                 if (dst_points != null)
                 {
-                    Pen pen = new Pen(Color.FromArgb(112, color), 2);
-                    SolidBrush brush = new SolidBrush(Color.FromArgb(64, color));
+                    Pen pen = new Pen(Color.FromArgb(112, settings.color), 2);
+                    SolidBrush brush = new SolidBrush(Color.FromArgb(64, settings.color));
                     
                     graphics.FillPolygon(brush, dst_points);
                     graphics.DrawPolygon(pen, dst_points);
+
+                    if (settings.showDir)
+                        DrawDir(dst_points, true, graphics, pen);
                 }
             }
 
@@ -255,28 +283,34 @@ namespace GraphicalDebugging
 
             public void Draw(Geometry.Box box, Graphics graphics)
             {
-                this.Draw(box, graphics, Color.RoyalBlue);
+                this.Draw(box, graphics, new Settings(Color.RoyalBlue));
             }
 
-            public void Draw(Geometry.Box box, Graphics graphics, Color color)
+            public void Draw(Geometry.Box box, Graphics graphics, Settings settings)
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
                 PointF[] dst_outer_points = cs.Convert(outer);
                 if (dst_outer_points != null)
                 {
-                    Pen pen = new Pen(Color.FromArgb(112, color), 2);
-                    SolidBrush brush = new SolidBrush(Color.FromArgb(64, color));
+                    Pen pen = new Pen(Color.FromArgb(112, settings.color), 2);
+                    SolidBrush brush = new SolidBrush(Color.FromArgb(64, settings.color));
 
                     GraphicsPath gp = new GraphicsPath();
                     gp.AddPolygon(dst_outer_points);
 
-                    foreach(Ring inner in inners)
+                    if (settings.showDir)
+                        DrawDir(dst_outer_points, true, graphics, pen);
+
+                    foreach (Ring inner in inners)
                     {
                         PointF[] dst_inner_points = cs.Convert(inner);
                         if (dst_inner_points != null)
                         {
                             gp.AddPolygon(dst_inner_points);
+
+                            if (settings.showDir)
+                                DrawDir(dst_inner_points, true, graphics, pen);
                         }
                     }
 
@@ -346,11 +380,11 @@ namespace GraphicalDebugging
                 }
             }
 
-            public void Draw(Geometry.Box box, Graphics graphics, Color color)
+            public void Draw(Geometry.Box box, Graphics graphics, Settings settings)
             {
                 foreach (IDrawable single in singles)
                 {
-                    single.Draw(box, graphics, color);
+                    single.Draw(box, graphics, settings);
                 }
             }
 
@@ -393,15 +427,15 @@ namespace GraphicalDebugging
 
             public void Draw(Geometry.Box box, Graphics graphics)
             {
-                this.Draw(box, graphics, Color.Black);
+                this.Draw(box, graphics, new Settings(Color.Black));
             }
 
-            public void Draw(Geometry.Box box, Graphics graphics, Color color)
+            public void Draw(Geometry.Box box, Graphics graphics, Settings settings)
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
-                Pen axis_pen = new Pen(color, 2);
-                Pen pen = new Pen(Color.FromArgb(112, color), 1);
+                Pen axis_pen = new Pen(settings.color, 2);
+                Pen pen = new Pen(Color.FromArgb(112, settings.color), 1);
 
                 float ax0 = cs.ConvertX(box.min[0]);
                 float ax1 = cs.ConvertX(box.max[0]);
@@ -474,12 +508,11 @@ namespace GraphicalDebugging
                 }
             }
 
-    public static TurnsContainer Load(Debugger debugger, string name, int size, bool verbose)
+            public static TurnsContainer Load(Debugger debugger, string name, int size)
             {
                 TurnsContainer result = new TurnsContainer();
                 result.turns = new List<Turn>();
                 result.box = Geometry.Box.Inverted();
-                result.verbose = verbose;
 
                 for (int i = 0; i < size; ++i)
                 {
@@ -511,19 +544,19 @@ namespace GraphicalDebugging
 
             public void Draw(Geometry.Box box, Graphics graphics)
             {
-                this.Draw(box, graphics, Color.DarkOrange);
+                this.Draw(box, graphics, new Settings(Color.DarkOrange));
             }
 
-            public void Draw(Geometry.Box box, Graphics graphics, Color color)
+            public void Draw(Geometry.Box box, Graphics graphics, Settings settings)
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
-                Pen pen = new Pen(Color.FromArgb(112, color), 2);
-                SolidBrush brush = new SolidBrush(Color.FromArgb(64, color));
+                Pen pen = new Pen(Color.FromArgb(112, settings.color), 2);
+                SolidBrush brush = new SolidBrush(Color.FromArgb(64, settings.color));
                 SolidBrush text_brush = new SolidBrush(Color.Black);
 
                 Font font = null;
-                if (verbose)
+                if (settings.showLabels)
                     font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), 10);
 
                 int index = 0;
@@ -534,7 +567,7 @@ namespace GraphicalDebugging
                     graphics.FillEllipse(brush, x - 2.5f, y - 2.5f, 5, 5);
                     graphics.DrawEllipse(pen, x - 2.5f, y - 2.5f, 5, 5);
 
-                    if (verbose)
+                    if (settings.showLabels)
                     {
                         string str = index.ToString() + ' ' + turn.method + ':' + turn.operation0 + '/' + turn.operation1;
                         graphics.DrawString(str, font, text_brush, x, y);
@@ -548,8 +581,56 @@ namespace GraphicalDebugging
             private Geometry.Box box;
 
             private List<Turn> turns;
+        }
 
-            private bool verbose;
+        private static bool DrawDir(PointF p0, PointF p1, Graphics graphics, Pen pen)
+        {
+            PointF v = SubF(p1, p0);
+            float distSqr = DotF(v, v);
+
+            if (distSqr < 49.0f) // (1+5+1)^2
+                return false;
+
+            PointF ph = AddF(p0, MulF(v, 0.5f));
+            float a = AngleF(v);
+            PointF ps = AddF(ph, RotF(new PointF(-1.25f, -2.5f), a));
+            PointF pm = AddF(ph, RotF(new PointF(1.25f, 0.0f), a));
+            PointF pe = AddF(ph, RotF(new PointF(-1.25f, 2.5f), a));
+            graphics.DrawLine(pen, pm, ps);
+            graphics.DrawLine(pen, pm, pe);
+
+            return true;
+        }
+
+        private static void DrawDir(PointF[] points, bool closed, Graphics graphics, Pen pen)
+        {
+            bool drawn = false;
+            for (int i = 1; i < points.Length; ++i)
+            {
+                bool ok = DrawDir(points[i - 1], points[i], graphics, pen);
+                drawn = drawn || ok;
+            }
+            if (closed && points.Length > 1)
+            {
+                bool ok = DrawDir(points[points.Length - 1], points[0], graphics, pen);
+                drawn = drawn || ok;
+                if (drawn)
+                    graphics.DrawEllipse(pen, points[0].X - 2.5f, points[0].Y - 2.5f, 5, 5);
+            }
+        }
+
+        private static PointF MulF(PointF p, float v) { return new PointF(p.X * v, p.Y * v); }
+        private static PointF DivF(PointF p, float v) { return new PointF(p.X / v, p.Y / v); }
+        private static PointF MulF(PointF l, PointF r) { return new PointF(l.X * r.X, l.Y * r.Y); }
+        private static PointF DivF(PointF l, PointF r) { return new PointF(l.X / r.X, l.Y / r.Y); }
+        private static PointF AddF(PointF l, PointF r) { return new PointF(l.X + r.X, l.Y + r.Y); }
+        private static PointF SubF(PointF l, PointF r) { return new PointF(l.X - r.X, l.Y - r.Y); }
+        private static float DotF(PointF l, PointF r) { return l.X * r.X + l.Y * r.Y; }
+        private static float AngleF(PointF v) { return (float)Math.Atan2(v.Y, v.X); }
+        private static PointF RotF(PointF v, float a)
+        {
+            return new PointF((float)(v.X * Math.Cos(a) - v.Y * Math.Sin(a)),
+                              (float)(v.Y * Math.Cos(a) + v.X * Math.Sin(a)));
         }
 
         private static List<string> Tparams(string type)
@@ -725,7 +806,7 @@ namespace GraphicalDebugging
             if (IsTurnsContainer(type))
             {
                 int size = LoadSize(debugger, name);
-                d = TurnsContainer.Load(debugger, name, size, verbose);
+                d = TurnsContainer.Load(debugger, name, size);
             }
 
             return d;

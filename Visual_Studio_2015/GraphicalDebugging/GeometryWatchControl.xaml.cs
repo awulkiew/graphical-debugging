@@ -145,10 +145,14 @@ namespace GraphicalDebugging
                     graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                     graphics.Clear(Color.White);
 
+                    ExpressionDrawer.Settings settings = new ExpressionDrawer.Settings(Color.Black, true, true);
                     foreach (GeometryItem g in listView.Items)
                     {
                         if (g.Drawable != null)
-                            g.Drawable.Draw(aabb, graphics, Util.ConvertColor(g.Color));
+                        {
+                            settings.color = Util.ConvertColor(g.Color);
+                            g.Drawable.Draw(aabb, graphics, settings);
+                        }
                     }
 
                     ExpressionDrawer.DrawAabb(graphics, aabb);
@@ -211,10 +215,14 @@ namespace GraphicalDebugging
                     graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                     graphics.Clear(Color.White);
 
+                    ExpressionDrawer.Settings settings = new ExpressionDrawer.Settings(Color.Black, true, true);
                     foreach (GeometryItem g in listView.Items)
                     {
                         if (g.Drawable != null)
-                            g.Drawable.Draw(aabb, graphics, Util.ConvertColor(g.Color));
+                        {
+                            settings.color = Util.ConvertColor(g.Color);
+                            g.Drawable.Draw(aabb, graphics, settings);
+                        }
                     }
 
                     ExpressionDrawer.DrawAabb(graphics, aabb);
