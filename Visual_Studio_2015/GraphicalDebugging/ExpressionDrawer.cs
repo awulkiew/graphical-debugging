@@ -559,21 +559,30 @@ namespace GraphicalDebugging
                 if (settings.showLabels)
                     font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), 10);
 
+                Dictionary<System.Drawing.Point, string> labelsMap = new Dictionary<System.Drawing.Point, string>();
+
                 int index = 0;
                 foreach (Turn turn in turns)
                 {
-                    float x = cs.ConvertX(turn.point[0]);
-                    float y = cs.ConvertY(turn.point[1]);
-                    graphics.FillEllipse(brush, x - 2.5f, y - 2.5f, 5, 5);
-                    graphics.DrawEllipse(pen, x - 2.5f, y - 2.5f, 5, 5);
+                    PointF p = cs.Convert(turn.point);
+                    graphics.FillEllipse(brush, p.X - 2.5f, p.Y - 2.5f, 5, 5);
+                    graphics.DrawEllipse(pen, p.X - 2.5f, p.Y - 2.5f, 5, 5);
 
                     if (settings.showLabels)
                     {
+                        System.Drawing.Point pi = new System.Drawing.Point((int)Math.Round(p.X), (int)Math.Round(p.Y));
                         string str = index.ToString() + ' ' + turn.method + ':' + turn.operation0 + '/' + turn.operation1;
-                        graphics.DrawString(str, font, text_brush, x, y);
+
+                        if (!labelsMap.ContainsKey(pi))
+                            labelsMap.Add(pi, str);
+                        else
+                            labelsMap[pi] = labelsMap[pi] + '\n' + str;
                     }
                     ++index;
                 }
+
+                foreach(var label in labelsMap)
+                    graphics.DrawString(label.Value, font, text_brush, label.Key);
             }
 
             public Geometry.Box Aabb { get { return box; } }
