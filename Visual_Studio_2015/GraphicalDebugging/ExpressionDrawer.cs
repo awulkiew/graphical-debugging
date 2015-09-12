@@ -430,18 +430,79 @@ namespace GraphicalDebugging
         {
             private TurnsContainer() { }
 
-            public static TurnsContainer Load(Debugger debugger, string name, int size, bool verbose)
+            private class Turn
+            {
+                public Turn(Geometry.Point p, char m, char o0, char o1)
+                {
+                    point = p;
+                    method = m;
+                    operation0 = o0;
+                    operation1 = o1;
+                }
+
+                public Geometry.Point point;
+                public char method, operation0, operation1;
+            }
+
+            private static char MethodChar(string method)
+            {
+                switch (method)
+                {
+                    case "method_none": return '-';
+                    case "method_disjoint": return 'd';
+                    case "method_crosses": return 'i';
+                    case "method_touch": return 't';
+                    case "method_touch_interior": return 'm';
+                    case "method_collinear": return 'c';
+                    case "method_equal": return 'e';
+                    case "method_error": return '!';
+                    default: return '?';
+                }
+            }
+
+            private static char OperationChar(string operation)
+            {
+                switch(operation)
+                {
+                    case "operation_none" : return '-';
+                    case "operation_union" : return 'u';
+                    case "operation_intersection" : return 'i';
+                    case "operation_blocked" : return 'x';
+                    case "operation_continue" : return 'c';
+                    case "operation_opposite" : return 'o';
+                    default : return '?';
+                }
+            }
+
+    public static TurnsContainer Load(Debugger debugger, string name, int size, bool verbose)
             {
                 TurnsContainer result = new TurnsContainer();
-                result.turns = new List<Geometry.Point>();
+                result.turns = new List<Turn>();
                 result.box = Geometry.Box.Inverted();
                 result.verbose = verbose;
 
                 for (int i = 0; i < size; ++i)
                 {
-                    Point p = Point.Load(debugger, name + "[" + i + "].point");
+                    string turn_str = name + "[" + i + "]";
 
-                    result.turns.Add(p);
+                    Point p = Point.Load(debugger, turn_str + ".point");
+
+                    char method = '?';
+                    Expression expr_method = debugger.GetExpression(turn_str + ".method");
+                    if (expr_method.IsValidValue)
+                        method = MethodChar(expr_method.Value);
+
+                    char op0 = '?';
+                    Expression expr_op0 = debugger.GetExpression(turn_str + ".operations[0].operation");
+                    if (expr_op0.IsValidValue)
+                        op0 = OperationChar(expr_op0.Value);
+
+                    char op1 = '?';
+                    Expression expr_op1 = debugger.GetExpression(turn_str + ".operations[1].operation");
+                    if (expr_op1.IsValidValue)
+                        op1 = OperationChar(expr_op1.Value);
+
+                    result.turns.Add(new Turn(p, method, op0, op1));
                     result.box.Expand(p);
                 }
 
@@ -461,18 +522,22 @@ namespace GraphicalDebugging
                 SolidBrush brush = new SolidBrush(Color.FromArgb(64, color));
                 SolidBrush text_brush = new SolidBrush(Color.Black);
 
+                Font font = null;
+                if (verbose)
+                    font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), 10);
+
                 int index = 0;
-                foreach (Geometry.Point turn in turns)
+                foreach (Turn turn in turns)
                 {
-                    float x = cs.ConvertX(turn[0]);
-                    float y = cs.ConvertY(turn[1]);
+                    float x = cs.ConvertX(turn.point[0]);
+                    float y = cs.ConvertY(turn.point[1]);
                     graphics.FillEllipse(brush, x - 2.5f, y - 2.5f, 5, 5);
                     graphics.DrawEllipse(pen, x - 2.5f, y - 2.5f, 5, 5);
 
                     if (verbose)
                     {
-                        Font font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), 10);
-                        graphics.DrawString(index.ToString(), font, text_brush, x, y);
+                        string str = index.ToString() + ' ' + turn.method + ':' + turn.operation0 + '/' + turn.operation1;
+                        graphics.DrawString(str, font, text_brush, x, y);
                     }
                     ++index;
                 }
@@ -482,7 +547,7 @@ namespace GraphicalDebugging
 
             private Geometry.Box box;
 
-            private List<Geometry.Point> turns;
+            private List<Turn> turns;
 
             private bool verbose;
         }
