@@ -290,26 +290,20 @@ namespace GraphicalDebugging
             private Geometry.Box box;
         }
 
-        public class Multi : IDrawable
+        public class Multi<S> : IDrawable
         {
             private Multi() { }
 
-            public enum Single
+            public static Multi<S> Load(Debugger debugger, string name)
             {
-                Point,
-                Linestring,
-                Polygon
-            };
-
-            public static Multi Load(Debugger debugger, string name, Single single)
-            {
-                Multi result = new Multi();
+                Multi<S> result = new Multi<S>();
                 result.singles = new List<IDrawable>();
                 result.box = Geometry.Box.Inverted();
 
                 int size = LoadSize(debugger, name);
-                
-                if (single == Single.Point)
+
+                Type singleType = typeof(S);
+                if (singleType == typeof(Point))
                 {
                     for (int i = 0; i < size; ++i)
                     {
@@ -318,7 +312,7 @@ namespace GraphicalDebugging
                         result.box.Expand(s);
                     }
                 }
-                else if (single == Single.Linestring)
+                else if (singleType == typeof(Linestring))
                 {
                     for (int i = 0; i < size; ++i)
                     {
@@ -327,7 +321,7 @@ namespace GraphicalDebugging
                         result.box.Expand(s.Aabb);
                     }
                 }
-                else if (single == Single.Polygon)
+                else if (singleType == typeof(Polygon))
                 {
                     for (int i = 0; i < size; ++i)
                     {
@@ -335,6 +329,10 @@ namespace GraphicalDebugging
                         result.singles.Add(s);
                         result.box.Expand(s.Aabb);
                     }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.Assert(false);
                 }
                 
                 return result;
@@ -615,11 +613,11 @@ namespace GraphicalDebugging
             else if (IsGeometry(type, "boost::geometry::model::polygon"))
                 d = Polygon.Load(debugger, name);
             else if (IsGeometry(type, "boost::geometry::model::multi_point"))
-                d = Multi.Load(debugger, name, Multi.Single.Point);
+                d = Multi<Point>.Load(debugger, name);
             else if (IsGeometry(type, "boost::geometry::model::multi_linestring", "boost::geometry::model::linestring"))
-                d = Multi.Load(debugger, name, Multi.Single.Linestring);
+                d = Multi<Linestring>.Load(debugger, name);
             else if (IsGeometry(type, "boost::geometry::model::multi_polygon", "boost::geometry::model::polygon"))
-                d = Multi.Load(debugger, name, Multi.Single.Polygon);
+                d = Multi<Polygon>.Load(debugger, name);
 
             return d;
         }
