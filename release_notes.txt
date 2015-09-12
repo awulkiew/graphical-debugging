@@ -15,3 +15,15 @@ bugfixes:
 - reusing color in GeometryWatch until a geometry is removed from the list
 - fix std::deque support in GraphicalWatch
 - support const types
+
+version 0.3
+
+additions:
+- drawing segments direction in GeometryWatch
+- supported all Boost.Variant parameters
+- display Turns methods and operations
+- avoid displaying labels of the same Turn point in the same place
+
+bugfixes:
+- fix drawing of Polygon inner rings in GeometryWatch
+- redraw GeometryWatch image after removal of list elements
