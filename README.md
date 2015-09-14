@@ -20,3 +20,5 @@ To install double click the GraphicalDebugging.vsix file in bin/Debug or bin/Rel
 #### GeometryWatch
 
 ![GeometryWatch](images/geometry_watch.png)
+
+![GeometryWatch](images/geometry_watch2.png)

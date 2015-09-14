@@ -44,16 +44,16 @@
           If you do not want an image next to your command, remove the Icon node /> -->
       <Button guid="guidGraphicalWatchPackageCmdSet" id="GraphicalWatchCommandId" priority="0x0100" type="Button">
         <Parent guid="guidSHLMainMenu" id="IDG_VS_WNDO_OTRWNDWS1" />
-        <Icon guid="guidImages" id="bmpPic1" />
+        <Icon guid="guidGraphicalIcon" id="graphicalIcon" />
         <Strings>
           <ButtonText>GraphicalWatch</ButtonText>
         </Strings>
       </Button>
       <Button guid="guidGraphicalWatchPackageCmdSet" id="cmdidGeometriesWatchCommand" priority="0x0100" type="Button">
         <Parent guid="guidSHLMainMenu" id="IDG_VS_WNDO_OTRWNDWS1" />
-        <Icon guid="guidImages1" id="bmpPic1" />
+        <Icon guid="guidGeometryIcon" id="geometryIcon" />
         <Strings>
-          <ButtonText>GeometriesWatch</ButtonText>
+          <ButtonText>GeometryWatch</ButtonText>
         </Strings>
       </Button>
     </Buttons>
@@ -67,6 +67,8 @@
             must be the actual index (1-based) of the bitmap inside the bitmap strip. -->
       <Bitmap guid="guidImages" href="Resources\GraphicalWatchCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
       <Bitmap guid="guidImages1" href="Resources\GeometriesWatchCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
+      <Bitmap guid="guidGraphicalIcon" href="Resources\graphical.ico" usedList="graphicalIcon" />
+      <Bitmap guid="guidGeometryIcon" href="Resources\geometry.ico" usedList="geometryIcon" />
     </Bitmaps>
   </Commands>
 
@@ -97,5 +99,12 @@
       <IDSymbol name="bmpPicArrows" value="5" />
       <IDSymbol name="bmpPicStrikethrough" value="6" />
     </GuidSymbol>
+
+    <GuidSymbol name="guidGraphicalIcon" value="{7f2b0178-a581-424f-933f-f6da41774269}" >
+        <IDSymbol name="graphicalIcon" value="1" />
+    </GuidSymbol>
+    <GuidSymbol name="guidGeometryIcon" value="{26D25FB6-35C3-4B5F-9DB6-24E90B83D1CD}" >
+        <IDSymbol name="geometryIcon" value="1" />
+    </GuidSymbol>      
   </Symbols>
 </CommandTable>

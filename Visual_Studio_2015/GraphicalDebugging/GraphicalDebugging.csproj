@@ -16,7 +16,7 @@
     </AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <PropertyGroup>
-    <ApplicationIcon>GraphicalWatchPackage.ico</ApplicationIcon>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
   </PropertyGroup>
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -80,6 +80,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="icon.ico" />
     <VSCTCompile Include="GraphicalWatchPackage.vsct">
       <ResourceName>Menus.ctmenu</ResourceName>
     </VSCTCompile>
@@ -92,17 +93,19 @@
     <Content Include="BoostVariant.natvis">
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="GraphicalWatchPackage.ico" />
     <Content Include="LICENSE_1_0.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\GeometriesWatchCommand.png" />
-    <Content Include="Resources\GraphicalWatchCommand.png" />
-    <Content Include="Resources\GraphicalWatchPackage.ico">
+    <Content Include="preview.png" />
+    <Content Include="release_notes.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
+    <Content Include="Resources\GeometriesWatchCommand.png" />
+    <Content Include="Resources\geometry.ico" />
+    <Content Include="Resources\graphical.ico" />
+    <Content Include="Resources\GraphicalWatchCommand.png" />
   </ItemGroup>
   <ItemGroup>
     <Page Include="GeometryWatchControl.xaml">
@@ -225,6 +228,7 @@
     <EmbeddedResource Include="VSPackage.resx">
       <MergeWithCTO>true</MergeWithCTO>
       <ManifestResourceName>VSPackage</ManifestResourceName>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
