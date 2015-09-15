@@ -325,8 +325,8 @@ namespace GraphicalDebugging
                 float ay = cs.ConvertY(0);
                 graphics.DrawLine(axis_pen, ax0, ay, ax1, ay);
 
-                double i = 0.0;
                 double step = box.Width / values.Count;
+                double i = step * 0.5;
                 foreach (double v in values)
                 {
                     float x = cs.ConvertX(i);
@@ -702,13 +702,19 @@ namespace GraphicalDebugging
                 ++i;
             }
 
-            // make square
+            // make square, scaling Y
             if (names.Count > 0)
             {
-                if ( box.Height > box.Width )
+                double threshold = float.Epsilon;
+                if (box.Height > threshold)
+                {
                     box.max[0] = box.min[0] + box.Height;
+                }
                 else
-                    box.max[1] = box.min[1] + box.Width;
+                {
+                    box.max[0] = box.min[0] + threshold;
+                    box.max[1] = box.min[1] + threshold;
+                }
             }
 
             return new ValuesContainer(values, box);
@@ -1084,6 +1090,15 @@ namespace GraphicalDebugging
                     if (baseType == "std::list")
                     {
                         this.nextNode = name + "._Mypair._Myval2._Myhead"; // VS2015
+                    }
+                }
+                else if (baseType == "boost::container::vector" || baseType == "boost::container::static_vector")
+                {
+                    Expression size_expr = debugger.GetExpression(name + ".m_holder.m_size");
+                    if (size_expr.IsValidValue)
+                    {
+                        int result = int.Parse(size_expr.Value);
+                        this.size = Math.Max(result, 0);
                     }
                 }
             }

@@ -20,6 +20,7 @@
 	<Assets>
 		<Asset Type="Microsoft.VisualStudio.VsPackage" d:Source="Project" d:ProjectName="%CurrentProject%" Path="|%CurrentProject%;PkgdefProjectOutputGroup|" />
 		<Asset Type="NativeVisualizer" d:Source="File" Path="BoostArray.natvis" />
+        <Asset Type="NativeVisualizer" d:Source="File" Path="BoostContainer.natvis" />
 		<Asset Type="NativeVisualizer" d:Source="File" Path="BoostGeometry.natvis" />
 		<Asset Type="NativeVisualizer" d:Source="File" Path="BoostPolygon.natvis" />
 		<Asset Type="NativeVisualizer" d:Source="File" Path="BoostVariant.natvis" />
