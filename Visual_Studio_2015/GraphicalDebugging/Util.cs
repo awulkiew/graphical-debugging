@@ -62,9 +62,12 @@ namespace GraphicalDebugging
 
             public void Push(Color color)
             {
-                if (color != Color.Black && color != Color.Transparent)
-                    Colors.Add(color);
+                Color c = Color.FromArgb(color.A, color.R, color.G, color.B);
+                if (c.A != 0)
+                    Colors.Add(c);
             }
+
+            public Color Transparent { get { return Color.FromArgb(0x00FFFFFF); } }
 
             private HashSet<Color> Colors;
 

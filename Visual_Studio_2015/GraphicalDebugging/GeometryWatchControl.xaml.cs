@@ -37,8 +37,6 @@ namespace GraphicalDebugging
         /// </summary>
         public GeometryWatchControl()
         {
-            this.InitializeComponent();
-
             m_dte = (DTE2)ServiceProvider.GlobalProvider.GetService(typeof(DTE));
             m_debugger = m_dte.Debugger;
             m_debuggerEvents = m_dte.Events.DebuggerEvents;
@@ -49,7 +47,14 @@ namespace GraphicalDebugging
             m_emptyBitmap = new Bitmap(100, 100);
             Graphics graphics = Graphics.FromImage(m_emptyBitmap);
             graphics.Clear(Color.White);
+
+            this.InitializeComponent();
+
             image.Source = Util.BitmapToBitmapImage(m_emptyBitmap);
+
+            GeometryItem var = new GeometryItem(m_colorsPool.Transparent);
+            ((System.ComponentModel.INotifyPropertyChanged)var).PropertyChanged += GeometryItem_NameChanged;
+            listView.Items.Add(var);
         }
 
         /// <summary>
@@ -64,13 +69,6 @@ namespace GraphicalDebugging
             MessageBox.Show(
                 string.Format(System.Globalization.CultureInfo.CurrentUICulture, "Invoked '{0}'", this.ToString()),
                 "GeometriesWatch");
-        }
-
-        private void listView_Initialized(object sender, System.EventArgs e)
-        {
-            GeometryItem var = new GeometryItem();
-            ((System.ComponentModel.INotifyPropertyChanged)var).PropertyChanged += GeometryItem_NameChanged;
-            listView.Items.Add(var);
         }
 
         private void GeometryItem_NameChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -92,7 +90,7 @@ namespace GraphicalDebugging
             // insert new empty row
             if (index + 1 == listView.Items.Count)
             {
-                GeometryItem empty_variable = new GeometryItem();
+                GeometryItem empty_variable = new GeometryItem(m_colorsPool.Transparent);
                 ((System.ComponentModel.INotifyPropertyChanged)empty_variable).PropertyChanged += GeometryItem_NameChanged;
                 listView.Items.Add(empty_variable);
             }
@@ -112,7 +110,7 @@ namespace GraphicalDebugging
 
                     if (drawable != null)
                     {
-                        if (color == Util.ConvertColor(Color.Transparent))
+                        if (color == Util.ConvertColor(m_colorsPool.Transparent))
                             color = Util.ConvertColor(m_colorsPool.Pull());
                     }
                 }
@@ -190,7 +188,7 @@ namespace GraphicalDebugging
 
                             if (drawable != null)
                             {
-                                if (geometry.Color == Util.ConvertColor(Color.Transparent))
+                                if (geometry.Color == Util.ConvertColor(m_colorsPool.Transparent))
                                     color = Util.ConvertColor(m_colorsPool.Pull());
                                 
                                 aabb.Expand(drawable.Aabb);

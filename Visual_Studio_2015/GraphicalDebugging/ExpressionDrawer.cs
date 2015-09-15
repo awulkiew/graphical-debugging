@@ -217,9 +217,10 @@ namespace GraphicalDebugging
 
         public class Ring : Geometry.Ring, IDrawable
         {
-            public static Ring Load(Debugger debugger, string name)
+            public static Ring Load(Debugger debugger, string name, string member = "")
             {
-                Linestring ls = Linestring.Load(debugger, name);
+                string name_suffix = member.Length > 0 ? "." + member : "";
+                Linestring ls = Linestring.Load(debugger, name + name_suffix);
 
                 Ring result = new Ring();
                 result.linestring = ls;
@@ -258,21 +259,48 @@ namespace GraphicalDebugging
 
         public class Polygon : Geometry.Polygon, IDrawable
         {
-            public static Polygon Load(Debugger debugger, string name)
+            public static Polygon Load(Debugger debugger, string name, string outer, string inners, bool inners_in_list = false, string ring_member = "")
             {
                 Polygon result = new Polygon();
 
-                Ring r = Ring.Load(debugger, name + ".m_outer");
+                Ring r = Ring.Load(debugger, name + "." + outer, ring_member);
 
                 result.box = Geometry.Box.Inverted();
                 result.box.Expand(r.Aabb);
 
                 result.outer = r;
 
-                int inners_size = LoadSize(debugger, name + ".m_inners");                
+                string name_inners = name + "." + inners;
+                int inners_size = LoadSize(debugger, name_inners);
+                // ugly temporary solution
+                string next_node = name_inners + "._Mypair._Myval2._Myhead";
                 for (int i = 0; i < inners_size; ++i)
                 {
-                    r = Ring.Load(debugger, name + ".m_inners[" + i + "]");
+                    Expression e1 = debugger.GetExpression(next_node);
+                    bool b1 = e1.IsValidValue;
+                    string v1 = e1.Value;
+
+                    // ugly temporary solution
+                    string next_inner;
+                    if (!inners_in_list)
+                    {
+                        next_inner = name_inners + "[" + i + "]";
+                    }
+                    else
+                    {
+                        next_node = next_node + "->_Next";
+                        next_inner = next_node + "->_Myval";
+                    }
+
+                    Expression e2 = debugger.GetExpression(next_node);
+                    bool b2 = e2.IsValidValue;
+                    string v2 = e2.Value;
+
+                    Expression e3 = debugger.GetExpression(next_inner);
+                    bool b3 = e3.IsValidValue;
+                    string v3 = e3.Value;
+
+                    r = Ring.Load(debugger, next_inner, ring_member);
 
                     result.inners.Add(r);
                     result.box.Expand(r.Aabb);
@@ -328,7 +356,7 @@ namespace GraphicalDebugging
         {
             private Multi() { }
 
-            public static Multi<S> Load(Debugger debugger, string name)
+            public static Multi<S> Load(Debugger debugger, string name, string outer, string inners)
             {
                 Multi<S> result = new Multi<S>();
                 result.singles = new List<IDrawable>();
@@ -359,7 +387,7 @@ namespace GraphicalDebugging
                 {
                     for (int i = 0; i < size; ++i)
                     {
-                        Polygon s = Polygon.Load(debugger, name + "[" + i + "]");
+                        Polygon s = Polygon.Load(debugger, name + "[" + i + "]", outer, inners);
                         result.singles.Add(s);
                         result.box.Expand(s.Aabb);
                     }
@@ -700,12 +728,13 @@ namespace GraphicalDebugging
         // For now the list of handled types is hardcoded
         private static bool IsGeometry(string type)
         {
-            if (BaseType(type) == "boost::geometry::model::point")
+            string base_type = BaseType(type);
+            if (base_type == "boost::geometry::model::point")
             {
                 List<string> tparams = Tparams(type);
                 return tparams.Count == 3 && tparams[1] == "2"; // 2D only for now
             }
-            else if (BaseType(type) == "boost::geometry::model::d2::point_xy")
+            else if (base_type == "boost::geometry::model::d2::point_xy")
             {
                 return true;
             }
@@ -766,13 +795,20 @@ namespace GraphicalDebugging
             else if (IsGeometry(type, "boost::geometry::model::ring"))
                 d = Ring.Load(debugger, name);
             else if (IsGeometry(type, "boost::geometry::model::polygon"))
-                d = Polygon.Load(debugger, name);
+                d = Polygon.Load(debugger, name, "m_outer", "m_inners");
             else if (IsGeometry(type, "boost::geometry::model::multi_point"))
-                d = Multi<Point>.Load(debugger, name);
+                d = Multi<Point>.Load(debugger, name, "m_outer", "m_inners");
             else if (IsGeometry(type, "boost::geometry::model::multi_linestring", "boost::geometry::model::linestring"))
-                d = Multi<Linestring>.Load(debugger, name);
+                d = Multi<Linestring>.Load(debugger, name, "m_outer", "m_inners");
             else if (IsGeometry(type, "boost::geometry::model::multi_polygon", "boost::geometry::model::polygon"))
-                d = Multi<Polygon>.Load(debugger, name);
+                d = Multi<Polygon>.Load(debugger, name, "m_outer", "m_inners");
+
+            else if (BaseType(type) == "boost::polygon::point_data")
+                d = Point.Load(debugger, name);
+            else if (BaseType(type) == "boost::polygon::polygon_data")
+                d = Ring.Load(debugger, name, "coords_");
+            else if (BaseType(type) == "boost::polygon::polygon_with_holes_data")
+                d = Polygon.Load(debugger, name, "self_", "holes_", true, "coords_");
 
             return d;
         }
@@ -895,6 +931,9 @@ namespace GraphicalDebugging
 
         public static bool DrawAabb(Graphics graphics, Geometry.Box box)
         {
+            if (!box.IsValid())
+                return false;
+
             LocalCS cs = new LocalCS(box, graphics);
 
             Pen pen = new Pen(Color.Black, 1);

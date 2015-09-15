@@ -80,6 +80,9 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="BoostPolygon.natvis">
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
     <Content Include="icon.ico" />
     <VSCTCompile Include="GraphicalWatchPackage.vsct">
       <ResourceName>Menus.ctmenu</ResourceName>

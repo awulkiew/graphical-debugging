@@ -65,6 +65,8 @@ namespace GraphicalDebugging
                 if (b.max[1] > max[1]) max[1] = b.max[1];
             }
 
+            public bool IsValid() { return min[0] <= max[0] && min[1] <= max[1]; }
+
             public double Width { get { return max[0] - min[0]; } }
             public double Height { get { return max[1] - min[1]; } }
 

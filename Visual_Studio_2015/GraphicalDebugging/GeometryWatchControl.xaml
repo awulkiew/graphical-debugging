@@ -19,7 +19,7 @@
         </DockPanel>
         <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" ResizeDirection="Rows" Height="3" Width="Auto" DragCompleted="GridSplitter_DragCompleted" />
         <DockPanel Grid.Row="2" >
-            <ListView x:Name="listView" Initialized="listView_Initialized" KeyDown="listView_KeyDown" >
+            <ListView x:Name="listView" KeyDown="listView_KeyDown" >
                 <ListView.ItemContainerStyle>
                     <Style TargetType="ListViewItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch" />

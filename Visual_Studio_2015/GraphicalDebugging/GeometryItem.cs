@@ -10,10 +10,10 @@ namespace GraphicalDebugging
 {
     class GeometryItem : VariableItem
     {
-        public GeometryItem()
+        public GeometryItem(System.Drawing.Color color)
             : base()
         {
-            Color = Util.ConvertColor(System.Drawing.Color.Transparent);
+            Color = Util.ConvertColor(color);
         }
 
         public GeometryItem(string name, ExpressionDrawer.IDrawable drawable, string type, Color color)
