@@ -5,6 +5,7 @@
 //------------------------------------------------------------------------------
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -20,6 +21,10 @@ namespace GraphicalDebugging
 {
     class ExpressionDrawer
     {
+        // -------------------------------------------------
+        // Settings
+        // -------------------------------------------------
+
         public class Settings
         {
             public Settings()
@@ -38,6 +43,10 @@ namespace GraphicalDebugging
             public bool showLabels;
         }
 
+        // -------------------------------------------------
+        // Drawables and drawing
+        // -------------------------------------------------
+
         public interface IDrawable
         {
             void Draw(Geometry.Box box, Graphics graphics);
@@ -45,24 +54,11 @@ namespace GraphicalDebugging
             Geometry.Box Aabb { get; }
         }
 
-        public class Point : Geometry.Point, IDrawable
+        private class Point : Geometry.Point, IDrawable
         {
             public Point(double x, double y)
                 : base(x, y)
             {}
-
-            public static Point Load(Debugger debugger, string name)
-            {
-                string name_prefix = "(double)" + name;
-                Expression expr_x = debugger.GetExpression(name_prefix + "[0]");
-                Expression expr_y = debugger.GetExpression(name_prefix + "[1]");
-
-                double x = double.Parse(expr_x.Value, System.Globalization.CultureInfo.InvariantCulture);
-                double y = double.Parse(expr_y.Value, System.Globalization.CultureInfo.InvariantCulture);
-                
-                Point result = new Point(x, y);
-                return result;
-            }
 
             public void Draw(Geometry.Box box, Graphics graphics)
             {
@@ -85,30 +81,11 @@ namespace GraphicalDebugging
             public Geometry.Box Aabb { get { return new Geometry.Box(this, this); } }
         }
 
-        public class Box : Geometry.Box, IDrawable
+        private class Box : Geometry.Box, IDrawable
         {
             public Box(Point min, Point max)
                 : base(min, max)
             {}
-
-            public static Box Load(Debugger debugger, string name, string first = "m_min_corner", string second = "m_max_corner", bool intervals = false)
-            {
-                Box result;
-
-                Point first_p = Point.Load(debugger, name + "." + first);
-                Point second_p = Point.Load(debugger, name + "." + second);
-
-                if (!intervals)
-                {
-                    result = new Box(first_p, second_p);
-                }
-                else
-                {
-                    result = new Box(new Point(first_p[0], second_p[0]),
-                                     new Point(first_p[1], second_p[1]));
-                }
-                return result;
-            }
 
             public void Draw(Geometry.Box box, Graphics graphics)
             {
@@ -146,17 +123,11 @@ namespace GraphicalDebugging
             public Geometry.Box Aabb { get { return this; } }
         }
 
-        public class Segment : Geometry.Segment, IDrawable
+        private class Segment : Geometry.Segment, IDrawable
         {
-            public static Segment Load(Debugger debugger, string name, string first = "first", string second = "second")
-            {
-                Segment result = new Segment();
-
-                result.p0 = Point.Load(debugger, name + "." + first);
-                result.p1 = Point.Load(debugger, name + "." + second);
-
-                return result;
-            }
+            public Segment(Point first, Point second)
+                : base(first, second)
+            {}
 
             public void Draw(Geometry.Box box, Graphics graphics)
             {
@@ -180,24 +151,8 @@ namespace GraphicalDebugging
             public Geometry.Box Aabb{ get { return Envelope(); } }
         }
 
-        public class Linestring : Geometry.Linestring, IDrawable
+        private class Linestring : Geometry.Linestring, IDrawable
         {
-            public static Linestring Load(Debugger debugger, string name)
-            {
-                Linestring result = new Linestring();
-                result.box = Geometry.Box.Inverted();
-
-                int size = LoadSize(debugger, name);
-                for (int i = 0; i < size; ++i)
-                {
-                    Point p = Point.Load(debugger, name + "[" + i + "]");
-                    result.Add(p);
-                    result.box.Expand(p);
-                }
-
-                return result;
-            }
-
             public void Draw(Geometry.Box box, Graphics graphics)
             {
                 this.Draw(box, graphics, new Settings(Color.Green));
@@ -220,22 +175,17 @@ namespace GraphicalDebugging
                 }
             }
 
+            public void SetAabb(Geometry.Box box) { this.box = box; }
             public Geometry.Box Aabb { get { return box; } }
-            
             private Geometry.Box box;
         }
 
-        public class Ring : Geometry.Ring, IDrawable
+        private class Ring : Geometry.Ring, IDrawable
         {
-            public static Ring Load(Debugger debugger, string name, string member = "")
+            public Ring(Geometry.Linestring linestring, Geometry.Box box)
             {
-                string name_suffix = member.Length > 0 ? "." + member : "";
-                Linestring ls = Linestring.Load(debugger, name + name_suffix);
-
-                Ring result = new Ring();
-                result.linestring = ls;
-                result.box = ls.Aabb;
-                return result;
+                this.linestring = linestring;
+                this.box = box;
             }
 
             public void Draw(Geometry.Box box, Graphics graphics)
@@ -262,61 +212,18 @@ namespace GraphicalDebugging
                 }
             }
 
+            public void SetAabb(Geometry.Box box) { this.box = box; }
             public Geometry.Box Aabb { get { return box; } }
-
             private Geometry.Box box;
         }
 
-        public class Polygon : Geometry.Polygon, IDrawable
+        private class Polygon : Geometry.Polygon, IDrawable
         {
-            public static Polygon Load(Debugger debugger, string name, string outer, string inners, bool inners_in_list = false, string ring_member = "")
+            public Polygon(Geometry.Ring outer, List<Geometry.Ring> inners, Geometry.Box box)
             {
-                Polygon result = new Polygon();
-
-                Ring r = Ring.Load(debugger, name + "." + outer, ring_member);
-
-                result.box = Geometry.Box.Inverted();
-                result.box.Expand(r.Aabb);
-
-                result.outer = r;
-
-                string name_inners = name + "." + inners;
-                int inners_size = LoadSize(debugger, name_inners);
-                // ugly temporary solution
-                string next_node = name_inners + "._Mypair._Myval2._Myhead";
-                for (int i = 0; i < inners_size; ++i)
-                {
-                    Expression e1 = debugger.GetExpression(next_node);
-                    bool b1 = e1.IsValidValue;
-                    string v1 = e1.Value;
-
-                    // ugly temporary solution
-                    string next_inner;
-                    if (!inners_in_list)
-                    {
-                        next_inner = name_inners + "[" + i + "]";
-                    }
-                    else
-                    {
-                        next_node = next_node + "->_Next";
-                        next_inner = next_node + "->_Myval";
-                    }
-
-                    Expression e2 = debugger.GetExpression(next_node);
-                    bool b2 = e2.IsValidValue;
-                    string v2 = e2.Value;
-
-                    Expression e3 = debugger.GetExpression(next_inner);
-                    bool b3 = e3.IsValidValue;
-                    string v3 = e3.Value;
-
-                    r = Ring.Load(debugger, next_inner, ring_member);
-
-                    result.inners.Add(r);
-                    result.box.Expand(r.Aabb);
-                }
-
-                return result;
+                this.outer = outer;
+                this.inners = inners;
+                this.box = box;
             }
 
             public void Draw(Geometry.Box box, Graphics graphics)
@@ -357,57 +264,17 @@ namespace GraphicalDebugging
                 }
             }
 
+            public void SetAabb(Geometry.Box box) { this.box = box; }
             public Geometry.Box Aabb { get { return box; } }
-
             private Geometry.Box box;
         }
 
-        public class Multi<S> : IDrawable
+        private class Multi<S> : IDrawable
         {
-            private Multi() { }
-
-            public static Multi<S> Load(Debugger debugger, string name, string outer, string inners)
+            public Multi(List<IDrawable> singles, Geometry.Box box)
             {
-                Multi<S> result = new Multi<S>();
-                result.singles = new List<IDrawable>();
-                result.box = Geometry.Box.Inverted();
-
-                int size = LoadSize(debugger, name);
-
-                Type singleType = typeof(S);
-                if (singleType == typeof(Point))
-                {
-                    for (int i = 0; i < size; ++i)
-                    {
-                        Point s = Point.Load(debugger, name + "[" + i + "]");
-                        result.singles.Add(s);
-                        result.box.Expand(s);
-                    }
-                }
-                else if (singleType == typeof(Linestring))
-                {
-                    for (int i = 0; i < size; ++i)
-                    {
-                        Linestring s = Linestring.Load(debugger, name + "[" + i + "]");
-                        result.singles.Add(s);
-                        result.box.Expand(s.Aabb);
-                    }
-                }
-                else if (singleType == typeof(Polygon))
-                {
-                    for (int i = 0; i < size; ++i)
-                    {
-                        Polygon s = Polygon.Load(debugger, name + "[" + i + "]", outer, inners);
-                        result.singles.Add(s);
-                        result.box.Expand(s.Aabb);
-                    }
-                }
-                else
-                {
-                    System.Diagnostics.Debug.Assert(false);
-                }
-                
-                return result;
+                this.singles = singles;
+                this.box = box;
             }
 
             public void Draw(Geometry.Box box, Graphics graphics)
@@ -426,41 +293,19 @@ namespace GraphicalDebugging
                 }
             }
 
+            public void SetAabb(Geometry.Box box) { this.box = box; }
             public Geometry.Box Aabb { get { return box; } }
-
             private Geometry.Box box;
 
             private List<IDrawable> singles;
         }
 
-        public class ValuesContainer : IDrawable
+        private class ValuesContainer : IDrawable
         {
-            private ValuesContainer() { }
-
-            public static ValuesContainer Load(Debugger debugger, string name, int size)
+            public ValuesContainer(List<double> values, Geometry.Box box)
             {
-                ValuesContainer result = new ValuesContainer();
-                result.values = new List<double>();
-                result.box = Geometry.Box.Inverted();
-
-                if (size > 0)
-                    result.box.Expand(new Point(0.0, 0.0));
-
-                for (int i = 0; i < size; ++i)
-                {
-                    Expression expr = debugger.GetExpression("(double)" + name + "[" + i + "]");
-                    if (!expr.IsValidValue)
-                        continue;
-                    double v = double.Parse(expr.Value, System.Globalization.CultureInfo.InvariantCulture);
-                    result.values.Add(v);
-                    result.box.Expand(new Point(i, v));
-                }
-
-                // make square
-                if (size > 0)
-                    result.box.max[0] = result.box.min[0] + result.box.Height;
-
-                return result;
+                this.values = values;
+                this.box = box;
             }
 
             public void Draw(Geometry.Box box, Graphics graphics)
@@ -491,18 +336,24 @@ namespace GraphicalDebugging
                 }
             }
 
-            public Geometry.Box Aabb { get { return box; } }
+            public void Add(double v) { values.Add(v); }
 
+            public void SetAabb(Geometry.Box box) { this.box = box; }
+            public Geometry.Box Aabb { get { return box; } }
             private Geometry.Box box;
 
             private List<double> values;
         }
 
-        public class TurnsContainer : IDrawable
+        private class TurnsContainer : IDrawable
         {
-            private TurnsContainer() { }
+            public TurnsContainer(List<Turn> turns, Geometry.Box box)
+            {
+                this.turns = turns;
+                this.box = box;
+            }
 
-            private class Turn
+            public class Turn
             {
                 public Turn(Geometry.Point p, char m, char o0, char o1)
                 {
@@ -514,70 +365,6 @@ namespace GraphicalDebugging
 
                 public Geometry.Point point;
                 public char method, operation0, operation1;
-            }
-
-            private static char MethodChar(string method)
-            {
-                switch (method)
-                {
-                    case "method_none": return '-';
-                    case "method_disjoint": return 'd';
-                    case "method_crosses": return 'i';
-                    case "method_touch": return 't';
-                    case "method_touch_interior": return 'm';
-                    case "method_collinear": return 'c';
-                    case "method_equal": return 'e';
-                    case "method_error": return '!';
-                    default: return '?';
-                }
-            }
-
-            private static char OperationChar(string operation)
-            {
-                switch(operation)
-                {
-                    case "operation_none" : return '-';
-                    case "operation_union" : return 'u';
-                    case "operation_intersection" : return 'i';
-                    case "operation_blocked" : return 'x';
-                    case "operation_continue" : return 'c';
-                    case "operation_opposite" : return 'o';
-                    default : return '?';
-                }
-            }
-
-            public static TurnsContainer Load(Debugger debugger, string name, int size)
-            {
-                TurnsContainer result = new TurnsContainer();
-                result.turns = new List<Turn>();
-                result.box = Geometry.Box.Inverted();
-
-                for (int i = 0; i < size; ++i)
-                {
-                    string turn_str = name + "[" + i + "]";
-
-                    Point p = Point.Load(debugger, turn_str + ".point");
-
-                    char method = '?';
-                    Expression expr_method = debugger.GetExpression(turn_str + ".method");
-                    if (expr_method.IsValidValue)
-                        method = MethodChar(expr_method.Value);
-
-                    char op0 = '?';
-                    Expression expr_op0 = debugger.GetExpression(turn_str + ".operations[0].operation");
-                    if (expr_op0.IsValidValue)
-                        op0 = OperationChar(expr_op0.Value);
-
-                    char op1 = '?';
-                    Expression expr_op1 = debugger.GetExpression(turn_str + ".operations[1].operation");
-                    if (expr_op1.IsValidValue)
-                        op1 = OperationChar(expr_op1.Value);
-
-                    result.turns.Add(new Turn(p, method, op0, op1));
-                    result.box.Expand(p);
-                }
-
-                return result;
             }
 
             public void Draw(Geometry.Box box, Graphics graphics)
@@ -623,8 +410,8 @@ namespace GraphicalDebugging
                     graphics.DrawString(label.Value, font, text_brush, label.Key);
             }
 
+            public void SetAabb(Geometry.Box box) { this.box = box; }
             public Geometry.Box Aabb { get { return box; } }
-
             private Geometry.Box box;
 
             private List<Turn> turns;
@@ -678,6 +465,321 @@ namespace GraphicalDebugging
         {
             return new PointF((float)(v.X * Math.Cos(a) - v.Y * Math.Sin(a)),
                               (float)(v.Y * Math.Cos(a) + v.X * Math.Sin(a)));
+        }
+
+        private class LocalCS
+        {
+            public LocalCS(Geometry.Box src_box, Graphics dst_graphics)
+            {
+                float w = dst_graphics.VisibleClipBounds.Width;
+                float h = dst_graphics.VisibleClipBounds.Height;
+                dst_x0 = w / 2;
+                dst_y0 = h / 2;
+                float dst_w = w * 0.9f;
+                float dst_h = h * 0.9f;
+
+                double src_w = src_box.Width;
+                double src_h = src_box.Height;
+                src_x0 = src_box.min[0] + src_w / 2;
+                src_y0 = src_box.min[1] + src_h / 2;
+
+                if (src_w == 0 && src_h == 0)
+                    scale = 1; // point
+                else if (src_w == 0)
+                    scale = (h * 0.9f) / src_h;
+                else if (src_h == 0)
+                    scale = (w * 0.9f) / src_w;
+                else
+                {
+                    double scale_w = (w * 0.9f) / src_w;
+                    double scale_h = (h * 0.9f) / src_h;
+                    scale = Math.Min(scale_w, scale_h);
+                }
+            }
+
+            public float ConvertX(double src)
+            {
+                return dst_x0 + (float)((src - src_x0) * scale);
+            }
+
+            public float ConvertY(double src)
+            {
+                return dst_y0 - (float)((src - src_y0) * scale);
+            }
+
+            public float ConvertDimension(double src)
+            {
+                return (float)(src * scale);
+            }
+
+            public PointF Convert(Geometry.Point p)
+            {
+                return new PointF(ConvertX(p[0]), ConvertY(p[1]));
+            }
+
+            public PointF[] Convert(Geometry.Ring ring)
+            {
+                if (ring.Count <= 0)
+                    return null;
+
+                int dst_count = ring.Count + (ring[0] == ring[ring.Count - 1] ? 0 : 1);
+
+                PointF[] dst_points = new PointF[dst_count];
+                int i = 0;
+                for (; i < ring.Count; ++i)
+                {
+                    dst_points[i] = Convert(ring[i]);
+                }
+                if (i < dst_count)
+                {
+                    dst_points[i] = Convert(ring[0]);
+                }
+
+                return dst_points;
+            }
+
+            float dst_x0, dst_y0;
+            double src_x0, src_y0;
+            double scale;
+        }
+
+        // -------------------------------------------------
+        // Loading expressions
+        // -------------------------------------------------
+
+        private static Point LoadPoint(Debugger debugger, string name)
+        {
+            string name_prefix = "(double)" + name;
+            Expression expr_x = debugger.GetExpression(name_prefix + "[0]");
+            Expression expr_y = debugger.GetExpression(name_prefix + "[1]");
+
+            double x = double.Parse(expr_x.Value, System.Globalization.CultureInfo.InvariantCulture);
+            double y = double.Parse(expr_y.Value, System.Globalization.CultureInfo.InvariantCulture);
+
+            return new Point(x, y);
+        }
+
+        private static Box LoadGeometryBox(Debugger debugger, string name)
+        {
+            Point first_p = LoadPoint(debugger, name + ".m_min_corner");
+            Point second_p = LoadPoint(debugger, name + ".m_max_corner");
+
+            return new Box(first_p, second_p);
+        }
+
+        private static Box LoadPolygonBox(Debugger debugger, string name)
+        {
+            Point first_p = LoadPoint(debugger, name + ".ranges_[0]"); // interval X
+            Point second_p = LoadPoint(debugger, name + ".ranges_[1]"); // interval Y
+
+            return new Box(new Point(first_p[0], second_p[0]),
+                           new Point(first_p[1], second_p[1]));
+        }
+
+        private static Segment LoadSegment(Debugger debugger, string name, string first = "first", string second = "second")
+        {
+            Point first_p = LoadPoint(debugger, name + "." + first);
+            Point second_p = LoadPoint(debugger, name + "." + second);
+
+            return new Segment(first_p, second_p);
+        }
+
+        private static Linestring LoadLinestring(Debugger debugger, string name)
+        {
+            Linestring result = new Linestring();
+            Geometry.Box box = Geometry.Box.Inverted();
+
+            int size = LoadSize(debugger, name);
+            for (int i = 0; i < size; ++i)
+            {
+                Point p = LoadPoint(debugger, name + "[" + i + "]");
+                result.Add(p);
+                box.Expand(p);
+            }
+
+            result.SetAabb(box);
+            return result;
+        }
+
+        private static Ring LoadRing(Debugger debugger, string name, string member = "")
+        {
+            string name_suffix = member.Length > 0 ? "." + member : "";
+            Linestring ls = LoadLinestring(debugger, name + name_suffix);
+            return new Ring(ls, ls.Aabb);
+        }
+
+        private static Polygon LoadPolygon(Debugger debugger, string name, string outer, string inners, bool inners_in_list = false, string ring_member = "")
+        {
+            Ring outer_r = LoadRing(debugger, name + "." + outer, ring_member);
+
+            Geometry.Box box = Geometry.Box.Inverted();
+            box.Expand(outer_r.Aabb);
+
+            List<Geometry.Ring> inners_r = new List<Geometry.Ring>();
+
+            ContainerElements inner_names = new ContainerElements(debugger, name + "." + inners);
+            foreach(string inner_name in inner_names)
+            {
+                Ring inner_r = LoadRing(debugger, inner_name, ring_member);
+
+                inners_r.Add(inner_r);
+                box.Expand(inner_r.Aabb);
+            }
+
+            return new Polygon(outer_r, inners_r, box);
+        }
+
+        private static Multi<Point> LoadMultiPoint(Debugger debugger, string name)
+        {
+            List<IDrawable> singles = new List<IDrawable>();
+            Geometry.Box box = Geometry.Box.Inverted();
+
+            int size = LoadSize(debugger, name);
+
+            for (int i = 0; i < size; ++i)
+            {
+                Point s = LoadPoint(debugger, name + "[" + i + "]");
+                singles.Add(s);
+                box.Expand(s);
+            }
+
+            return new Multi<Point>(singles, box);
+        }
+
+        private static Multi<Linestring> LoadMultiLinestring(Debugger debugger, string name)
+        {
+            List<IDrawable> singles = new List<IDrawable>();
+            Geometry.Box box = Geometry.Box.Inverted();
+
+            int size = LoadSize(debugger, name);
+
+            for (int i = 0; i < size; ++i)
+            {
+                Linestring s = LoadLinestring(debugger, name + "[" + i + "]");
+                singles.Add(s);
+                box.Expand(s.Aabb);
+            }
+
+            return new Multi<Linestring>(singles, box);
+        }
+
+        private static Multi<Polygon> LoadMultiPolygon(Debugger debugger, string name, string outer, string inners)
+        {
+            List<IDrawable> singles = new List<IDrawable>();
+            Geometry.Box box = Geometry.Box.Inverted();
+
+            int size = LoadSize(debugger, name);
+
+            for (int i = 0; i < size; ++i)
+            {
+                Polygon s = LoadPolygon(debugger, name + "[" + i + "]", outer, inners);
+                singles.Add(s);
+                box.Expand(s.Aabb);
+            }
+
+            return new Multi<Polygon>(singles, box);
+        }
+
+        private static ValuesContainer LoadValuesContainer(Debugger debugger, string name)
+        {
+            List<double> values = new List<double>();
+            Geometry.Box box = Geometry.Box.Inverted();
+
+            ContainerElements names = new ContainerElements(debugger, name);
+
+            if (names.Count > 0)
+                box.Expand(new Point(0.0, 0.0));
+
+            int i = 0;
+            foreach (string elem_n in names)
+            {
+                Expression expr = debugger.GetExpression("(double)" + elem_n);
+                if (!expr.IsValidValue)
+                    continue;
+                double v = double.Parse(expr.Value, System.Globalization.CultureInfo.InvariantCulture);
+                values.Add(v);
+                box.Expand(new Point(i, v));
+                ++i;
+            }
+
+            // make square
+            if (names.Count > 0)
+            {
+                if ( box.Height > box.Width )
+                    box.max[0] = box.min[0] + box.Height;
+                else
+                    box.max[1] = box.min[1] + box.Width;
+            }
+
+            return new ValuesContainer(values, box);
+        }
+
+        private static char MethodChar(string method)
+        {
+            switch (method)
+            {
+                case "method_none": return '-';
+                case "method_disjoint": return 'd';
+                case "method_crosses": return 'i';
+                case "method_touch": return 't';
+                case "method_touch_interior": return 'm';
+                case "method_collinear": return 'c';
+                case "method_equal": return 'e';
+                case "method_error": return '!';
+                default: return '?';
+            }
+        }
+
+        private static char OperationChar(string operation)
+        {
+            switch (operation)
+            {
+                case "operation_none": return '-';
+                case "operation_union": return 'u';
+                case "operation_intersection": return 'i';
+                case "operation_blocked": return 'x';
+                case "operation_continue": return 'c';
+                case "operation_opposite": return 'o';
+                default: return '?';
+            }
+        }
+
+        private static TurnsContainer.Turn LoadTurn(Debugger debugger, string name)
+        {
+            Point p = LoadPoint(debugger, name + ".point");
+
+            char method = '?';
+            Expression expr_method = debugger.GetExpression(name + ".method");
+            if (expr_method.IsValidValue)
+                method = MethodChar(expr_method.Value);
+
+            char op0 = '?';
+            Expression expr_op0 = debugger.GetExpression(name + ".operations[0].operation");
+            if (expr_op0.IsValidValue)
+                op0 = OperationChar(expr_op0.Value);
+
+            char op1 = '?';
+            Expression expr_op1 = debugger.GetExpression(name + ".operations[1].operation");
+            if (expr_op1.IsValidValue)
+                op1 = OperationChar(expr_op1.Value);
+
+            return new TurnsContainer.Turn(p, method, op0, op1);
+        }
+
+        private static TurnsContainer LoadTurnsContainer(Debugger debugger, string name, int size)
+        {
+            List<TurnsContainer.Turn> turns = new List<TurnsContainer.Turn>();
+            Geometry.Box box = Geometry.Box.Inverted();
+
+            for (int i = 0; i < size; ++i)
+            {
+                TurnsContainer.Turn t = LoadTurn(debugger, name + "[" + i + "]");
+
+                turns.Add(t);
+                box.Expand(t.point);
+            }
+
+            return new TurnsContainer(turns, box);
         }
 
         private static List<string> Tparams(string type)
@@ -794,35 +896,35 @@ namespace GraphicalDebugging
             IDrawable d = null;
 
             if (IsGeometry(type))
-                d = Point.Load(debugger, name);
+                d = LoadPoint(debugger, name);
             else if (IsGeometry(type, "boost::geometry::model::box"))
-                d = Box.Load(debugger, name);
+                d = LoadGeometryBox(debugger, name);
             else if (IsGeometry(type, "boost::geometry::model::segment")
                   || IsGeometry(type, "boost::geometry::model::referring_segment"))
-                d = Segment.Load(debugger, name);
+                d = LoadSegment(debugger, name);
             else if (IsGeometry(type, "boost::geometry::model::linestring"))
-                d = Linestring.Load(debugger, name);
+                d = LoadLinestring(debugger, name);
             else if (IsGeometry(type, "boost::geometry::model::ring"))
-                d = Ring.Load(debugger, name);
+                d = LoadRing(debugger, name);
             else if (IsGeometry(type, "boost::geometry::model::polygon"))
-                d = Polygon.Load(debugger, name, "m_outer", "m_inners");
+                d = LoadPolygon(debugger, name, "m_outer", "m_inners");
             else if (IsGeometry(type, "boost::geometry::model::multi_point"))
-                d = Multi<Point>.Load(debugger, name, "m_outer", "m_inners");
+                d = LoadMultiPoint(debugger, name);
             else if (IsGeometry(type, "boost::geometry::model::multi_linestring", "boost::geometry::model::linestring"))
-                d = Multi<Linestring>.Load(debugger, name, "m_outer", "m_inners");
+                d = LoadMultiLinestring(debugger, name);
             else if (IsGeometry(type, "boost::geometry::model::multi_polygon", "boost::geometry::model::polygon"))
-                d = Multi<Polygon>.Load(debugger, name, "m_outer", "m_inners");
+                d = LoadMultiPolygon(debugger, name, "m_outer", "m_inners");
 
             else if (BaseType(type) == "boost::polygon::point_data")
-                d = Point.Load(debugger, name);
+                d = LoadPoint(debugger, name);
             else if (BaseType(type) == "boost::polygon::segment_data")
-                d = Segment.Load(debugger, name, "points_[0]", "points_[1]");
+                d = LoadSegment(debugger, name, "points_[0]", "points_[1]");
             else if (BaseType(type) == "boost::polygon::rectangle_data")
-                d = Box.Load(debugger, name, "ranges_[0]", "ranges_[1]", true);
+                d = LoadPolygonBox(debugger, name);
             else if (BaseType(type) == "boost::polygon::polygon_data")
-                d = Ring.Load(debugger, name, "coords_");
+                d = LoadRing(debugger, name, "coords_");
             else if (BaseType(type) == "boost::polygon::polygon_with_holes_data")
-                d = Polygon.Load(debugger, name, "self_", "holes_", true, "coords_");
+                d = LoadPolygon(debugger, name, "self_", "holes_", true, "coords_");
 
             return d;
         }
@@ -865,7 +967,7 @@ namespace GraphicalDebugging
             if (IsTurnsContainer(type))
             {
                 int size = LoadSize(debugger, name);
-                d = TurnsContainer.Load(debugger, name, size);
+                d = LoadTurnsContainer(debugger, name, size);
             }
 
             return d;
@@ -880,24 +982,161 @@ namespace GraphicalDebugging
 
             if (d == null)
             {
-                // STL RandomAccess container of 1D values convertible to double
-                if (BaseType(type) == "std::vector"
-                 || BaseType(type) == "std::deque")
-                {
-                    int size = LoadSize(debugger, name);
-                    d = ValuesContainer.Load(debugger, name, size);
-                }
-                // Boost.Array of 1D values convertible to double
-                else if (BaseType(type) == "boost::array")
-                {
-                    List<string> tparams = Tparams(type);
-                    int size = int.Parse(tparams[1]);
-                    d = ValuesContainer.Load(debugger, name, size);
-                }
+                // container of 1D values convertible to double
+                d = LoadValuesContainer(debugger, name);
             }
 
             return d;
         }
+
+        private static int LoadSize(Debugger debugger, string name)
+        {
+            // VS2015 vector
+            Expression expr_size = debugger.GetExpression(name + "._Mypair._Myval2._Mylast-" + name + "._Mypair._Myval2._Myfirst");
+            if (expr_size.IsValidValue)
+            {
+                int result = int.Parse(expr_size.Value);
+                return Math.Max(result, 0);
+            }
+            // VS2015 deque, list
+            expr_size = debugger.GetExpression(name + "._Mypair._Myval2._Mysize");
+            if (expr_size.IsValidValue)
+            {
+                int result = int.Parse(expr_size.Value);
+                return Math.Max(result, 0);
+            }
+            /*
+            // VS2013 vector
+            expr_size = debugger.GetExpression(name + "._Mylast-" + name + "._Myfirst");
+            if (expr_size.IsValidValue)
+            {
+                int result = int.Parse(expr_size.Value);
+                return Math.Max(result, 0);
+            }
+            // VS2013 deque, list
+            expr_size = debugger.GetExpression(name + "._Mysize");
+            if (expr_size.IsValidValue)
+            {
+                int result = int.Parse(expr_size.Value);
+                return Math.Max(result, 0);
+            }*/
+
+            return 0;
+        }
+
+        private class ContainerElements : IEnumerable
+        {
+            public ContainerElements(Debugger debugger, string name)
+            {
+                enumerator = new ContainerElementsEnumerator(debugger, name);
+            }
+
+            public IEnumerator GetEnumerator()
+            {
+                return enumerator;
+            }
+
+            public int Count { get { return enumerator.Count; } }
+
+            private ContainerElementsEnumerator enumerator;
+        }
+
+        private class ContainerElementsEnumerator : IEnumerator
+        {
+            public ContainerElementsEnumerator(Debugger debugger, string name)
+            {
+                this.name = name;
+                this.index = -1;
+                this.size = 0;
+
+                Expression expr = debugger.GetExpression(name);
+                if (!expr.IsValidValue)
+                    return;
+
+                string baseType = BaseType(expr.Type);
+
+                if (baseType == "std::vector")
+                {
+                    // VS2015
+                    Expression size_expr = debugger.GetExpression(name + "._Mypair._Myval2._Mylast-" + name + "._Mypair._Myval2._Myfirst");
+                    if (size_expr.IsValidValue)
+                    {
+                        int result = int.Parse(size_expr.Value);
+                        this.size = Math.Max(result, 0);
+                    }
+                }
+                else if (baseType == "std::array" || baseType == "boost::array")
+                {
+                    List<string> tParams = Tparams(expr.Type);
+                    int result = int.Parse(tParams[1]);
+                    this.size = Math.Max(result, 0);
+                }
+                else if (baseType == "std::deque" || baseType == "std::list")
+                {
+                    // VS2015
+                    Expression size_expr = debugger.GetExpression(name + "._Mypair._Myval2._Mysize");
+                    if (size_expr.IsValidValue)
+                    {
+                        int result = int.Parse(size_expr.Value);
+                        this.size = Math.Max(result, 0);
+                    }
+
+                    if (baseType == "std::list")
+                    {
+                        this.nextNode = name + "._Mypair._Myval2._Myhead"; // VS2015
+                    }
+                }
+            }
+
+            public string CurrentString
+            {
+                get
+                {
+                    if (index < 0 || index >= size)
+                        throw new InvalidOperationException();
+
+                    if (nextNode == null) // vector, deque, etc.
+                        return name + "[" + index + "]";
+                    else // list
+                        return nextNode + "->_Myval";
+                }
+            }
+
+            public object Current
+            {
+                get
+                {
+                    return CurrentString;
+                }
+            }
+
+            public bool MoveNext()
+            {
+                ++index;
+                if (nextNode != null)
+                    nextNode = nextNode + "->_Next";
+
+                return index < size;
+            }
+
+            public void Reset()
+            {
+                index = -1;
+                if (nextNode != null)
+                    nextNode = name + "._Mypair._Myval2._Myhead"; // VS2015
+            }
+
+            public int Count { get { return size; } }
+
+            private string name;
+            private int index;
+            private int size;
+            private string nextNode;
+        }
+
+        // -------------------------------------------------
+        // public Make and Draw
+        // -------------------------------------------------
 
         // For GeometryWatch
         public static IDrawable MakeGeometry(Debugger debugger, string name)
@@ -990,117 +1229,6 @@ namespace GraphicalDebugging
             }
 
             return true;
-        }
-
-        private static int LoadSize(Debugger debugger, string name)
-        {
-            // VS2015 vector
-            Expression expr_inners_size0 = debugger.GetExpression(name + "._Mypair._Myval2._Mylast-" + name + "._Mypair._Myval2._Myfirst");
-            if (expr_inners_size0.IsValidValue)
-            {
-                int result = int.Parse(expr_inners_size0.Value);
-                return Math.Max(result, 0);
-            }
-            // VS2015 deque, list
-            Expression expr_inners_size1 = debugger.GetExpression(name + "._Mypair._Myval2._Mysize");
-            if (expr_inners_size1.IsValidValue)
-            {
-                int result = int.Parse(expr_inners_size1.Value);
-                return Math.Max(result, 0);
-            }
-            /*
-            // VS2013 vector
-            Expression expr_inners_size2 = debugger.GetExpression(name + "._Mylast-" + name + "._Myfirst");
-            if (expr_inners_size2.IsValidValue)
-            {
-                int result = int.Parse(expr_inners_size2.Value);
-                return Math.Max(result, 0);
-            }
-            // VS2013 deque, list
-            Expression expr_inners_size3 = debugger.GetExpression(name + "._Mysize");
-            if (expr_inners_size3.IsValidValue)
-            {
-                int result = int.Parse(expr_inners_size3.Value);
-                return Math.Max(result, 0);
-            }*/
-
-            return 0;
-        }
-
-        private class LocalCS
-        {
-            public LocalCS(Geometry.Box src_box, Graphics dst_graphics)
-            {
-                float w = dst_graphics.VisibleClipBounds.Width;
-                float h = dst_graphics.VisibleClipBounds.Height;
-                dst_x0 = w / 2;
-                dst_y0 = h / 2;
-                float dst_w = w * 0.9f;
-                float dst_h = h * 0.9f;
-
-                double src_w = src_box.Width;
-                double src_h = src_box.Height;
-                src_x0 = src_box.min[0] + src_w / 2;
-                src_y0 = src_box.min[1] + src_h / 2;
-
-                if (src_w == 0 && src_h == 0)
-                    scale = 1; // point
-                else if (src_w == 0)
-                    scale = (h * 0.9f) / src_h;
-                else if (src_h == 0)
-                    scale = (w * 0.9f) / src_w;
-                else
-                {
-                    double scale_w = (w * 0.9f) / src_w;
-                    double scale_h = (h * 0.9f) / src_h;
-                    scale = Math.Min(scale_w, scale_h);
-                }
-            }
-
-            public float ConvertX(double src)
-            {
-                return dst_x0 + (float)((src - src_x0) * scale);
-            }
-
-            public float ConvertY(double src)
-            {
-                return dst_y0 - (float)((src - src_y0) * scale);
-            }
-
-            public float ConvertDimension(double src)
-            {
-                return (float)(src * scale);
-            }
-
-            public PointF Convert(Geometry.Point p)
-            {
-                return new PointF(ConvertX(p[0]), ConvertY(p[1]));
-            }
-
-            public PointF[] Convert(Geometry.Ring ring)
-            {
-                if (ring.Count <= 0)
-                    return null;
-
-                int dst_count = ring.Count + (ring[0] == ring[ring.Count - 1] ? 0 : 1);
-
-                PointF[] dst_points = new PointF[dst_count];
-                int i = 0;
-                for (; i < ring.Count; ++i)
-                {
-                    dst_points[i] = Convert(ring[i]);
-                }
-                if (i < dst_count)
-                {
-                    dst_points[i] = Convert(ring[0]);
-                }
-
-                return dst_points;
-            }
-
-            float dst_x0, dst_y0;
-            double src_x0, src_y0;
-            double scale;
         }
     }
 }
