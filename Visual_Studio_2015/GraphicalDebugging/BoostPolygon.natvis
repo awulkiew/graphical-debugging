@@ -12,6 +12,18 @@
     </Expand>
   </Type>
 
+  <!-- boost::polygon::interval_data -->
+  <Type Name="boost::polygon::interval_data&lt;*&gt;">
+  <DisplayString>{{{coords_[0]}, {coords_[1]}}}</DisplayString>
+    <Expand>
+      <ArrayItems>
+        <Size>2</Size>
+        <ValuePointer>coords_</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+    
+  <!-- boost::polygon::segment_data -->
   <Type Name="boost::polygon::segment_data&lt;*&gt;">
   <DisplayString>{{{points_[0]}, {points_[1]}}}</DisplayString>
     <Expand>
@@ -22,7 +34,16 @@
     </Expand>
   </Type>
     
-
+  <!-- boost::polygon::rectangle_data -->
+  <Type Name="boost::polygon::rectangle_data&lt;*&gt;">
+  <DisplayString>{{{ranges_[0]}, {ranges_[1]}}}</DisplayString>
+    <Expand>
+      <ArrayItems>
+        <Size>2</Size>
+        <ValuePointer>ranges_</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
 
   <!-- boost::polygon::polygon_data -->
   <Type Name="boost::polygon::polygon_data&lt;*&gt;">

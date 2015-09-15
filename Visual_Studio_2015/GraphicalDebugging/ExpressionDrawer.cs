@@ -91,12 +91,22 @@ namespace GraphicalDebugging
                 : base(min, max)
             {}
 
-            public static Box Load(Debugger debugger, string name)
+            public static Box Load(Debugger debugger, string name, string first = "m_min_corner", string second = "m_max_corner", bool intervals = false)
             {
-                Point min_p = Point.Load(debugger, name + ".min_corner()");
-                Point max_p = Point.Load(debugger, name + ".max_corner()");
+                Box result;
 
-                Box result = new Box(min_p, max_p);
+                Point first_p = Point.Load(debugger, name + "." + first);
+                Point second_p = Point.Load(debugger, name + "." + second);
+
+                if (!intervals)
+                {
+                    result = new Box(first_p, second_p);
+                }
+                else
+                {
+                    result = new Box(new Point(first_p[0], second_p[0]),
+                                     new Point(first_p[1], second_p[1]));
+                }
                 return result;
             }
 
@@ -138,12 +148,12 @@ namespace GraphicalDebugging
 
         public class Segment : Geometry.Segment, IDrawable
         {
-            public static Segment Load(Debugger debugger, string name)
+            public static Segment Load(Debugger debugger, string name, string first = "first", string second = "second")
             {
                 Segment result = new Segment();
 
-                result.p0 = Point.Load(debugger, name + ".first");
-                result.p1 = Point.Load(debugger, name + ".second");
+                result.p0 = Point.Load(debugger, name + "." + first);
+                result.p1 = Point.Load(debugger, name + "." + second);
 
                 return result;
             }
@@ -805,6 +815,10 @@ namespace GraphicalDebugging
 
             else if (BaseType(type) == "boost::polygon::point_data")
                 d = Point.Load(debugger, name);
+            else if (BaseType(type) == "boost::polygon::segment_data")
+                d = Segment.Load(debugger, name, "points_[0]", "points_[1]");
+            else if (BaseType(type) == "boost::polygon::rectangle_data")
+                d = Box.Load(debugger, name, "ranges_[0]", "ranges_[1]", true);
             else if (BaseType(type) == "boost::polygon::polygon_data")
                 d = Ring.Load(debugger, name, "coords_");
             else if (BaseType(type) == "boost::polygon::polygon_with_holes_data")
