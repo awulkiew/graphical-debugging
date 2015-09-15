@@ -27,3 +27,15 @@ additions:
 bugfixes:
 - fix drawing of Polygon inner rings in GeometryWatch
 - redraw GeometryWatch image after removal of list elements
+
+version 0.4
+
+additions:
+- support more STL containers
+- support Boost.Polygon models
+- support Boost.Container vector and static_vector
+- icons!
+
+bugfixes:
+- GeometryWatch wasn't redrawed if empty geometries were left after removal. Caused by an attempt of drawing of an invalid/inverted AABB.
+- Transparent color was added into the colors pool after removal of undrawable variable from the GeometryWatch list.
