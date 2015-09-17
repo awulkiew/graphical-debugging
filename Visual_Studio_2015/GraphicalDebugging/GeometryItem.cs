@@ -16,11 +16,11 @@ namespace GraphicalDebugging
             Color = Util.ConvertColor(color);
         }
 
-        public GeometryItem(string name, ExpressionDrawer.IDrawable drawable, string type, Color color)
+        public GeometryItem(string name, /*ExpressionDrawer.IDrawable drawable,*/ string type, Color color)
             : base(name, null, type)
         {
             Color = color;
-            Drawable = drawable;
+            //Drawable = drawable;
         }
 
         private Color color;
@@ -29,12 +29,12 @@ namespace GraphicalDebugging
             get { return this.color; }
             set { this.color = value; }
         }
-
+        /*
         private ExpressionDrawer.IDrawable drawable;
         public ExpressionDrawer.IDrawable Drawable
         {
             get { return this.drawable; }
             set { this.drawable = value; }
-        }
+        }*/
     }
 }

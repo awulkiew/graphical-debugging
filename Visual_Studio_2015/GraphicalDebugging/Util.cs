@@ -17,6 +17,18 @@ namespace GraphicalDebugging
     {
         private Util() {}
 
+        public class Pair<F, S>
+        {
+            public Pair(F first, S second)
+            {
+                First = first;
+                Second = second;
+            }
+
+            public F First { get; set; }
+            public S Second { get; set; }
+        }
+
         public static BitmapImage BitmapToBitmapImage(Bitmap bmp)
         {
             MemoryStream memory = new MemoryStream();
@@ -76,6 +88,61 @@ namespace GraphicalDebugging
                 0xFFC08000, 0xFF00C080, 0xFF8000C0, 0xFFC00080, 0xFF80C000, 0xFF0080C0,
                 0xFFC08080, 0xFF80C080, 0xFF8080C0
             };
+        }
+
+        public static string BaseType(string type)
+        {
+            if (type.StartsWith("const "))
+                type = type.Remove(0, 6);
+            int i = type.IndexOf('<');
+            if (i > 0)
+                type = type.Remove(i);
+            return type;
+        }
+
+        public static List<string> Tparams(string type)
+        {
+            List<string> result = new List<string>();
+
+            int param_list_index = 0;
+            int index = 0;
+            int param_first = -1;
+            int param_last = -1;
+            foreach (char c in type)
+            {
+                if (c == '<')
+                {
+                    ++param_list_index;
+                }
+                else if (c == '>')
+                {
+                    if (param_last == -1 && param_list_index == 1)
+                        param_last = index;
+
+                    --param_list_index;
+                }
+                else if (c == ',')
+                {
+                    if (param_last == -1 && param_list_index == 1)
+                        param_last = index;
+                }
+                else
+                {
+                    if (param_first == -1 && param_list_index == 1)
+                        param_first = index;
+                }
+
+                if (param_first != -1 && param_last != -1)
+                {
+                    result.Add(type.Substring(param_first, param_last - param_first));
+                    param_first = -1;
+                    param_last = -1;
+                }
+
+                ++index;
+            }
+
+            return result;
         }
     }
 }

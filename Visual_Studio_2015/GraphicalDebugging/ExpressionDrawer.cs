@@ -788,211 +788,243 @@ namespace GraphicalDebugging
             return new TurnsContainer(turns, box);
         }
 
-        private static List<string> Tparams(string type)
+        public class GeometryTraits
         {
-            List<string> result = new List<string>();
-
-            int param_list_index = 0;
-            int index = 0;
-            int param_first = -1;
-            int param_last = -1;
-            foreach (char c in type)
+            public GeometryTraits(int dimension)
             {
-                if (c == '<')
-                {
-                    ++param_list_index;
-                }
-                else if (c == '>')
-                {
-                    if (param_last == -1 && param_list_index == 1)
-                        param_last = index;
+                this.Dimension = dimension;
+                this.CoordinateSystem = CoordinateSystemT.Cartesian;
+                this.Unit = UnitT.None;
+            }
 
-                    --param_list_index;
-                }
-                else if (c == ',')
-                {
-                    if (param_last == -1 && param_list_index == 1)
-                        param_last = index;
-                }
-                else
-                {
-                    if (param_first == -1 && param_list_index == 1)
-                        param_first = index;
-                }
+            public GeometryTraits(int dimension, CoordinateSystemT coordinateSystem, UnitT unit)
+            {
+                this.Dimension = dimension;
+                this.CoordinateSystem = coordinateSystem;
+                this.Unit = unit;
+            }
 
-                if (param_first != -1 && param_last != -1)
-                {
-                    result.Add(type.Substring(param_first, param_last - param_first));
-                    param_first = -1;
-                    param_last = -1;
-                }
+            public enum CoordinateSystemT {Cartesian, Spherical, Geographic};
+            public enum UnitT { None, Radian, Degree};
+            
+            public int Dimension { get; }
+            public CoordinateSystemT CoordinateSystem { get; }
+            public UnitT Unit { get; }
+        }
 
-                ++index;
+        private static GeometryTraits GetPointTraits(string type)
+        {
+            string base_type = Util.BaseType(type);
+            if (base_type == "boost::geometry::model::point")
+            {
+                List<string> tparams = Util.Tparams(type);
+                if (tparams.Count == 3)
+                {
+                    int dimension = int.Parse(tparams[1]);
+
+                    string cs = tparams[2];
+                    if (cs == "boost::geometry::cs::cartesian")
+                    {
+                        return new GeometryTraits(dimension);
+                    }
+                    else
+                    {
+                        List<string> cs_tparams = Util.Tparams(cs);
+                        if (cs_tparams.Count == 1)
+                        {
+                            string cs_base_type = Util.BaseType(cs);
+                            GeometryTraits.CoordinateSystemT coordinateSystem = GeometryTraits.CoordinateSystemT.Cartesian;
+                            if (cs_base_type == "boost::geometry::cs::spherical")
+                                coordinateSystem = GeometryTraits.CoordinateSystemT.Spherical;
+                            else if (cs_base_type == "boost::geometry::cs::geographic")
+                                coordinateSystem = GeometryTraits.CoordinateSystemT.Geographic;
+
+                            string u = cs_tparams[0];
+                            GeometryTraits.UnitT unit = GeometryTraits.UnitT.None;
+                            if (u == "boost::geometry::radian")
+                                unit = GeometryTraits.UnitT.Radian;
+                            else if (u == "boost::geometry::degree")
+                                unit = GeometryTraits.UnitT.Degree;
+
+                            return new GeometryTraits(dimension, coordinateSystem, unit);
+                        }
+                    }
+                }
+            }
+            else if (base_type == "boost::geometry::model::d2::point_xy")
+            {
+                return new GeometryTraits(2);
+            }
+
+            return null;
+        }
+
+        private static GeometryTraits GetGeometryTraits(string type, string single_type)
+        {
+            if (Util.BaseType(type) == single_type)
+            {
+                List<string> tparams = Util.Tparams(type);
+                if (tparams.Count > 0)
+                    return GetPointTraits(tparams[0]);
+            }
+            return null;
+        }
+
+        private static GeometryTraits GetGeometryTraits(string type, string multi_type, string single_type)
+        {
+            if (Util.BaseType(type) == multi_type)
+            {
+                List<string> tparams = Util.Tparams(type);
+                if (tparams.Count > 0)
+                    return GetGeometryTraits(tparams[0], single_type);
+            }
+            return null;
+        }
+
+        private static GeometryTraits GetTurnsContainerTraits(string type)
+        {
+            string base_type = Util.BaseType(type);
+            if (base_type == "std::vector"
+             || base_type == "std::deque")
+            {
+                List<string> tparams = Util.Tparams(type);
+                if (tparams.Count > 0)
+                {
+                    string element_base_type = Util.BaseType(tparams[0]);
+                    if (element_base_type == "boost::geometry::detail::overlay::turn_info"
+                     || element_base_type == "boost::geometry::detail::overlay::traversal_turn_info")
+                    {
+                        List<string> el_tparams = Util.Tparams(tparams[0]);
+                        if (el_tparams.Count > 0)
+                            return GetPointTraits(el_tparams[0]);
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        public class DrawablePair
+        {
+            public DrawablePair(IDrawable drawable, GeometryTraits traits)
+            {
+                Drawable = drawable;
+                Traits = traits;
+            }
+            public IDrawable Drawable { get; set; }
+            public GeometryTraits Traits { get; set; }
+        }
+
+        private static DrawablePair LoadGeometry(Debugger debugger, string name, string type)
+        {
+            IDrawable d = null;
+            GeometryTraits traits = null;
+
+            if ((traits = GetPointTraits(type)) != null)
+                d = LoadPoint(debugger, name);
+            else if ((traits = GetGeometryTraits(type, "boost::geometry::model::box")) != null)
+                d = LoadGeometryBox(debugger, name);
+            else if ((traits = GetGeometryTraits(type, "boost::geometry::model::segment")) != null
+                  || (traits = GetGeometryTraits(type, "boost::geometry::model::referring_segment")) != null)
+                d = LoadSegment(debugger, name);
+            else if ((traits = GetGeometryTraits(type, "boost::geometry::model::linestring")) != null)
+                d = LoadLinestring(debugger, name);
+            else if ((traits = GetGeometryTraits(type, "boost::geometry::model::ring")) != null)
+                d = LoadRing(debugger, name);
+            else if ((traits = GetGeometryTraits(type, "boost::geometry::model::polygon")) != null)
+                d = LoadPolygon(debugger, name, "m_outer", "m_inners");
+            else if ((traits = GetGeometryTraits(type, "boost::geometry::model::multi_point")) != null)
+                d = LoadMultiPoint(debugger, name);
+            else if ((traits = GetGeometryTraits(type, "boost::geometry::model::multi_linestring", "boost::geometry::model::linestring")) != null)
+                d = LoadMultiLinestring(debugger, name);
+            else if ((traits = GetGeometryTraits(type, "boost::geometry::model::multi_polygon", "boost::geometry::model::polygon")) != null)
+                d = LoadMultiPolygon(debugger, name, "m_outer", "m_inners");
+            else
+            {
+                string base_type = Util.BaseType(type);
+                if (base_type == "boost::polygon::point_data")
+                    d = LoadPoint(debugger, name);
+                else if (base_type == "boost::polygon::segment_data")
+                    d = LoadSegment(debugger, name, "points_[0]", "points_[1]");
+                else if (base_type == "boost::polygon::rectangle_data")
+                    d = LoadPolygonBox(debugger, name);
+                else if (base_type == "boost::polygon::polygon_data")
+                    d = LoadRing(debugger, name, "coords_");
+                else if (base_type == "boost::polygon::polygon_with_holes_data")
+                    d = LoadPolygon(debugger, name, "self_", "holes_", true, "coords_");
+
+                if (d != null)
+                    traits = new GeometryTraits(2); // 2D cartesian
+            }
+
+            return new DrawablePair(d, traits);
+        }
+
+        private static DrawablePair LoadGeometryOrVariant(Debugger debugger, string name, string type)
+        {
+            // Currently the supported types are hardcoded as follows:
+
+            // Boost.Geometry models
+            DrawablePair result = LoadGeometry(debugger, name, type);
+
+            if (result.Drawable == null)
+            {
+                // Boost.Variant containing a Boost.Geometry model
+                if (Util.BaseType(type) == "boost::variant")
+                {
+                    Expression expr_which = debugger.GetExpression(name + ".which_");
+                    if (expr_which.IsValidValue)
+                    {
+                        int which = int.Parse(expr_which.Value);
+                        List<string> tparams = Util.Tparams(type);
+                        if (which >= 0 && which < tparams.Count)
+                        {
+                            string value_str = "(*(" + tparams[which] + "*)" + name + ".storage_.data_.buf)";
+                            Expression expr_value = debugger.GetExpression(value_str);
+                            if (expr_value.IsValidValue)
+                            {
+                                result = LoadGeometry(debugger, value_str, expr_value.Type);
+                            }
+                        }
+                    }
+                }
             }
 
             return result;
         }
 
-        private static string BaseType(string type)
-        {
-            if (type.StartsWith("const "))
-                type = type.Remove(0, 6);
-            int i = type.IndexOf('<');
-            if (i > 0)
-                type = type.Remove(i);
-            return type;
-        }
-
-        // For now the list of handled types is hardcoded
-        private static bool IsGeometry(string type)
-        {
-            string base_type = BaseType(type);
-            if (base_type == "boost::geometry::model::point")
-            {
-                List<string> tparams = Tparams(type);
-                return tparams.Count == 3 && tparams[1] == "2"; // 2D only for now
-            }
-            else if (base_type == "boost::geometry::model::d2::point_xy")
-            {
-                return true;
-            }
-
-            return false;
-        }
-
-        private static bool IsGeometry(string type, string single_type)
-        {
-            if (BaseType(type) != single_type)
-                return false;
-            List<string> tparams = Tparams(type);
-            return tparams.Count > 0 && IsGeometry(tparams[0]);
-        }
-
-        private static bool IsGeometry(string type, string multi_type, string single_type)
-        {
-            if (BaseType(type) != multi_type)
-                return false;
-
-            List<string> tparams = Tparams(type);
-            if (!(tparams.Count > 0 && IsGeometry(tparams[0], single_type)))
-                return false;
-
-            tparams = Tparams(tparams[0]);
-            return tparams.Count > 0 && IsGeometry(tparams[0]);
-        }
-
-        private static bool IsTurnsContainer(string type)
-        {
-            if (! (BaseType(type) == "std::vector"
-                || BaseType(type) == "std::deque") )
-                return false;
-
-            List<string> tparams = Tparams(type);
-            if (! (tparams.Count > 0
-                && (BaseType(tparams[0]) == "boost::geometry::detail::overlay::turn_info"
-                 || BaseType(tparams[0]) == "boost::geometry::detail::overlay::traversal_turn_info")) )
-                return false;
-
-            tparams = Tparams(tparams[0]);
-            return tparams.Count > 0 && IsGeometry(tparams[0]);
-        }
-
-        private static IDrawable LoadGeometry(Debugger debugger, string name, string type)
-        {
-            IDrawable d = null;
-
-            if (IsGeometry(type))
-                d = LoadPoint(debugger, name);
-            else if (IsGeometry(type, "boost::geometry::model::box"))
-                d = LoadGeometryBox(debugger, name);
-            else if (IsGeometry(type, "boost::geometry::model::segment")
-                  || IsGeometry(type, "boost::geometry::model::referring_segment"))
-                d = LoadSegment(debugger, name);
-            else if (IsGeometry(type, "boost::geometry::model::linestring"))
-                d = LoadLinestring(debugger, name);
-            else if (IsGeometry(type, "boost::geometry::model::ring"))
-                d = LoadRing(debugger, name);
-            else if (IsGeometry(type, "boost::geometry::model::polygon"))
-                d = LoadPolygon(debugger, name, "m_outer", "m_inners");
-            else if (IsGeometry(type, "boost::geometry::model::multi_point"))
-                d = LoadMultiPoint(debugger, name);
-            else if (IsGeometry(type, "boost::geometry::model::multi_linestring", "boost::geometry::model::linestring"))
-                d = LoadMultiLinestring(debugger, name);
-            else if (IsGeometry(type, "boost::geometry::model::multi_polygon", "boost::geometry::model::polygon"))
-                d = LoadMultiPolygon(debugger, name, "m_outer", "m_inners");
-
-            else if (BaseType(type) == "boost::polygon::point_data")
-                d = LoadPoint(debugger, name);
-            else if (BaseType(type) == "boost::polygon::segment_data")
-                d = LoadSegment(debugger, name, "points_[0]", "points_[1]");
-            else if (BaseType(type) == "boost::polygon::rectangle_data")
-                d = LoadPolygonBox(debugger, name);
-            else if (BaseType(type) == "boost::polygon::polygon_data")
-                d = LoadRing(debugger, name, "coords_");
-            else if (BaseType(type) == "boost::polygon::polygon_with_holes_data")
-                d = LoadPolygon(debugger, name, "self_", "holes_", true, "coords_");
-
-            return d;
-        }
-
-        private static IDrawable LoadGeometryOrVariant(Debugger debugger, string name, string type)
-        {
-            // Currently the supported types are hardcoded as follows:
-
-            // Boost.Geometry models
-            IDrawable d = LoadGeometry(debugger, name, type);
-
-            if (d == null)
-            {
-                // Boost.Variant containing a Boost.Geometry model
-                if (BaseType(type) == "boost::variant")
-                {
-                    Expression expr_which = debugger.GetExpression(name + ".which_");
-                    if (!expr_which.IsValidValue)
-                        return null;
-                    int which = int.Parse(expr_which.Value);
-                    List<string> tparams = Tparams(type);
-                    if (which < 0 || which >= tparams.Count)
-                        return null;
-                    string value_str = "(*(" + tparams[which] + "*)" + name + ".storage_.data_.buf)";
-                    Expression expr_value = debugger.GetExpression(value_str);
-                    if (!expr_value.IsValidValue)
-                        return null;
-                    d = LoadGeometry(debugger, value_str, expr_value.Type);
-                }
-            }
-
-            return d;
-        }
-
-        private static IDrawable LoadTurnsContainer(Debugger debugger, string name, string type, bool verbose)
+        private static DrawablePair LoadTurnsContainer(Debugger debugger, string name, string type)
         {
             // STL RandomAccess container of Turns
             IDrawable d = null;
+            GeometryTraits traits = GetTurnsContainerTraits(type);
 
-            if (IsTurnsContainer(type))
+            if (traits != null)
             {
                 int size = LoadSize(debugger, name);
                 d = LoadTurnsContainer(debugger, name, size);
             }
 
-            return d;
+            return new DrawablePair(d, traits);
         }
 
-        private static IDrawable LoadDrawable(Debugger debugger, string name, string type)
+        private static DrawablePair LoadDrawable(Debugger debugger, string name, string type)
         {
-            IDrawable d = LoadGeometryOrVariant(debugger, name, type);
+            DrawablePair res = LoadGeometryOrVariant(debugger, name, type);
 
-            if (d == null)
-                d = LoadTurnsContainer(debugger, name, type, false);
-
-            if (d == null)
+            if (res.Drawable == null)
             {
-                // container of 1D values convertible to double
-                d = LoadValuesContainer(debugger, name);
+                res = LoadTurnsContainer(debugger, name, type);
             }
 
-            return d;
+            if (res.Drawable == null)
+            {
+                // container of 1D values convertible to double
+                IDrawable d = LoadValuesContainer(debugger, name);
+                res = new DrawablePair(d, null); // the traits are not needed in this case
+            }
+
+            return res;
         }
 
         private static int LoadSize(Debugger debugger, string name)
@@ -1011,21 +1043,6 @@ namespace GraphicalDebugging
                 int result = int.Parse(expr_size.Value);
                 return Math.Max(result, 0);
             }
-            /*
-            // VS2013 vector
-            expr_size = debugger.GetExpression(name + "._Mylast-" + name + "._Myfirst");
-            if (expr_size.IsValidValue)
-            {
-                int result = int.Parse(expr_size.Value);
-                return Math.Max(result, 0);
-            }
-            // VS2013 deque, list
-            expr_size = debugger.GetExpression(name + "._Mysize");
-            if (expr_size.IsValidValue)
-            {
-                int result = int.Parse(expr_size.Value);
-                return Math.Max(result, 0);
-            }*/
 
             return 0;
         }
@@ -1059,7 +1076,7 @@ namespace GraphicalDebugging
                 if (!expr.IsValidValue)
                     return;
 
-                string baseType = BaseType(expr.Type);
+                string baseType = Util.BaseType(expr.Type);
 
                 if (baseType == "std::vector")
                 {
@@ -1073,7 +1090,7 @@ namespace GraphicalDebugging
                 }
                 else if (baseType == "std::array" || baseType == "boost::array")
                 {
-                    List<string> tParams = Tparams(expr.Type);
+                    List<string> tParams = Util.Tparams(expr.Type);
                     int result = int.Parse(tParams[1]);
                     this.size = Math.Max(result, 0);
                 }
@@ -1150,54 +1167,92 @@ namespace GraphicalDebugging
         }
 
         // -------------------------------------------------
-        // public Make and Draw
+        // Make
         // -------------------------------------------------
 
-        // For GeometryWatch
-        public static IDrawable MakeGeometry(Debugger debugger, string name)
+        private static DrawablePair MakeGeometry(Debugger debugger, string name)
         {
             Expression expr = debugger.GetExpression(name);
             if (!expr.IsValidValue)
-                return null;
+                return new DrawablePair(null ,null);
 
-            IDrawable d = LoadGeometryOrVariant(debugger, expr.Name, expr.Type);
-            if (d != null)
-                return d;
+            DrawablePair res = LoadGeometryOrVariant(debugger, expr.Name, expr.Type);
+            if (res.Drawable != null)
+                return res;
 
-            return LoadTurnsContainer(debugger, expr.Name, expr.Type, true);
+            return LoadTurnsContainer(debugger, expr.Name, expr.Type);
         }
 
-        // For GraphicalWatch
-        public static IDrawable MakeDrawable(Debugger debugger, string name)
+        private static DrawablePair MakeDrawable(Debugger debugger, string name)
         {
             Expression expr = debugger.GetExpression(name);
             if (!expr.IsValidValue)
-                return null;
+                return new DrawablePair(null, null);
 
             return LoadDrawable(debugger, expr.Name, expr.Type);
         }
 
-        // For GeometryWatch
-        public static bool DrawGeometry(Graphics graphics, Debugger debugger, string name)
-        {
-            IDrawable d = MakeGeometry(debugger, name);
-            if (d == null)
-                return false;
-            d.Draw(d.Aabb, graphics);
-            return true;
-        }
+        // -------------------------------------------------
+        // public Draw
+        // -------------------------------------------------
 
         // For GraphicalWatch
         public static bool Draw(Graphics graphics, Debugger debugger, string name)
         {
-            IDrawable d = MakeDrawable(debugger, name);
-            if (d == null)
+            DrawablePair d = MakeDrawable(debugger, name);
+            if (d.Drawable == null)
                 return false;
-            d.Draw(d.Aabb, graphics);
+            d.Drawable.Draw(d.Drawable.Aabb, graphics);
             return true;
         }
 
-        public static bool DrawAabb(Graphics graphics, Geometry.Box box)
+        // For GeometryWatch
+        public static bool DrawGeometries(Graphics graphics, Debugger debugger, string[] names, Settings[] settings)
+        {
+            System.Diagnostics.Debug.Assert(names.Length == settings.Length);
+
+            Geometry.Box aabb = Geometry.Box.Inverted();
+            int drawnCount = 0;
+            int count = names.Length;
+
+            IDrawable[] drawables = new IDrawable[count];
+            
+            for (int i = 0; i < count; ++i)
+            {
+                if (names[i] != null && names[i] != "")
+                {
+                    drawables[i] = ExpressionDrawer.MakeGeometry(debugger, names[i]).Drawable;
+                    if (drawables[i] != null)
+                    {
+                        aabb.Expand(drawables[i].Aabb);
+                        ++drawnCount;
+                    }
+                }
+            }
+
+            if (drawnCount > 0)
+            {
+                for (int i = 0; i < count; ++i)
+                {
+                    if (drawables[i] != null)
+                    {
+                        drawables[i].Draw(aabb, graphics, settings[i]);
+                    }
+                }
+
+                ExpressionDrawer.DrawAabb(graphics, aabb);
+
+                return true;
+            }
+
+            return false;
+        }
+
+        // -------------------------------------------------
+        // private Draw
+        // -------------------------------------------------
+
+        private static bool DrawAabb(Graphics graphics, Geometry.Box box)
         {
             if (!box.IsValid())
                 return false;

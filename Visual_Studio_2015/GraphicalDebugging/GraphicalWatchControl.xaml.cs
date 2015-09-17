@@ -32,19 +32,14 @@ namespace GraphicalDebugging
         /// </summary>
         public GraphicalWatchControl()
         {
-            this.InitializeComponent();
-
             m_dte = (DTE2)ServiceProvider.GlobalProvider.GetService(typeof(DTE));
             m_debugger = m_dte.Debugger;
             m_debuggerEvents = m_dte.Events.DebuggerEvents;
             m_debuggerEvents.OnEnterBreakMode += DebuggerEvents_OnEnterBreakMode;
-        }
 
-        private void listView_Initialized(object sender, System.EventArgs e)
-        {
-            VariableItem var = new VariableItem();
-            ((System.ComponentModel.INotifyPropertyChanged)var).PropertyChanged += VariableItem_NameChanged;
-            listView.Items.Add(var);
+            this.InitializeComponent();
+
+            ResetAt(new VariableItem(), listView.Items.Count);
         }
 
         private void VariableItem_NameChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -63,38 +58,18 @@ namespace GraphicalDebugging
             // insert new empty row
             if (index + 1 == listView.Items.Count)
             {
-                VariableItem empty_variable = new VariableItem();
-                ((System.ComponentModel.INotifyPropertyChanged)empty_variable).PropertyChanged += VariableItem_NameChanged;
-                listView.Items.Add(empty_variable);
+                ResetAt(new VariableItem(), listView.Items.Count);
             }
 
-            Bitmap bmp = null;
-            string type = null;
+            UpdateItem(index);
+        }
 
-            // debugging
-            if (m_debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
-            {
-                var expression = m_debugger.GetExpression(variable.Name);
-                if (expression.IsValidValue)
-                {
-                    // create bitmap
-                    bmp = new Bitmap(100, 100);
-                    Graphics graphics = Graphics.FromImage(bmp);
-                    graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                    graphics.Clear(System.Drawing.Color.White);
-
-                    if (!ExpressionDrawer.Draw(graphics, m_debugger, variable.Name))
-                        bmp = null;
-
-                    type = expression.Type;
-                }
-            }
-
-            // set new row
-            VariableItem new_variable = new VariableItem(variable.Name, bmp, type);
-            ((System.ComponentModel.INotifyPropertyChanged)new_variable).PropertyChanged += VariableItem_NameChanged;
-            listView.Items.RemoveAt(index);
-            listView.Items.Insert(index, new_variable);
+        private void ResetAt(VariableItem item, int index)
+        {
+            ((System.ComponentModel.INotifyPropertyChanged)item).PropertyChanged += VariableItem_NameChanged;
+            if (index < listView.Items.Count)
+                listView.Items.RemoveAt(index);
+            listView.Items.Insert(index, item);
         }
 
         private void DebuggerEvents_OnEnterBreakMode(dbgEventReason Reason, ref dbgExecutionAction ExecutionAction)
@@ -103,35 +78,7 @@ namespace GraphicalDebugging
             {
                 for (int index = 0 ; index < listView.Items.Count; ++index)
                 {
-                    VariableItem variable = (VariableItem)listView.Items[index];
-
-                    Bitmap bmp = null;
-                    string type = null;
-
-                    if ( variable.Name != null && variable.Name != "" )
-                    {
-                        var expression = m_debugger.GetExpression(variable.Name);
-                        if (expression.IsValidValue)
-                        {
-                            // create bitmap
-                            bmp = new Bitmap(100, 100);
-
-                            Graphics graphics = Graphics.FromImage(bmp);
-                            graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                            graphics.Clear(System.Drawing.Color.White);
-
-                            if (!ExpressionDrawer.Draw(graphics, m_debugger, variable.Name))
-                                bmp = null;
-
-                            type = expression.Type;
-                        }
-                    }
-
-                    // set new row
-                    VariableItem new_variable = new VariableItem(variable.Name, bmp, type);
-                    ((System.ComponentModel.INotifyPropertyChanged)new_variable).PropertyChanged += VariableItem_NameChanged;
-                    listView.Items.RemoveAt(index);
-                    listView.Items.Insert(index, new_variable);
+                    UpdateItem(index);
                 }
             }
         }
@@ -157,6 +104,36 @@ namespace GraphicalDebugging
                         listView.Items.RemoveAt(index);
                 }
             }
+        }
+
+        private void UpdateItem(int index)
+        {
+            VariableItem variable = (VariableItem)listView.Items[index];
+
+            Bitmap bmp = null;
+            string type = null;
+
+            if (variable.Name != null && variable.Name != "")
+            {
+                var expression = m_debugger.GetExpression(variable.Name);
+                if (expression.IsValidValue)
+                {
+                    // create bitmap
+                    bmp = new Bitmap(100, 100);
+
+                    Graphics graphics = Graphics.FromImage(bmp);
+                    graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                    graphics.Clear(System.Drawing.Color.White);
+
+                    if (!ExpressionDrawer.Draw(graphics, m_debugger, variable.Name))
+                        bmp = null;
+
+                    type = expression.Type;
+                }
+            }
+
+            // set new row
+            ResetAt(new VariableItem(variable.Name, bmp, type), index);
         }
     }
 }

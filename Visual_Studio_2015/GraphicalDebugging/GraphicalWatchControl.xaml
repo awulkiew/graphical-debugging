@@ -7,7 +7,7 @@
              d:DesignHeight="300" d:DesignWidth="300"
              Name="GraphicalWatchWindow">
     <Grid>
-        <ListView x:Name="listView" Margin="0" Initialized="listView_Initialized" KeyDown="listView_KeyDown" >
+        <ListView x:Name="listView" Margin="0" KeyDown="listView_KeyDown" >
             <ListView.ItemContainerStyle>
                 <Style TargetType="ListViewItem">
                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
