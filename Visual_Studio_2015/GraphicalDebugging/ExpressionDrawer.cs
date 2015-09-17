@@ -1199,50 +1199,76 @@ namespace GraphicalDebugging
         // For GraphicalWatch
         public static bool Draw(Graphics graphics, Debugger debugger, string name)
         {
-            DrawablePair d = MakeDrawable(debugger, name);
-            if (d.Drawable == null)
-                return false;
-            d.Drawable.Draw(d.Drawable.Aabb, graphics);
-            return true;
+            try
+            {
+                DrawablePair d = MakeDrawable(debugger, name);
+                if (d.Drawable != null)
+                {
+                    d.Drawable.Draw(d.Drawable.Aabb, graphics);
+                    return true;
+                }
+            }
+            catch(Exception e)
+            {
+                DrawMessage(graphics, e.Message, Color.Red);
+            }
+
+            return false;
         }
 
         // For GeometryWatch
         public static bool DrawGeometries(Graphics graphics, Debugger debugger, string[] names, Settings[] settings)
         {
-            System.Diagnostics.Debug.Assert(names.Length == settings.Length);
-
-            Geometry.Box aabb = Geometry.Box.Inverted();
-            int drawnCount = 0;
-            int count = names.Length;
-
-            IDrawable[] drawables = new IDrawable[count];
-            
-            for (int i = 0; i < count; ++i)
+            try
             {
-                if (names[i] != null && names[i] != "")
-                {
-                    drawables[i] = ExpressionDrawer.MakeGeometry(debugger, names[i]).Drawable;
-                    if (drawables[i] != null)
-                    {
-                        aabb.Expand(drawables[i].Aabb);
-                        ++drawnCount;
-                    }
-                }
-            }
+                System.Diagnostics.Debug.Assert(names.Length == settings.Length);
 
-            if (drawnCount > 0)
-            {
+                Geometry.Box aabb = Geometry.Box.Inverted();
+                int drawnCount = 0;
+                int count = names.Length;
+
+                DrawablePair[] drawables = new DrawablePair[count];
+
+                HashSet<GeometryTraits.CoordinateSystemT> csystems = new HashSet<GeometryTraits.CoordinateSystemT>();
+
                 for (int i = 0; i < count; ++i)
                 {
-                    if (drawables[i] != null)
+                    if (names[i] != null && names[i] != "")
                     {
-                        drawables[i].Draw(aabb, graphics, settings[i]);
+                        drawables[i] = ExpressionDrawer.MakeGeometry(debugger, names[i]);
+
+                        if (drawables[i].Drawable != null)
+                        {
+                            csystems.Add(drawables[i].Traits.CoordinateSystem);
+                            aabb.Expand(drawables[i].Drawable.Aabb);
+                            ++drawnCount;
+                        }
                     }
                 }
 
-                ExpressionDrawer.DrawAabb(graphics, aabb);
+                if (csystems.Count > 1)
+                {
+                    throw new Exception("Multiple coordinate systems detected!");
+                }
 
-                return true;
+                if (drawnCount > 0)
+                {
+                    for (int i = 0; i < count; ++i)
+                    {
+                        if (drawables[i] != null && drawables[i].Drawable != null)
+                        {
+                            drawables[i].Drawable.Draw(aabb, graphics, settings[i]);
+                        }
+                    }
+
+                    ExpressionDrawer.DrawAabb(graphics, aabb);
+
+                    return true;
+                }
+            }
+            catch (Exception e)
+            {
+                DrawMessage(graphics, e.Message, Color.Red);
             }
 
             return false;
@@ -1251,6 +1277,21 @@ namespace GraphicalDebugging
         // -------------------------------------------------
         // private Draw
         // -------------------------------------------------
+
+        private static void DrawMessage(Graphics graphics, string message, Color color)
+        {
+            SolidBrush brush = new SolidBrush(color);
+            Font font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), 10);
+            StringFormat drawFormat = new StringFormat();
+            drawFormat.Alignment = StringAlignment.Center;
+            float gh = graphics.VisibleClipBounds.Top + graphics.VisibleClipBounds.Height / 2;
+            RectangleF rect = new RectangleF(graphics.VisibleClipBounds.Left,
+                                             gh - 5,
+                                             graphics.VisibleClipBounds.Right,
+                                             gh + 5);
+
+            graphics.DrawString(message, font, brush, rect, drawFormat);
+        }
 
         private static bool DrawAabb(Graphics graphics, Geometry.Box box)
         {
