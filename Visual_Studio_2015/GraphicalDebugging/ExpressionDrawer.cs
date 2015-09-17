@@ -1229,7 +1229,9 @@ namespace GraphicalDebugging
 
                 DrawablePair[] drawables = new DrawablePair[count];
 
+                HashSet<int> dimensions = new HashSet<int>();
                 HashSet<GeometryTraits.CoordinateSystemT> csystems = new HashSet<GeometryTraits.CoordinateSystemT>();
+                HashSet<GeometryTraits.UnitT> units = new HashSet<GeometryTraits.UnitT>();
 
                 for (int i = 0; i < count; ++i)
                 {
@@ -1239,7 +1241,11 @@ namespace GraphicalDebugging
 
                         if (drawables[i].Drawable != null)
                         {
-                            csystems.Add(drawables[i].Traits.CoordinateSystem);
+                            GeometryTraits traits = drawables[i].Traits;
+                            dimensions.Add(traits.Dimension);
+                            csystems.Add(traits.CoordinateSystem);
+                            units.Add(traits.Unit);
+
                             aabb.Expand(drawables[i].Drawable.Aabb);
                             ++drawnCount;
                         }
@@ -1248,11 +1254,24 @@ namespace GraphicalDebugging
 
                 if (csystems.Count > 1)
                 {
-                    throw new Exception("Multiple coordinate systems detected!");
+                    throw new Exception("Multiple coordinate systems detected.");
                 }
 
                 if (drawnCount > 0)
                 {
+                    int dimension = dimensions.Max();
+                    GeometryTraits.CoordinateSystemT csystem = csystems.First();
+                    GeometryTraits.UnitT unit = GeometryTraits.UnitT.None;
+                    if (csystem == GeometryTraits.CoordinateSystemT.Spherical
+                     || csystem == GeometryTraits.CoordinateSystemT.Geographic)
+                    {
+                        if (units.Contains(GeometryTraits.UnitT.Degree))
+                            unit = GeometryTraits.UnitT.Degree;
+                        else
+                            unit = GeometryTraits.UnitT.Radian;
+                    }
+                    GeometryTraits targetTraits = new GeometryTraits(dimension, csystem, unit);
+
                     for (int i = 0; i < count; ++i)
                     {
                         if (drawables[i] != null && drawables[i].Drawable != null)
