@@ -47,25 +47,25 @@ namespace GraphicalDebugging
         // Drawables and drawing
         // -------------------------------------------------
 
-        public interface IDrawable
+        public interface IAabb
         {
-            void Draw(Geometry.Box box, Graphics graphics);
-            void Draw(Geometry.Box box, Graphics graphics, Settings settings);
-            Geometry.Box Aabb { get; }
+            double Get(int corner, int index);
         }
 
-        private class Point : Geometry.Point, IDrawable
+        public interface IDrawable
+        {
+            void Draw(IAabb box, Graphics graphics, Settings settings, GeometryTraits traits);
+            IAabb Aabb { get; }
+            Color DefaultColor { get; }
+        }
+
+        private class Point<CS, U> : Geometry.Point<CS, U>, IDrawable
         {
             public Point(double x, double y)
                 : base(x, y)
-            {}
+            { }
 
-            public void Draw(Geometry.Box box, Graphics graphics)
-            {
-                this.Draw(box, graphics, new Settings(Color.Orange));
-            }
-
-            public void Draw(Geometry.Box box, Graphics graphics, Settings settings)
+            public void Draw(IAabb box, Graphics graphics, Settings settings, GeometryTraits trait)
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
@@ -78,21 +78,28 @@ namespace GraphicalDebugging
                 graphics.DrawEllipse(pen, x - 2.5f, y - 2.5f, 5, 5);
             }
 
-            public Geometry.Box Aabb { get { return new Geometry.Box(this, this); } }
+            public IAabb Aabb { get {
+                    return new Box<CS, U>(this, this);
+                } }
+
+            public Color DefaultColor { get { return Color.Orange; } }
         }
 
-        private class Box : Geometry.Box, IDrawable
+        private class Box<CS, U> : Geometry.Box<CS, U>, IAabb, IDrawable
         {
-            public Box(Point min, Point max)
-                : base(min, max)
-            {}
+            public Box()
+            { }
 
-            public void Draw(Geometry.Box box, Graphics graphics)
+            public Box(Geometry.Point<CS, U> min, Geometry.Point<CS, U> max)
+                : base(min, max)
+            { }
+
+            public double Get(int corner, int index)
             {
-                this.Draw(box, graphics, new Settings(Color.Red));
+                return corner == 0 ? min[index] : max[index];
             }
 
-            public void Draw(Geometry.Box box, Graphics graphics, Settings settings)
+            public void Draw(IAabb box, Graphics graphics, Settings settings, GeometryTraits traits)
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
@@ -120,21 +127,18 @@ namespace GraphicalDebugging
                 }
             }
 
-            public Geometry.Box Aabb { get { return this; } }
+            public IAabb Aabb { get { return this; } }
+
+            public Color DefaultColor { get { return Color.Red; } }
         }
 
-        private class Segment : Geometry.Segment, IDrawable
+        private class Segment<CS, U> : Geometry.Segment<CS, U>, IDrawable
         {
-            public Segment(Point first, Point second)
+            public Segment(Point<CS, U> first, Point<CS, U> second)
                 : base(first, second)
             {}
 
-            public void Draw(Geometry.Box box, Graphics graphics)
-            {
-                this.Draw(box, graphics, new Settings(Color.YellowGreen));
-            }
-
-            public void Draw(Geometry.Box box, Graphics graphics, Settings settings)
+            public void Draw(IAabb box, Graphics graphics, Settings settings, GeometryTraits traits)
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
@@ -148,17 +152,21 @@ namespace GraphicalDebugging
                     DrawDir(p0, p1, graphics, pen);
             }
 
-            public Geometry.Box Aabb{ get { return Envelope(); } }
-        }
-
-        private class Linestring : Geometry.Linestring, IDrawable
-        {
-            public void Draw(Geometry.Box box, Graphics graphics)
+            public IAabb Aabb
             {
-                this.Draw(box, graphics, new Settings(Color.Green));
+                get
+                {
+                    Geometry.Box<CS, U> b = Geometry.Envelope(this);
+                    return new Box<CS, U>(b.min, b.max);
+                }
             }
 
-            public void Draw(Geometry.Box box, Graphics graphics, Settings settings)
+            public Color DefaultColor { get { return Color.YellowGreen; } }
+        }
+
+        private class Linestring<CS, U> : Geometry.Linestring<CS, U>, IDrawable
+        {
+            public void Draw(IAabb box, Graphics graphics, Settings settings, GeometryTraits traits)
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
@@ -175,25 +183,21 @@ namespace GraphicalDebugging
                 }
             }
 
-            public void SetAabb(Geometry.Box box) { this.box = box; }
-            public Geometry.Box Aabb { get { return box; } }
-            private Geometry.Box box;
+            public IAabb Aabb { get { return Box; } }
+            public Color DefaultColor { get { return Color.Green; } }
+
+            public Box<CS, U> Box { get; set; }
         }
 
-        private class Ring : Geometry.Ring, IDrawable
+        private class Ring<CS, U> : Geometry.Ring<CS, U>, IDrawable
         {
-            public Ring(Geometry.Linestring linestring, Geometry.Box box)
+            public Ring(Geometry.Linestring<CS, U> linestring, Box<CS, U> box)
             {
                 this.linestring = linestring;
-                this.box = box;
+                this.Box = box;
             }
 
-            public void Draw(Geometry.Box box, Graphics graphics)
-            {
-                this.Draw(box, graphics, new Settings(Color.SlateBlue));
-            }
-
-            public void Draw(Geometry.Box box, Graphics graphics, Settings settings)
+            public void Draw(IAabb box, Graphics graphics, Settings settings, GeometryTraits traits)
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
@@ -212,26 +216,22 @@ namespace GraphicalDebugging
                 }
             }
 
-            public void SetAabb(Geometry.Box box) { this.box = box; }
-            public Geometry.Box Aabb { get { return box; } }
-            private Geometry.Box box;
+            public IAabb Aabb { get { return Box; } }
+            public Color DefaultColor { get { return Color.SlateBlue; } }
+
+            public Box<CS, U> Box { get; set; }
         }
 
-        private class Polygon : Geometry.Polygon, IDrawable
+        private class Polygon<CS, U> : Geometry.Polygon<CS, U>, IDrawable
         {
-            public Polygon(Geometry.Ring outer, List<Geometry.Ring> inners, Geometry.Box box)
+            public Polygon(Geometry.Ring<CS, U> outer, List<Geometry.Ring<CS, U>> inners, Box<CS, U> box)
             {
                 this.outer = outer;
                 this.inners = inners;
-                this.box = box;
+                this.Box = box;
             }
 
-            public void Draw(Geometry.Box box, Graphics graphics)
-            {
-                this.Draw(box, graphics, new Settings(Color.RoyalBlue));
-            }
-
-            public void Draw(Geometry.Box box, Graphics graphics, Settings settings)
+            public void Draw(IAabb box, Graphics graphics, Settings settings, GeometryTraits traits)
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
@@ -247,7 +247,7 @@ namespace GraphicalDebugging
                     if (settings.showDir)
                         DrawDir(dst_outer_points, true, graphics, pen);
 
-                    foreach (Ring inner in inners)
+                    foreach (Ring<CS, U> inner in inners)
                     {
                         PointF[] dst_inner_points = cs.Convert(inner);
                         if (dst_inner_points != null)
@@ -264,68 +264,58 @@ namespace GraphicalDebugging
                 }
             }
 
-            public void SetAabb(Geometry.Box box) { this.box = box; }
-            public Geometry.Box Aabb { get { return box; } }
-            private Geometry.Box box;
+            public IAabb Aabb { get { return Box; } }
+            public Color DefaultColor { get { return Color.RoyalBlue; } }
+
+            public Box<CS, U> Box { get; set; }
         }
 
-        private class Multi<S> : IDrawable
+        private class Multi<S, CS, U> : IDrawable
         {
-            public Multi(List<IDrawable> singles, Geometry.Box box)
+            public Multi(List<IDrawable> singles, Box<CS, U> box)
             {
                 this.singles = singles;
-                this.box = box;
+                this.Box = box;
             }
-
-            public void Draw(Geometry.Box box, Graphics graphics)
+            
+            public void Draw(IAabb box, Graphics graphics, Settings settings, GeometryTraits traits)
             {
                 foreach (IDrawable single in singles)
                 {
-                    single.Draw(box, graphics);
+                    single.Draw(box, graphics, settings, traits);
                 }
             }
 
-            public void Draw(Geometry.Box box, Graphics graphics, Settings settings)
-            {
-                foreach (IDrawable single in singles)
-                {
-                    single.Draw(box, graphics, settings);
-                }
-            }
+            public IAabb Aabb { get { return Box; } }
+            public Color DefaultColor { get { return singles.Count > 0 ? singles.First().DefaultColor : Color.Black; } }
 
-            public void SetAabb(Geometry.Box box) { this.box = box; }
-            public Geometry.Box Aabb { get { return box; } }
-            private Geometry.Box box;
+            public Box<CS, U> Box { get; set; }
 
             private List<IDrawable> singles;
         }
 
         private class ValuesContainer : IDrawable
         {
-            public ValuesContainer(List<double> values, Geometry.Box box)
+            public ValuesContainer(List<double> values, Box<Geometry.Cartesian, Geometry.None> box)
             {
                 this.values = values;
-                this.box = box;
+                this.Box = box;
             }
 
-            public void Draw(Geometry.Box box, Graphics graphics)
-            {
-                this.Draw(box, graphics, new Settings(Color.Black));
-            }
-
-            public void Draw(Geometry.Box box, Graphics graphics, Settings settings)
+            public void Draw(IAabb box, Graphics graphics, Settings settings, GeometryTraits traits)
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
                 Pen axis_pen = new Pen(settings.color, 2);
                 Pen pen = new Pen(Color.FromArgb(112, settings.color), 1);
 
-                float ax0 = cs.ConvertX(box.min[0]);
-                float ax1 = cs.ConvertX(box.max[0]);
+                float ax0 = cs.ConvertX(box.Get(0, 0));
+                float ax1 = cs.ConvertX(box.Get(1, 0));
                 float ay = cs.ConvertY(0);
                 graphics.DrawLine(axis_pen, ax0, ay, ax1, ay);
 
-                double step = box.Width / values.Count;
+                double width = box.Get(1, 0) - box.Get(0, 0);
+                double step = width / values.Count;
                 double i = step * 0.5;
                 foreach (double v in values)
                 {
@@ -338,24 +328,25 @@ namespace GraphicalDebugging
 
             public void Add(double v) { values.Add(v); }
 
-            public void SetAabb(Geometry.Box box) { this.box = box; }
-            public Geometry.Box Aabb { get { return box; } }
-            private Geometry.Box box;
+            public IAabb Aabb { get { return Box; } }
+            public Color DefaultColor { get { return Color.Black; } }
+
+            public Box<Geometry.Cartesian, Geometry.None> Box { get; set; }
 
             private List<double> values;
         }
 
-        private class TurnsContainer : IDrawable
+        private class TurnsContainer<CS, U> : IDrawable
         {
-            public TurnsContainer(List<Turn> turns, Geometry.Box box)
+            public TurnsContainer(List<Turn> turns, Box<CS, U> box)
             {
                 this.turns = turns;
-                this.box = box;
+                this.Box = box;
             }
 
             public class Turn
             {
-                public Turn(Geometry.Point p, char m, char o0, char o1)
+                public Turn(Geometry.Point<CS, U> p, char m, char o0, char o1)
                 {
                     point = p;
                     method = m;
@@ -363,16 +354,11 @@ namespace GraphicalDebugging
                     operation1 = o1;
                 }
 
-                public Geometry.Point point;
+                public Geometry.Point<CS, U> point;
                 public char method, operation0, operation1;
             }
 
-            public void Draw(Geometry.Box box, Graphics graphics)
-            {
-                this.Draw(box, graphics, new Settings(Color.DarkOrange));
-            }
-
-            public void Draw(Geometry.Box box, Graphics graphics, Settings settings)
+            public void Draw(IAabb box, Graphics graphics, Settings settings, GeometryTraits traits)
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
@@ -410,9 +396,10 @@ namespace GraphicalDebugging
                     graphics.DrawString(label.Value, font, text_brush, label.Key);
             }
 
-            public void SetAabb(Geometry.Box box) { this.box = box; }
-            public Geometry.Box Aabb { get { return box; } }
-            private Geometry.Box box;
+            public IAabb Aabb { get { return Box; } }
+            public Color DefaultColor { get { return Color.DarkOrange; } }
+
+            public Box<CS, U> Box { get; set; }
 
             private List<Turn> turns;
         }
@@ -469,7 +456,7 @@ namespace GraphicalDebugging
 
         private class LocalCS
         {
-            public LocalCS(Geometry.Box src_box, Graphics dst_graphics)
+            public LocalCS(IAabb src_box, Graphics dst_graphics)
             {
                 float w = dst_graphics.VisibleClipBounds.Width;
                 float h = dst_graphics.VisibleClipBounds.Height;
@@ -478,10 +465,10 @@ namespace GraphicalDebugging
                 float dst_w = w * 0.9f;
                 float dst_h = h * 0.9f;
 
-                double src_w = src_box.Width;
-                double src_h = src_box.Height;
-                src_x0 = src_box.min[0] + src_w / 2;
-                src_y0 = src_box.min[1] + src_h / 2;
+                double src_w = src_box.Get(1, 0) - src_box.Get(0, 0);
+                double src_h = src_box.Get(1, 1) - src_box.Get(0, 1);
+                src_x0 = src_box.Get(0, 0) + src_w / 2;
+                src_y0 = src_box.Get(0, 1) + src_h / 2;
 
                 if (src_w == 0 && src_h == 0)
                     scale = 1; // point
@@ -512,12 +499,12 @@ namespace GraphicalDebugging
                 return (float)(src * scale);
             }
 
-            public PointF Convert(Geometry.Point p)
+            public PointF Convert<CS, U>(Geometry.Point<CS, U> p)
             {
                 return new PointF(ConvertX(p[0]), ConvertY(p[1]));
             }
 
-            public PointF[] Convert(Geometry.Ring ring)
+            public PointF[] Convert<CS, U>(Geometry.Ring<CS, U> ring)
             {
                 if (ring.Count <= 0)
                     return null;
@@ -547,7 +534,7 @@ namespace GraphicalDebugging
         // Loading expressions
         // -------------------------------------------------
 
-        private static Point LoadPoint(Debugger debugger, string name)
+        private static Point<CS, U> LoadPoint<CS, U>(Debugger debugger, string name)
         {
             string name_prefix = "(double)" + name;
             Expression expr_x = debugger.GetExpression(name_prefix + "[0]");
@@ -556,139 +543,146 @@ namespace GraphicalDebugging
             double x = double.Parse(expr_x.Value, System.Globalization.CultureInfo.InvariantCulture);
             double y = double.Parse(expr_y.Value, System.Globalization.CultureInfo.InvariantCulture);
 
-            return new Point(x, y);
+            return new Point<CS, U>(x, y);
         }
 
-        private static Box LoadGeometryBox(Debugger debugger, string name)
+        private static Box<CS, U> LoadGeometryBox<CS, U>(Debugger debugger, string name)
         {
-            Point first_p = LoadPoint(debugger, name + ".m_min_corner");
-            Point second_p = LoadPoint(debugger, name + ".m_max_corner");
+            Point<CS, U> first_p = LoadPoint<CS, U>(debugger, name + ".m_min_corner");
+            Point<CS, U> second_p = LoadPoint<CS, U>(debugger, name + ".m_max_corner");
 
-            return new Box(first_p, second_p);
+            return new Box<CS, U>(first_p, second_p);
         }
 
-        private static Box LoadPolygonBox(Debugger debugger, string name)
+        private static Box<CS, U> LoadPolygonBox<CS, U>(Debugger debugger, string name)
         {
-            Point first_p = LoadPoint(debugger, name + ".ranges_[0]"); // interval X
-            Point second_p = LoadPoint(debugger, name + ".ranges_[1]"); // interval Y
+            Point<CS, U> first_p = LoadPoint<CS, U>(debugger, name + ".ranges_[0]"); // interval X
+            Point<CS, U> second_p = LoadPoint<CS, U>(debugger, name + ".ranges_[1]"); // interval Y
 
-            return new Box(new Point(first_p[0], second_p[0]),
-                           new Point(first_p[1], second_p[1]));
+            return new Box<CS, U>(
+                        new Point<CS, U>(first_p[0], second_p[0]),
+                        new Point<CS, U>(first_p[1], second_p[1]));
         }
 
-        private static Segment LoadSegment(Debugger debugger, string name, string first = "first", string second = "second")
+        private static Segment<CS, U> LoadSegment<CS, U>(Debugger debugger, string name, string first, string second)
         {
-            Point first_p = LoadPoint(debugger, name + "." + first);
-            Point second_p = LoadPoint(debugger, name + "." + second);
+            Point<CS, U> first_p = LoadPoint<CS, U>(debugger, name + "." + first);
+            Point<CS, U> second_p = LoadPoint<CS, U>(debugger, name + "." + second);
 
-            return new Segment(first_p, second_p);
+            return new Segment<CS, U>(first_p, second_p);
         }
 
-        private static Linestring LoadLinestring(Debugger debugger, string name)
+        private static Linestring<CS, U> LoadLinestring<CS, U>(Debugger debugger, string name)
         {
-            Linestring result = new Linestring();
-            Geometry.Box box = Geometry.Box.Inverted();
+            Linestring<CS, U> result = new Linestring<CS, U>();
+            Box<CS, U> box = new Box<CS, U>();
+            Geometry.AssignInverse(box);
 
             int size = LoadSize(debugger, name);
             for (int i = 0; i < size; ++i)
             {
-                Point p = LoadPoint(debugger, name + "[" + i + "]");
+                Point<CS, U> p = LoadPoint<CS, U>(debugger, name + "[" + i + "]");
                 result.Add(p);
-                box.Expand(p);
+                Geometry.Expand(box, p);
             }
 
-            result.SetAabb(box);
+            result.Box = box;
             return result;
         }
 
-        private static Ring LoadRing(Debugger debugger, string name, string member = "")
+        private static Ring<CS, U> LoadRing<CS, U>(Debugger debugger, string name, string member)
         {
             string name_suffix = member.Length > 0 ? "." + member : "";
-            Linestring ls = LoadLinestring(debugger, name + name_suffix);
-            return new Ring(ls, ls.Aabb);
+            Linestring<CS, U> ls = LoadLinestring<CS, U>(debugger, name + name_suffix);
+            return new Ring<CS, U>(ls, ls.Box);
         }
 
-        private static Polygon LoadPolygon(Debugger debugger, string name, string outer, string inners, bool inners_in_list = false, string ring_member = "")
+        private static Polygon<CS, U> LoadPolygon<CS, U>(Debugger debugger, string name, string outer, string inners, bool inners_in_list, string ring_member)
         {
-            Ring outer_r = LoadRing(debugger, name + "." + outer, ring_member);
+            Ring<CS, U> outer_r = LoadRing<CS, U>(debugger, name + "." + outer, ring_member);
 
-            Geometry.Box box = Geometry.Box.Inverted();
-            box.Expand(outer_r.Aabb);
+            Box<CS, U> box = new Box<CS, U>();
+            Geometry.AssignInverse(box);
+            Geometry.Expand(box, outer_r.Box);
 
-            List<Geometry.Ring> inners_r = new List<Geometry.Ring>();
+            List<Geometry.Ring<CS, U>> inners_r = new List<Geometry.Ring<CS, U>>();
 
             ContainerElements inner_names = new ContainerElements(debugger, name + "." + inners);
             foreach(string inner_name in inner_names)
             {
-                Ring inner_r = LoadRing(debugger, inner_name, ring_member);
+                Ring<CS, U> inner_r = LoadRing<CS, U>(debugger, inner_name, ring_member);
 
                 inners_r.Add(inner_r);
-                box.Expand(inner_r.Aabb);
+                Geometry.Expand(box, inner_r.Box);
             }
 
-            return new Polygon(outer_r, inners_r, box);
+            return new Polygon<CS, U>(outer_r, inners_r, box);
         }
 
-        private static Multi<Point> LoadMultiPoint(Debugger debugger, string name)
+        private static Multi<Point<CS, U>, CS, U> LoadMultiPoint<CS, U>(Debugger debugger, string name)
         {
             List<IDrawable> singles = new List<IDrawable>();
-            Geometry.Box box = Geometry.Box.Inverted();
+            Box<CS, U> box = new Box<CS, U>();
+            Geometry.AssignInverse(box);
 
             int size = LoadSize(debugger, name);
 
             for (int i = 0; i < size; ++i)
             {
-                Point s = LoadPoint(debugger, name + "[" + i + "]");
+                Point<CS, U> s = LoadPoint<CS, U>(debugger, name + "[" + i + "]");
                 singles.Add(s);
-                box.Expand(s);
+                Geometry.Expand(box, s);
             }
 
-            return new Multi<Point>(singles, box);
+            return new Multi<Point<CS, U>, CS, U>(singles, box);
         }
 
-        private static Multi<Linestring> LoadMultiLinestring(Debugger debugger, string name)
+        private static Multi<Linestring<CS, U>, CS, U> LoadMultiLinestring<CS, U>(Debugger debugger, string name)
         {
             List<IDrawable> singles = new List<IDrawable>();
-            Geometry.Box box = Geometry.Box.Inverted();
+            Box<CS, U> box = new Box<CS, U>();
+            Geometry.AssignInverse(box);
 
             int size = LoadSize(debugger, name);
 
             for (int i = 0; i < size; ++i)
             {
-                Linestring s = LoadLinestring(debugger, name + "[" + i + "]");
+                Linestring<CS, U> s = LoadLinestring<CS, U>(debugger, name + "[" + i + "]");
                 singles.Add(s);
-                box.Expand(s.Aabb);
+                Geometry.Expand(box, s.Box);
             }
 
-            return new Multi<Linestring>(singles, box);
+            return new Multi<Linestring<CS, U>, CS, U>(singles, box);
         }
 
-        private static Multi<Polygon> LoadMultiPolygon(Debugger debugger, string name, string outer, string inners)
+        private static Multi<Polygon<CS, U>, CS, U> LoadMultiPolygon<CS, U>(Debugger debugger, string name, string outer, string inners)
         {
             List<IDrawable> singles = new List<IDrawable>();
-            Geometry.Box box = Geometry.Box.Inverted();
+            Box<CS, U> box = new Box<CS, U>();
+            Geometry.AssignInverse(box);
 
             int size = LoadSize(debugger, name);
 
             for (int i = 0; i < size; ++i)
             {
-                Polygon s = LoadPolygon(debugger, name + "[" + i + "]", outer, inners);
+                Polygon<CS, U> s = LoadPolygon<CS, U>(debugger, name + "[" + i + "]", outer, inners, false, "");
                 singles.Add(s);
-                box.Expand(s.Aabb);
+                Geometry.Expand(box, s.Box);
             }
 
-            return new Multi<Polygon>(singles, box);
+            return new Multi<Polygon<CS, U>, CS, U>(singles, box);
         }
 
         private static ValuesContainer LoadValuesContainer(Debugger debugger, string name)
         {
             List<double> values = new List<double>();
-            Geometry.Box box = Geometry.Box.Inverted();
+            Box<Geometry.Cartesian, Geometry.None> box = new Box<Geometry.Cartesian, Geometry.None>();
+            Geometry.AssignInverse(box);
 
             ContainerElements names = new ContainerElements(debugger, name);
 
             if (names.Count > 0)
-                box.Expand(new Point(0.0, 0.0));
+                Geometry.Expand(box, new Point<Geometry.Cartesian, Geometry.None>(0.0, 0.0));
 
             int i = 0;
             foreach (string elem_n in names)
@@ -698,7 +692,7 @@ namespace GraphicalDebugging
                     continue;
                 double v = double.Parse(expr.Value, System.Globalization.CultureInfo.InvariantCulture);
                 values.Add(v);
-                box.Expand(new Point(i, v));
+                Geometry.Expand(box, new Point<Geometry.Cartesian, Geometry.None>(i, v));
                 ++i;
             }
 
@@ -750,9 +744,9 @@ namespace GraphicalDebugging
             }
         }
 
-        private static TurnsContainer.Turn LoadTurn(Debugger debugger, string name)
+        private static TurnsContainer<CS, U>.Turn LoadTurn<CS, U>(Debugger debugger, string name)
         {
-            Point p = LoadPoint(debugger, name + ".point");
+            Point<CS, U> p = LoadPoint<CS, U>(debugger, name + ".point");
 
             char method = '?';
             Expression expr_method = debugger.GetExpression(name + ".method");
@@ -769,24 +763,29 @@ namespace GraphicalDebugging
             if (expr_op1.IsValidValue)
                 op1 = OperationChar(expr_op1.Value);
 
-            return new TurnsContainer.Turn(p, method, op0, op1);
+            return new TurnsContainer<CS, U>.Turn(p, method, op0, op1);
         }
 
-        private static TurnsContainer LoadTurnsContainer(Debugger debugger, string name, int size)
+        private static TurnsContainer<CS, U> LoadTurnsContainer<CS, U>(Debugger debugger, string name, int size)
         {
-            List<TurnsContainer.Turn> turns = new List<TurnsContainer.Turn>();
-            Geometry.Box box = Geometry.Box.Inverted();
+            List<TurnsContainer<CS, U>.Turn> turns = new List<TurnsContainer<CS, U>.Turn>();
+            Box<CS, U> box = new Box<CS, U>();
+            Geometry.AssignInverse(box);
 
             for (int i = 0; i < size; ++i)
             {
-                TurnsContainer.Turn t = LoadTurn(debugger, name + "[" + i + "]");
+                TurnsContainer<CS, U>.Turn t = LoadTurn<CS, U>(debugger, name + "[" + i + "]");
 
                 turns.Add(t);
-                box.Expand(t.point);
+                Geometry.Expand(box, t.point);
             }
 
-            return new TurnsContainer(turns, box);
+            return new TurnsContainer<CS, U>(turns, box);
         }
+
+        // -------------------------------------------------
+        // Traits
+        // -------------------------------------------------
 
         public class GeometryTraits
         {
@@ -904,6 +903,74 @@ namespace GraphicalDebugging
             return null;
         }
 
+        // -------------------------------------------------
+        // Loading expression+traits -> IDrawable
+        // -------------------------------------------------
+
+        private static GeometryTraits TraitsTypes(GeometryTraits traits, out Type cs, out Type u)
+        {
+            if (traits == null)
+            {
+                cs = null;
+                u = null;
+                return null;
+            }
+
+            if (traits.CoordinateSystem == GeometryTraits.CoordinateSystemT.Spherical)
+            {
+                if (traits.Unit == GeometryTraits.UnitT.Radian)
+                {
+                    cs = typeof(Geometry.Spherical);
+                    u = typeof(Geometry.Radian);
+                }
+                else
+                {
+                    cs = typeof(Geometry.Spherical);
+                    u = typeof(Geometry.Degree);
+                }
+            }
+            else if (traits.CoordinateSystem == GeometryTraits.CoordinateSystemT.Geographic)
+            {
+                if (traits.Unit == GeometryTraits.UnitT.Radian)
+                {
+                    cs = typeof(Geometry.Geographic);
+                    u = typeof(Geometry.Radian);
+                }
+                else
+                {
+                    cs = typeof(Geometry.Geographic);
+                    u = typeof(Geometry.Degree);
+                }
+            }
+            else
+            {
+                cs = typeof(Geometry.Cartesian);
+                u = typeof(Geometry.None);
+            }
+
+            return traits;
+        }
+
+        private static IDrawable LoadGeneric(string methodName, GeometryTraits traits, object[] parameters)
+        {
+            if (traits == null)
+                return null;
+
+            Type cs = null;
+            Type u = null;
+            TraitsTypes(traits, out cs, out u);
+
+            return (IDrawable)typeof(ExpressionDrawer).
+                GetMethod(methodName, System.Reflection.BindingFlags.NonPublic
+                                    | System.Reflection.BindingFlags.Static).
+                    MakeGenericMethod(new Type[] { cs, u }).
+                        Invoke(null, parameters);
+        }
+
+        // -------------------------------------------------
+        // High level loading
+        // -------------------------------------------------
+
         public class DrawablePair
         {
             public DrawablePair(IDrawable drawable, GeometryTraits traits)
@@ -919,42 +986,42 @@ namespace GraphicalDebugging
         {
             IDrawable d = null;
             GeometryTraits traits = null;
-
+            
             if ((traits = GetPointTraits(type)) != null)
-                d = LoadPoint(debugger, name);
+                d = LoadGeneric("LoadPoint", traits, new object[] { debugger, name });
             else if ((traits = GetGeometryTraits(type, "boost::geometry::model::box")) != null)
-                d = LoadGeometryBox(debugger, name);
+                d = LoadGeneric("LoadGeometryBox", traits, new object[] { debugger, name });
             else if ((traits = GetGeometryTraits(type, "boost::geometry::model::segment")) != null
                   || (traits = GetGeometryTraits(type, "boost::geometry::model::referring_segment")) != null)
-                d = LoadSegment(debugger, name);
+                d = LoadGeneric("LoadSegment", traits, new object[] { debugger, name, "first", "second" });
             else if ((traits = GetGeometryTraits(type, "boost::geometry::model::linestring")) != null)
-                d = LoadLinestring(debugger, name);
+                d = LoadGeneric("LoadLinestring", traits, new object[] { debugger, name });
             else if ((traits = GetGeometryTraits(type, "boost::geometry::model::ring")) != null)
-                d = LoadRing(debugger, name);
+                d = LoadGeneric("LoadRing", traits, new object[] { debugger, name, "" });
             else if ((traits = GetGeometryTraits(type, "boost::geometry::model::polygon")) != null)
-                d = LoadPolygon(debugger, name, "m_outer", "m_inners");
+                d = LoadGeneric("LoadPolygon", traits, new object[] { debugger, name, "m_outer", "m_inners", false, "" });
             else if ((traits = GetGeometryTraits(type, "boost::geometry::model::multi_point")) != null)
-                d = LoadMultiPoint(debugger, name);
+                d = LoadGeneric("LoadMultiPoint", traits, new object[] { debugger, name });
             else if ((traits = GetGeometryTraits(type, "boost::geometry::model::multi_linestring", "boost::geometry::model::linestring")) != null)
-                d = LoadMultiLinestring(debugger, name);
+                d = LoadGeneric("LoadMultiLinestring", traits, new object[] { debugger, name });
             else if ((traits = GetGeometryTraits(type, "boost::geometry::model::multi_polygon", "boost::geometry::model::polygon")) != null)
-                d = LoadMultiPolygon(debugger, name, "m_outer", "m_inners");
+                d = LoadGeneric("LoadMultiPolygon", traits, new object[] { debugger, name, "m_outer", "m_inners" });
             else
             {
                 string base_type = Util.BaseType(type);
                 if (base_type == "boost::polygon::point_data")
-                    d = LoadPoint(debugger, name);
+                    d = LoadPoint<Geometry.Cartesian, Geometry.None>(debugger, name);
                 else if (base_type == "boost::polygon::segment_data")
-                    d = LoadSegment(debugger, name, "points_[0]", "points_[1]");
+                    d = LoadSegment<Geometry.Cartesian, Geometry.None>(debugger, name, "points_[0]", "points_[1]");
                 else if (base_type == "boost::polygon::rectangle_data")
-                    d = LoadPolygonBox(debugger, name);
+                    d = LoadPolygonBox<Geometry.Cartesian, Geometry.None>(debugger, name);
                 else if (base_type == "boost::polygon::polygon_data")
-                    d = LoadRing(debugger, name, "coords_");
+                    d = LoadRing<Geometry.Cartesian, Geometry.None>(debugger, name, "coords_");
                 else if (base_type == "boost::polygon::polygon_with_holes_data")
-                    d = LoadPolygon(debugger, name, "self_", "holes_", true, "coords_");
+                    d = LoadPolygon<Geometry.Cartesian, Geometry.None>(debugger, name, "self_", "holes_", true, "coords_");
 
                 if (d != null)
-                    traits = new GeometryTraits(2); // 2D cartesian
+                    traits = new GeometryTraits(2); // 2D cartesian;
             }
 
             return new DrawablePair(d, traits);
@@ -1002,7 +1069,7 @@ namespace GraphicalDebugging
             if (traits != null)
             {
                 int size = LoadSize(debugger, name);
-                d = LoadTurnsContainer(debugger, name, size);
+                d = LoadGeneric("LoadTurnsContainer", traits, new object[] { debugger, name, size });
             }
 
             return new DrawablePair(d, traits);
@@ -1204,7 +1271,8 @@ namespace GraphicalDebugging
                 DrawablePair d = MakeDrawable(debugger, name);
                 if (d.Drawable != null)
                 {
-                    d.Drawable.Draw(d.Drawable.Aabb, graphics);
+                    Settings settings = new Settings(d.Drawable.DefaultColor);
+                    d.Drawable.Draw(d.Drawable.Aabb, graphics, settings, d.Traits);
                     return true;
                 }
             }
@@ -1223,7 +1291,8 @@ namespace GraphicalDebugging
             {
                 System.Diagnostics.Debug.Assert(names.Length == settings.Length);
 
-                Geometry.Box aabb = Geometry.Box.Inverted();
+                Box<Geometry.Cartesian, Geometry.None> box = new Box<Geometry.Cartesian, Geometry.None>();
+                Geometry.AssignInverse(box);
                 int drawnCount = 0;
                 int count = names.Length;
 
@@ -1246,7 +1315,13 @@ namespace GraphicalDebugging
                             csystems.Add(traits.CoordinateSystem);
                             units.Add(traits.Unit);
 
-                            aabb.Expand(drawables[i].Drawable.Aabb);
+                            IAabb aabb = drawables[i].Drawable.Aabb;
+                            Box<Geometry.Cartesian, Geometry.None> b = new Box<Geometry.Cartesian, Geometry.None>(
+                                new Point<Geometry.Cartesian, Geometry.None>(aabb.Get(0, 0), aabb.Get(0, 1)),
+                                new Point<Geometry.Cartesian, Geometry.None>(aabb.Get(1, 0), aabb.Get(1, 1))
+                                );                            
+                            Geometry.Expand(box, b);
+
                             ++drawnCount;
                         }
                     }
@@ -1256,31 +1331,26 @@ namespace GraphicalDebugging
                 {
                     throw new Exception("Multiple coordinate systems detected.");
                 }
+                if (units.Count > 1)
+                {
+                    throw new Exception("Multiple units detected.");
+                }
 
                 if (drawnCount > 0)
                 {
                     int dimension = dimensions.Max();
                     GeometryTraits.CoordinateSystemT csystem = csystems.First();
-                    GeometryTraits.UnitT unit = GeometryTraits.UnitT.None;
-                    if (csystem == GeometryTraits.CoordinateSystemT.Spherical
-                     || csystem == GeometryTraits.CoordinateSystemT.Geographic)
-                    {
-                        if (units.Contains(GeometryTraits.UnitT.Degree))
-                            unit = GeometryTraits.UnitT.Degree;
-                        else
-                            unit = GeometryTraits.UnitT.Radian;
-                    }
-                    GeometryTraits targetTraits = new GeometryTraits(dimension, csystem, unit);
+                    GeometryTraits.UnitT unit = units.First();
 
                     for (int i = 0; i < count; ++i)
                     {
                         if (drawables[i] != null && drawables[i].Drawable != null)
                         {
-                            drawables[i].Drawable.Draw(aabb, graphics, settings[i]);
+                            drawables[i].Drawable.Draw(box, graphics, settings[i], drawables[i].Traits);
                         }
                     }
 
-                    ExpressionDrawer.DrawAabb(graphics, aabb);
+                    ExpressionDrawer.DrawAabb(graphics, box);
 
                     return true;
                 }
@@ -1312,8 +1382,13 @@ namespace GraphicalDebugging
             graphics.DrawString(message, font, brush, rect, drawFormat);
         }
 
-        private static bool DrawAabb(Graphics graphics, Geometry.Box box)
+        private static bool DrawAabb(Graphics graphics, IAabb aabb)
         {
+            Box<Geometry.Cartesian, Geometry.None> box = new Box<Geometry.Cartesian, Geometry.None>(
+                new Point<Geometry.Cartesian, Geometry.None>(aabb.Get(0, 0), aabb.Get(0, 1)),
+                new Point<Geometry.Cartesian, Geometry.None>(aabb.Get(1, 0), aabb.Get(1, 1))
+                );
+
             if (!box.IsValid())
                 return false;
 

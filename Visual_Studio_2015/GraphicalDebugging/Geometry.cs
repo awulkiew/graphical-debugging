@@ -12,15 +12,23 @@ namespace GraphicalDebugging
 {
     class Geometry
     {
-        public class Point
-        {
-            public Point()
-            { }
+        public class CoordinateSystem { }
 
-            public Point(double x, double y)
-            {
-                coords = new double[2] { x, y };
-            }
+        public class Cartesian : CoordinateSystem { }
+        public class Spherical : CoordinateSystem { }
+        public class Geographic : CoordinateSystem { }
+
+        public class Unit { }
+        public class None : Unit { }
+        public class Radian : Unit { }
+        public class Degree : Unit { }
+
+        public class Point<CS, U>// where CS : CoordinateSystem where U : Unit
+        {
+            public Point() { }
+            //public Point(double x) { coords = new double[1] { x }; }
+            public Point(double x, double y) { coords = new double[2] { x, y }; }
+            //public Point(double x, double y, double z) { coords = new double[3] { x, y, z }; }
 
             public double this[int i]
             {
@@ -28,41 +36,20 @@ namespace GraphicalDebugging
                 set { coords[i] = value; }
             }
 
+            public int Dimension { get { return 2/*coords != null ? coords.Length : 0*/; } }
+
             protected double[] coords;
         }
 
-        public class Box
+        public class Box<CS, U>
         {
-            public static Box Inverted()
-            {
-                return new Box(
-                    new Point(double.MaxValue, double.MaxValue),
-                    new Point(double.MinValue, double.MinValue));
-            }
-
             public Box()
             { }
 
-            public Box(Point min, Point max)
+            public Box(Point<CS, U> min, Point<CS, U> max)
             {
                 this.min = min;
                 this.max = max;
-            }
-
-            public void Expand(Point p)
-            {
-                if (p[0] < min[0]) min[0] = p[0];
-                if (p[1] < min[1]) min[1] = p[1];
-                if (p[0] > max[0]) max[0] = p[0];
-                if (p[1] > max[1]) max[1] = p[1];
-            }
-
-            public void Expand(Box b)
-            {
-                if (b.min[0] < min[0]) min[0] = b.min[0];
-                if (b.min[1] < min[1]) min[1] = b.min[1];
-                if (b.max[0] > max[0]) max[0] = b.max[0];
-                if (b.max[1] > max[1]) max[1] = b.max[1];
             }
 
             public bool IsValid() { return min[0] <= max[0] && min[1] <= max[1]; }
@@ -70,21 +57,43 @@ namespace GraphicalDebugging
             public double Width { get { return max[0] - min[0]; } }
             public double Height { get { return max[1] - min[1]; } }
 
-            public Point min, max;
+            public Point<CS, U> min, max;
         }
 
-        public class Segment
+        public static void AssignInverse<CS, U>(Box<CS, U> b)
+        {
+            b.min = new Point<CS, U>(double.MaxValue, double.MaxValue);
+            b.max = new Point<CS, U>(double.MinValue, double.MinValue);
+        }
+
+        public static void Expand<CS, U>(Box<CS, U> box, Point<CS, U> p)
+        {
+            if (p[0] < box.min[0]) box.min[0] = p[0];
+            if (p[1] < box.min[1]) box.min[1] = p[1];
+            if (p[0] > box.max[0]) box.max[0] = p[0];
+            if (p[1] > box.max[1]) box.max[1] = p[1];
+        }
+
+        public static void Expand<CS, U>(Box<CS, U> box, Box<CS, U> b)
+        {
+            if (b.min[0] < box.min[0]) box.min[0] = b.min[0];
+            if (b.min[1] < box.min[1]) box.min[1] = b.min[1];
+            if (b.max[0] > box.max[0]) box.max[0] = b.max[0];
+            if (b.max[1] > box.max[1]) box.max[1] = b.max[1];
+        }
+
+        public class Segment<CS, U>
         {
             public Segment()
             { }
 
-            public Segment(Point p0, Point p1)
+            public Segment(Point<CS, U> p0, Point<CS, U> p1)
             {
                 this.p0 = p0;
                 this.p1 = p1;
             }
 
-            public Point this[int i]
+            public Point<CS, U> this[int i]
             {
                 get
                 {
@@ -95,63 +104,63 @@ namespace GraphicalDebugging
 
             public int Count { get { return 2; } }
 
-            public Box Envelope()
-            {
-                return new Geometry.Box(
-                        new Geometry.Point(Math.Min(this[0][0], this[1][0]),
-                                           Math.Min(this[0][1], this[1][1])),
-                        new Geometry.Point(Math.Max(this[0][0], this[1][0]),
-                                           Math.Max(this[0][1], this[1][1]))
-                    );
-            }
-
-            protected Point p0;
-            protected Point p1;
+            protected Point<CS, U> p0;
+            protected Point<CS, U> p1;
         }
 
-        public class Linestring
+        public static Box<CS, U> Envelope<CS, U>(Segment<CS, U> seg)
+        {
+            return new Box<CS, U>(
+                    new Point<CS, U>(Math.Min(seg[0][0], seg[1][0]),
+                                     Math.Min(seg[0][1], seg[1][1])),
+                    new Point<CS, U>(Math.Max(seg[0][0], seg[1][0]),
+                                     Math.Max(seg[0][1], seg[1][1]))
+                );
+        }
+
+        public class Linestring<CS, U>
         {
             public Linestring()
             {
-                points = new List<Point>();
+                points = new List<Point<CS, U>>();
             }
 
-            public void Add(Point p) { points.Add(p); }
+            public void Add(Point<CS, U> p) { points.Add(p); }
 
-            public Point this[int i] { get { return points[i]; } }
+            public Point<CS, U> this[int i] { get { return points[i]; } }
             public int Count { get { return points.Count; } }
 
-            protected List<Point> points;
+            protected List<Point<CS, U>> points;
         }
 
-        public class Ring
+        public class Ring<CS, U>
         {
             public Ring()
             {
-                linestring = new Linestring();
+                linestring = new Linestring<CS, U>();
             }
 
-            public void Add(Point p) { linestring.Add(p); }
+            public void Add(Point<CS, U> p) { linestring.Add(p); }
 
-            public Point this[int i] { get { return linestring[i]; } }
+            public Point<CS, U> this[int i] { get { return linestring[i]; } }
             public int Count { get { return linestring.Count; } }
 
-            protected Linestring linestring;
+            protected Linestring<CS, U> linestring;
         }
 
-        public class Polygon
+        public class Polygon<CS, U>
         {
             public Polygon()
             {
-                outer = new Ring();
-                inners = new List<Ring>();
+                outer = new Ring<CS, U>();
+                inners = new List<Ring<CS, U>>();
             }
 
-            public Ring Outer { get { return outer; } }
-            public List<Ring> Inners { get { return inners; } }
+            public Ring<CS, U> Outer { get { return outer; } }
+            public List<Ring<CS, U>> Inners { get { return inners; } }
 
-            protected Ring outer;
-            protected List<Ring> inners;
+            protected Ring<CS, U> outer;
+            protected List<Ring<CS, U>> inners;
         }
 
         public class Multi<G>
