@@ -12,18 +12,31 @@ namespace GraphicalDebugging
 {
     class Geometry
     {
-        public class CoordinateSystem { }
+        public enum CoordinateSystem { Cartesian, Spherical, Geographic };
+        public enum Unit { None, Radian, Degree };
 
-        public class Cartesian : CoordinateSystem { }
-        public class Spherical : CoordinateSystem { }
-        public class Geographic : CoordinateSystem { }
+        public class Traits
+        {
+            public Traits(int dimension)
+            {
+                Dimension = dimension;
+                CoordinateSystem = CoordinateSystem.Cartesian;
+                Unit = Unit.None;
+            }
 
-        public class Unit { }
-        public class None : Unit { }
-        public class Radian : Unit { }
-        public class Degree : Unit { }
+            public Traits(int dimension, CoordinateSystem coordinateSystem, Unit unit)
+            {
+                Dimension = dimension;
+                CoordinateSystem = coordinateSystem;
+                Unit = unit;
+            }
 
-        public class Point<CS, U>// where CS : CoordinateSystem where U : Unit
+            public int Dimension { get; }
+            public CoordinateSystem CoordinateSystem { get; }
+            public Unit Unit { get; }
+        }
+
+        public class Point
         {
             public Point() { }
             //public Point(double x) { coords = new double[1] { x }; }
@@ -41,126 +54,94 @@ namespace GraphicalDebugging
             protected double[] coords;
         }
 
-        public class Box<CS, U>
+        public class Box
         {
             public Box()
             { }
 
-            public Box(Point<CS, U> min, Point<CS, U> max)
+            public Box(Point min, Point max)
             {
-                this.min = min;
-                this.max = max;
+                Min = min;
+                Max = max;
             }
 
-            public bool IsValid() { return min[0] <= max[0] && min[1] <= max[1]; }
+            public bool IsValid() { return Min[0] <= Max[0] && Min[1] <= Max[1]; }
 
-            public double Width { get { return max[0] - min[0]; } }
-            public double Height { get { return max[1] - min[1]; } }
+            public double Width { get { return Max[0] - Min[0]; } }
+            public double Height { get { return Max[1] - Min[1]; } }
 
-            public Point<CS, U> min, max;
+            public Point Min, Max;
         }
 
-        public static void AssignInverse<CS, U>(Box<CS, U> b)
-        {
-            b.min = new Point<CS, U>(double.MaxValue, double.MaxValue);
-            b.max = new Point<CS, U>(double.MinValue, double.MinValue);
-        }
-
-        public static void Expand<CS, U>(Box<CS, U> box, Point<CS, U> p)
-        {
-            if (p[0] < box.min[0]) box.min[0] = p[0];
-            if (p[1] < box.min[1]) box.min[1] = p[1];
-            if (p[0] > box.max[0]) box.max[0] = p[0];
-            if (p[1] > box.max[1]) box.max[1] = p[1];
-        }
-
-        public static void Expand<CS, U>(Box<CS, U> box, Box<CS, U> b)
-        {
-            if (b.min[0] < box.min[0]) box.min[0] = b.min[0];
-            if (b.min[1] < box.min[1]) box.min[1] = b.min[1];
-            if (b.max[0] > box.max[0]) box.max[0] = b.max[0];
-            if (b.max[1] > box.max[1]) box.max[1] = b.max[1];
-        }
-
-        public class Segment<CS, U>
+        public class Segment
         {
             public Segment()
             { }
 
-            public Segment(Point<CS, U> p0, Point<CS, U> p1)
+            public Segment(Point first, Point second)
             {
-                this.p0 = p0;
-                this.p1 = p1;
+                First = first;
+                Second = second;
             }
 
-            public Point<CS, U> this[int i]
+            public Point this[int i]
             {
                 get
                 {
                     Debug.Assert(i == 0 || i == 1);
-                    return i == 0 ? p0 : p1;
+                    return i == 0 ? First : Second;
                 }
             }
 
             public int Count { get { return 2; } }
 
-            protected Point<CS, U> p0;
-            protected Point<CS, U> p1;
+            public Point First;
+            public Point Second;
         }
 
-        public static Box<CS, U> Envelope<CS, U>(Segment<CS, U> seg)
-        {
-            return new Box<CS, U>(
-                    new Point<CS, U>(Math.Min(seg[0][0], seg[1][0]),
-                                     Math.Min(seg[0][1], seg[1][1])),
-                    new Point<CS, U>(Math.Max(seg[0][0], seg[1][0]),
-                                     Math.Max(seg[0][1], seg[1][1]))
-                );
-        }
-
-        public class Linestring<CS, U>
+        public class Linestring
         {
             public Linestring()
             {
-                points = new List<Point<CS, U>>();
+                points = new List<Point>();
             }
 
-            public void Add(Point<CS, U> p) { points.Add(p); }
+            public void Add(Point p) { points.Add(p); }
 
-            public Point<CS, U> this[int i] { get { return points[i]; } }
+            public Point this[int i] { get { return points[i]; } }
             public int Count { get { return points.Count; } }
 
-            protected List<Point<CS, U>> points;
+            protected List<Point> points;
         }
 
-        public class Ring<CS, U>
+        public class Ring
         {
             public Ring()
             {
-                linestring = new Linestring<CS, U>();
+                linestring = new Linestring();
             }
 
-            public void Add(Point<CS, U> p) { linestring.Add(p); }
+            public void Add(Point p) { linestring.Add(p); }
 
-            public Point<CS, U> this[int i] { get { return linestring[i]; } }
+            public Point this[int i] { get { return linestring[i]; } }
             public int Count { get { return linestring.Count; } }
 
-            protected Linestring<CS, U> linestring;
+            protected Linestring linestring;
         }
 
-        public class Polygon<CS, U>
+        public class Polygon
         {
             public Polygon()
             {
-                outer = new Ring<CS, U>();
-                inners = new List<Ring<CS, U>>();
+                outer = new Ring();
+                inners = new List<Ring>();
             }
 
-            public Ring<CS, U> Outer { get { return outer; } }
-            public List<Ring<CS, U>> Inners { get { return inners; } }
+            public Ring Outer { get { return outer; } }
+            public List<Ring> Inners { get { return inners; } }
 
-            protected Ring<CS, U> outer;
-            protected List<Ring<CS, U>> inners;
+            protected Ring outer;
+            protected List<Ring> inners;
         }
 
         public class Multi<G>
@@ -177,5 +158,134 @@ namespace GraphicalDebugging
 
             protected List<G> singles;
         }
+
+        public static void AssignInverse(Box b)
+        {
+            b.Min = new Point(double.MaxValue, double.MaxValue);
+            b.Max = new Point(double.MinValue, double.MinValue);
+        }
+
+        public static Box Envelope(Segment seg)
+        {
+            return new Box(
+                    new Point(Math.Min(seg[0][0], seg[1][0]),
+                              Math.Min(seg[0][1], seg[1][1])),
+                    new Point(Math.Max(seg[0][0], seg[1][0]),
+                              Math.Max(seg[0][1], seg[1][1]))
+                );
+        }
+        // NOTE: Geometries must be normalized
+        // U is Radian or Degree
+        /*public static Box Envelope(Segment seg)
+        {
+            Box result = new Box(seg[0], seg[0]);
+            Expand(result, seg[1]);
+            return result;
+        }*/
+        
+        public static void Expand(Box box, Point p)
+        {
+            if (p[0] < box.Min[0]) box.Min[0] = p[0];
+            if (p[1] < box.Min[1]) box.Min[1] = p[1];
+            if (p[0] > box.Max[0]) box.Max[0] = p[0];
+            if (p[1] > box.Max[1]) box.Max[1] = p[1];
+        }
+        // NOTE: Geometries must be normalized
+        /*public static void Expand<CS>(Box<CS, Radian> box, Point<CS, Radian> p)
+        {
+            double minDist = box.min[0] - p[0];
+            while (minDist < 0)
+                minDist += 2 * Math.PI;
+            double maxDist = p[0] - box.Max[0];
+            while (maxDist < 0)
+                maxDist += 2 * Math.PI;
+
+            if (minDist < maxDist)
+                box.min[0] = p[0];
+            else
+                box.Max[0] = p[0] < box.min[0] ? p[0] + 2 * Math.PI : p[0];
+
+            if (p[1] < box.min[1]) box.min[1] = p[1];
+            if (p[1] > box.Max[1]) box.Max[1] = p[1];
+        }
+        // NOTE: Geometries must be normalized
+        public static void Expand<CS>(Box<CS, Degree> box, Point<CS, Degree> p)
+        {
+            double minDist = box.Min[0] - p[0];
+            while (minDist < 0)
+                minDist += 360;
+            double maxDist = p[0] - box.Max[0];
+            while (maxDist < 0)
+                maxDist += 360;
+
+            if (minDist < maxDist)
+                box.Min[0] = p[0];
+            else
+                box.Max[0] = p[0] < box.Min[0] ? p[0] + 360 : p[0];
+
+            if (p[1] < box.Min[1]) box.Min[1] = p[1];
+            if (p[1] > box.Max[1]) box.Max[1] = p[1];
+        }*/
+
+        public static void Expand(Box box, Box b)
+        {
+            if (b.Min[0] < box.Min[0]) box.Min[0] = b.Min[0];
+            if (b.Min[1] < box.Min[1]) box.Min[1] = b.Min[1];
+            if (b.Max[0] > box.Max[0]) box.Max[0] = b.Max[0];
+            if (b.Max[1] > box.Max[1]) box.Max[1] = b.Max[1];
+        }
+
+        /*public static bool Disjoint(Box l, Box r, int dim)
+        {
+            return l.Max[dim] < r.Min[dim] || r.Min[dim] < l.Min[dim];
+        }
+        // NOTE: Boxes must be normalized
+        public static bool Disjoint(Box l, Box r, int dim)
+        {
+            if (dim != 0)
+                return l.Max[dim] < r.Min[dim] || r.Max[dim] < l.Min[dim];
+            else
+                return l.Max[0] < r.Min[0] || (l.Max[0] > Math.PI && l.Max[0] - 2 * Math.PI < r.Min[0])
+                    || r.Max[0] < l.Min[0] || (r.Max[0] > Math.PI && r.Max[0] - 2 * Math.PI < l.Min[0]);
+        }
+        // NOTE: Boxes must be normalized
+        public static bool Disjoint(Box l, Box r, int dim)
+        {
+            if (dim != 0)
+                return l.Max[dim] < r.Min[dim] || r.Max[dim] < l.Min[dim];
+            else
+                return l.Max[0] < r.Min[0] || (l.Max[0] > 180 && l.Max[0] - 360 < r.Min[0])
+                    || r.Max[0] < l.Min[0] || (r.Max[0] > 180 && r.Max[0] - 360 < l.Min[0]);
+        }*/
+
+        /*public static void Normalize(Point p, Traits traits)
+        {
+            if (traits.Unit != Unit.None)
+                NormalizeAngle(p, traits.Unit);
+        }
+        private static void NormalizeAngle(Point p, Unit unit)
+        {
+            double pi = HalfAngle(unit);
+            while (p[0] < -pi) p[0] += 2 * pi;
+            while (p[0] > pi) p[0] -= 2 * pi;
+        }
+
+        public static void Normalize(Box b, Traits traits)
+        {
+            if (traits.Unit != Unit.None)
+                NormalizeAngle(b, traits.Unit);
+        }
+        private static void NormalizeAngle(Box b, Unit unit)
+        {
+            NormalizeAngle(b.Min, unit);
+            NormalizeAngle(b.Max, unit);
+            if (b.Min[0] > b.Max[0])
+                b.Max[0] += 2 * HalfAngle(unit);
+        }
+
+        private static double HalfAngle(Unit unit)
+        {
+            return unit == Unit.Degree ? 180 : Math.PI;
+        }*/
     }
 }
