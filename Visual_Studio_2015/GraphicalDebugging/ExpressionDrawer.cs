@@ -678,22 +678,22 @@ namespace GraphicalDebugging
                     graphics.DrawLine(prime_pen, prime_mer_f, 0, prime_mer_f, h);
                 }
                 // Equator
-                if (box.Min[1] <= 0 && 0 <= box.Max[1])
+                float e = cs.ConvertY(0.0);
+                if (0 <= e && e <= h)
                 {
-                    float e = cs.ConvertY(0.0);
                     graphics.DrawLine(prime_pen, 0, e, w, e);
                 }
                 // North pole
-                if (box.Min[1] <= pi / 2 && pi / 2 <= box.Max[1])
+                float n = cs.ConvertY(pi / 2);
+                if (0 <= n && n <= h)
                 {
-                    float e = cs.ConvertY(pi/2);
-                    graphics.DrawLine(anti_pen, 0, e, w, e);
+                    graphics.DrawLine(anti_pen, 0, n, w, n);
                 }
                 // South pole
-                if (box.Min[1] <= -pi / 2 && -pi / 2 <= box.Max[1])
+                float s = cs.ConvertY(-pi / 2);
+                if (0 <= s && s <= h)
                 {
-                    float e = cs.ConvertY(-pi / 2);
-                    graphics.DrawLine(anti_pen, 0, e, w, e);
+                    graphics.DrawLine(anti_pen, 0, s, w, s);
                 }
             }
 
