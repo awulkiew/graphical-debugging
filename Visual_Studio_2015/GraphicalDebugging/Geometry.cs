@@ -111,6 +111,8 @@ namespace GraphicalDebugging
             public Point this[int i] { get { return points[i]; } }
             public int Count { get { return points.Count; } }
 
+            public IEnumerator<Point> GetEnumerator() { return points.GetEnumerator(); }
+
             protected List<Point> points;
         }
 
@@ -165,7 +167,130 @@ namespace GraphicalDebugging
             b.Max = new Point(double.MinValue, double.MinValue);
         }
 
-        public static Box Envelope(Segment seg)
+        public static Box Aabb(Point p1, Point p2, Unit unit)
+        {
+            if (unit == Unit.None)
+                return Aabb(p1, p2);
+            else
+                return AabbAngle(p1, p2, unit);
+        }
+        public static Box Aabb(Point p1, Point p2)
+        {
+            return new Box(
+                    new Point(Math.Min(p1[0], p2[0]),
+                              Math.Min(p1[1], p2[1])),
+                    new Point(Math.Max(p1[0], p2[0]),
+                              Math.Max(p1[1], p2[1]))
+                );
+        }
+        public static Box AabbAngle(Point p1, Point p2, Unit unit)
+        {
+            Box result = Aabb(p1, p2);
+            EnlargeAabbAngle(result, p1, p2, unit);
+            return result;
+        }
+
+        public static Box Aabb(IEnumerator<Point> points, Unit unit)
+        {
+            Box result = new Box();
+
+            if (!points.MoveNext())
+            {
+                AssignInverse(result);
+                return result;
+            }
+            Point p1 = points.Current;
+            if (!points.MoveNext())
+            {
+                // NOTE: unsafe, if this Box is modified then the original points will be modified as well
+                result = new Box(p1, p1);
+                return result;
+            }
+            Point p2 = points.Current;
+
+            result = Aabb(p1, p2, unit);
+            while(points.MoveNext())
+            {
+                p1 = p2;
+                p2 = points.Current;
+                Box b = Aabb(p1, p2, unit);
+                Expand(result, b);
+            }
+            return result;
+        }
+
+        private static void EnlargeAabbAngle(Box box, Point p1, Point p2, Unit unit)
+        {
+            if ((p1[0] < 0 && p2[0] >= 0
+              || p1[0] >= 0 && p2[0] < 0)
+               && IntersectsAntimeridian(p1, p2, unit))
+            {
+                box.Min[0] = NearestAntimeridian(box.Min[0], -1, unit);
+                box.Max[0] = NearestAntimeridian(box.Max[0], 1, unit);
+            }
+        }
+
+        public static Box Aabb(Segment seg, Traits traits)
+        {
+            return Aabb(seg[0], seg[1], traits.Unit);
+        }
+        public static Box Aabb(Linestring linestring, Traits traits)
+        {
+            return Aabb(linestring.GetEnumerator(), traits.Unit);
+        }
+
+        private static bool IntersectsAntimeridian(Point p1, Point p2, Unit unit)
+        {
+            if (unit == Unit.None)
+            {
+                return false;
+            }
+            else
+            {
+                double x1 = NormalizedAngle(p1[0], unit);
+                double x2 = NormalizedAngle(p2[0], unit);
+                double dist = x2 - x1;
+                double pi = HalfAngle(unit);
+                return dist < -pi || pi < dist;
+            }
+        }
+        
+        public static double NearestAntimeridian(double x, int dir, Unit unit)
+        {
+            double result = x;
+
+            if (unit == Unit.None)
+            {
+                return result;
+            }
+            else
+            {
+                double pi = HalfAngle(unit);
+                double ax = Math.Abs(x);
+                double periods = (ax - pi) / (2 * pi);
+                int calcDir = x < 0 ? -dir : dir;
+                double f = calcDir < 0 ?
+                           // [0, pi)   : -1 : -pi
+                           // pi        : 0  : pi
+                           // (pi, 3pi) : 0  : pi
+                           // 3pi       : 1  : 3pi
+                           Math.Floor(periods) :
+                           // [0, pi)   : 0 : pi
+                           // pi        : 0 : pi
+                           // (pi, 3pi) : 1 : 3pi
+                           // 3pi       : 1 : 3pi
+                           Math.Ceiling(periods);
+
+                result = pi + f * 2 * pi;
+
+                if (x < 0)
+                    result = -result;
+            }
+
+            return result;
+        }
+
+        /*public static Box Envelope(Segment seg)
         {
             return new Box(
                     new Point(Math.Min(seg[0][0], seg[1][0]),
@@ -173,7 +298,7 @@ namespace GraphicalDebugging
                     new Point(Math.Max(seg[0][0], seg[1][0]),
                               Math.Max(seg[0][1], seg[1][1]))
                 );
-        }
+        }*/
         // NOTE: Geometries must be normalized
         // U is Radian or Degree
         /*public static Box Envelope(Segment seg)
@@ -235,6 +360,11 @@ namespace GraphicalDebugging
             if (b.Max[1] > box.Max[1]) box.Max[1] = b.Max[1];
         }
 
+        public static bool Disjoint(Box b, Point p, int dim)
+        {
+            return p[dim] < b.Min[dim] || b.Max[dim] < p[dim];
+        }
+
         /*public static bool Disjoint(Box l, Box r, int dim)
         {
             return l.Max[dim] < r.Min[dim] || r.Min[dim] < l.Min[dim];
@@ -258,19 +388,25 @@ namespace GraphicalDebugging
                     || r.Max[0] < l.Min[0] || (r.Max[0] > 180 && r.Max[0] - 360 < l.Min[0]);
         }*/
 
-        /*public static void Normalize(Point p, Traits traits)
+        public static void Normalize(Point p, Traits traits)
         {
             if (traits.Unit != Unit.None)
                 NormalizeAngle(p, traits.Unit);
         }
         private static void NormalizeAngle(Point p, Unit unit)
         {
-            double pi = HalfAngle(unit);
-            while (p[0] < -pi) p[0] += 2 * pi;
-            while (p[0] > pi) p[0] -= 2 * pi;
+            p[0] = NormalizedAngle(p[0], unit);
         }
 
-        public static void Normalize(Box b, Traits traits)
+        public static double NormalizedAngle(double x, Unit unit)
+        {
+            double pi = HalfAngle(unit);
+            while (x < -pi) x += 2 * pi;
+            while (x > pi) x -= 2 * pi;
+            return x;
+        }
+
+        /*public static void Normalize(Box b, Traits traits)
         {
             if (traits.Unit != Unit.None)
                 NormalizeAngle(b, traits.Unit);
@@ -281,11 +417,11 @@ namespace GraphicalDebugging
             NormalizeAngle(b.Max, unit);
             if (b.Min[0] > b.Max[0])
                 b.Max[0] += 2 * HalfAngle(unit);
-        }
+        }*/
 
-        private static double HalfAngle(Unit unit)
+        public static double HalfAngle(Unit unit)
         {
             return unit == Unit.Degree ? 180 : Math.PI;
-        }*/
+        }
     }
 }

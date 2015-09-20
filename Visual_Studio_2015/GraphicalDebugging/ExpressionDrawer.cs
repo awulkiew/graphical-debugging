@@ -60,7 +60,7 @@ namespace GraphicalDebugging
                 : base(x, y)
             { }
 
-            public void Draw(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits trait)
+            public void Draw(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
@@ -69,8 +69,30 @@ namespace GraphicalDebugging
 
                 float x = cs.ConvertX(this[0]);
                 float y = cs.ConvertY(this[1]);
-                graphics.FillEllipse(brush, x - 2.5f, y - 2.5f, 5, 5);
-                graphics.DrawEllipse(pen, x - 2.5f, y - 2.5f, 5, 5);
+                DrawCircle(graphics, pen, brush, x, y, 2.5f);
+                
+                // Radian, Degree
+                if (traits.Unit != Geometry.Unit.None)
+                {
+                    pen.DashStyle = DashStyle.Dash;
+                    double pi2 = 2 * Geometry.HalfAngle(traits.Unit);
+                    // draw points on the west
+                    double x_tmp = this[0] - pi2;
+                    while(x_tmp >= box.Min[0])
+                    {
+                        x = cs.ConvertX(x_tmp);
+                        DrawCircle(graphics, pen, brush, x, y, 2.5f);
+                        x_tmp -= pi2;
+                    }
+                    // draw points on the east
+                    x_tmp = this[0] + pi2;
+                    while (x_tmp <= box.Max[0])
+                    {
+                        x = cs.ConvertX(x_tmp);
+                        DrawCircle(graphics, pen, brush, x, y, 2.5f);
+                        x_tmp += pi2;
+                    }
+                }
             }
 
             public Geometry.Box Aabb { get {
@@ -89,11 +111,6 @@ namespace GraphicalDebugging
                 : base(min, max)
             { }
 
-            public double Get(int corner, int index)
-            {
-                return corner == 0 ? Min[index] : Max[index];
-            }
-
             public void Draw(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
             {
                 LocalCS cs = new LocalCS(box, graphics);
@@ -101,15 +118,14 @@ namespace GraphicalDebugging
                 Pen pen = new Pen(Color.FromArgb(112, settings.color), 2);
                 SolidBrush brush = new SolidBrush(Color.FromArgb(64, settings.color));
 
-                float rx = cs.ConvertX(Min[0]);
-                float ry = cs.ConvertY(Max[1]);
-                float rw = cs.ConvertDimension(Width);
-                float rh = cs.ConvertDimension(Height);
+                float rx = cs.ConvertX(Math.Min(Min[0], Max[0]));
+                float ry = cs.ConvertY(Math.Max(Min[1], Max[1]));
+                float rw = cs.ConvertDimension(Math.Abs(Width));
+                float rh = cs.ConvertDimension(Math.Abs(Height));
 
                 if (rw == 0 && rh == 0)
                 {
-                    graphics.FillEllipse(brush, rx - 2.5f, ry - 2.5f, 5, 5);
-                    graphics.DrawEllipse(pen, rx - 2.5f, ry - 2.5f, 5, 5);
+                    DrawCircle(graphics, pen, brush, rx, ry, 2.5f);
                 }
                 else if (rw == 0 || rh == 0)
                 {
@@ -117,19 +133,31 @@ namespace GraphicalDebugging
                 }
                 else
                 {
-                    graphics.FillRectangle(brush, rx, ry, rw, rh);
                     graphics.DrawRectangle(pen, rx, ry, rw, rh);
+
+                    bool isInvalid = Width < 0 || Height < 0;
+                    if (!isInvalid)
+                    {
+                        graphics.FillRectangle(brush, rx, ry, rw, rh);
+                    }
+                    else
+                    {
+                        graphics.DrawLine(pen, rx, ry, rx + rw, ry + rh);
+                        graphics.DrawLine(pen, rx + rw, ry, rx, ry + rh);
+                    }
                 }
             }
 
-            public Geometry.Box Aabb { get { return this; } }
+            public Geometry.Box Aabb { get {
+                    return Geometry.Aabb(Min, Max);
+                } }
 
             public Color DefaultColor { get { return Color.Red; } }
         }
 
         private class Segment : Geometry.Segment, IDrawable
         {
-            public Segment(Point first, Point second)
+            public Segment(Geometry.Point first, Geometry.Point second)
                 : base(first, second)
             {}
 
@@ -141,21 +169,55 @@ namespace GraphicalDebugging
 
                 PointF p0 = cs.Convert(this[0]);
                 PointF p1 = cs.Convert(this[1]);
-                graphics.DrawLine(pen, p0, p1);
 
-                if (settings.showDir)
-                    DrawDir(p0, p1, graphics, pen);
-            }
-
-            public Geometry.Box Aabb
-            {
-                get
+                if (traits.Unit == Geometry.Unit.None)
                 {
-                    return Geometry.Envelope(this);
+                    DrawLine(graphics, pen, p0, p1, settings.showDir);
+                }
+                else // Radian, Degree
+                {
+                    double x0 = Geometry.NormalizedAngle(this[0][0], traits.Unit);
+                    double x1 = Geometry.NormalizedAngle(this[1][0], traits.Unit);
+                    double dist = x1 - x0; // [-2pi, 2pi]
+                    double pi = Geometry.HalfAngle(traits.Unit);
+                    bool intersectsAntimeridian = dist < -pi || pi < dist;
+                    double distNorm = Geometry.NormalizedAngle(dist, traits.Unit); // [-pi, pi]
+
+                    p0.X = cs.ConvertX(this[0][0]);
+                    p1.X = cs.ConvertX(this[0][0] + distNorm);
+                    DrawLine(graphics, pen, p0, p1, settings.showDir);
+
+                    //pen.DashStyle = DashStyle.Dash;
+                    double pi2 = 2 * pi;
+                    // draw lines on the west
+                    double x0_tmp = this[0][0] - pi2;
+                    double x1_tmp = x0_tmp + distNorm;
+                    while (x0_tmp >= box.Min[0] || x1_tmp >= box.Min[0])
+                    {
+                        p0.X = cs.ConvertX(x0_tmp);
+                        p1.X = cs.ConvertX(x1_tmp);
+                        DrawLine(graphics, pen, p0, p1, settings.showDir);
+                        x0_tmp -= pi2;
+                        x1_tmp -= pi2;
+                    }
+                    // draw lines on the east
+                    x0_tmp = this[0][0] + pi2;
+                    x1_tmp = x0_tmp + distNorm;
+                    while (x0_tmp <= box.Max[0] || x1_tmp <= box.Max[0])
+                    {
+                        p0.X = cs.ConvertX(x0_tmp);
+                        p1.X = cs.ConvertX(x1_tmp);
+                        DrawLine(graphics, pen, p0, p1, settings.showDir);
+                        x0_tmp += pi2;
+                        x1_tmp += pi2;
+                    }
                 }
             }
 
+            public Geometry.Box Aabb { get { return Box; } }
             public Color DefaultColor { get { return Color.YellowGreen; } }
+
+            public Geometry.Box Box { get; set; }
         }
 
         private class Linestring : Geometry.Linestring, IDrawable
@@ -168,12 +230,13 @@ namespace GraphicalDebugging
 
                 for (int i = 1; i < Count; ++i)
                 {
-                    PointF p0 = cs.Convert(this[i - 1]);
-                    PointF p1 = cs.Convert(this[i]);
-                    graphics.DrawLine(pen, p0, p1);
+                    //PointF p0 = cs.Convert(this[i - 1]);
+                    //PointF p1 = cs.Convert(this[i]);
 
-                    if (settings.showDir)
-                        DrawDir(p0, p1, graphics, pen);
+                    //DrawLine(graphics, pen, p0, p1, settings.showDir);
+
+                    Segment s = new Segment(this[i - 1], this[i]);
+                    s.Draw(box, graphics, settings, traits);
                 }
             }
 
@@ -370,8 +433,7 @@ namespace GraphicalDebugging
                 foreach (Turn turn in turns)
                 {
                     PointF p = cs.Convert(turn.point);
-                    graphics.FillEllipse(brush, p.X - 2.5f, p.Y - 2.5f, 5, 5);
-                    graphics.DrawEllipse(pen, p.X - 2.5f, p.Y - 2.5f, 5, 5);
+                    DrawCircle(graphics, pen, brush, p.X, p.Y, 2.5f);
 
                     if (settings.showLabels)
                     {
@@ -524,6 +586,152 @@ namespace GraphicalDebugging
             double scale;
         }
 
+        private static void DrawCircle(Graphics graphics, Pen pen, Brush brush, float x, float y, float r)
+        {
+            float mx = x - r;
+            float my = y - r;
+            float d = 2 * r;
+            graphics.DrawEllipse(pen, mx, my, d, d);
+            graphics.FillEllipse(brush, mx, my, d, d);
+        }
+
+        private static void DrawLine(Graphics graphics, Pen pen, PointF p0, PointF p1, bool drawDir)
+        {
+            graphics.DrawLine(pen, p0, p1);
+            if (drawDir)
+                DrawDir(p0, p1, graphics, pen);
+        }
+
+        private static void DrawMessage(Graphics graphics, string message, Color color)
+        {
+            SolidBrush brush = new SolidBrush(color);
+            Font font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), 10);
+            StringFormat drawFormat = new StringFormat();
+            drawFormat.Alignment = StringAlignment.Center;
+            float gh = graphics.VisibleClipBounds.Top + graphics.VisibleClipBounds.Height / 2;
+            RectangleF rect = new RectangleF(graphics.VisibleClipBounds.Left,
+                                             gh - 5,
+                                             graphics.VisibleClipBounds.Right,
+                                             gh + 5);
+
+            graphics.DrawString(message, font, brush, rect, drawFormat);
+        }
+
+        private static bool DrawAabb(Graphics graphics, Geometry.Box box, Geometry.Traits traits)
+        {
+            if (!box.IsValid())
+                return false;
+
+            LocalCS cs = new LocalCS(box, graphics);
+
+            Pen pen = new Pen(Color.Black, 1);
+            SolidBrush brush = new SolidBrush(Color.Black);
+
+            float min_x = cs.ConvertX(box.Min[0]);
+            float min_y = cs.ConvertY(box.Min[1]);
+            float max_x = cs.ConvertX(box.Max[0]);
+            float max_y = cs.ConvertY(box.Max[1]);
+
+            graphics.DrawLine(pen, min_x - 1, min_y, min_x + 1, min_y);
+            graphics.DrawLine(pen, min_x, min_y - 1, min_x, min_y + 1);
+            graphics.DrawLine(pen, max_x - 1, max_y, max_x + 1, max_y);
+            graphics.DrawLine(pen, max_x, max_y - 1, max_x, max_y + 1);
+
+            float t = graphics.VisibleClipBounds.Top;
+            float h = graphics.VisibleClipBounds.Height;
+            float l = graphics.VisibleClipBounds.Left;
+            float w = graphics.VisibleClipBounds.Width;
+            Pen prime_pen = new Pen(Color.LightGray, 1);
+
+            if (traits.Unit == Geometry.Unit.None)
+            {
+                // Y axis
+                if (box.Min[0] <= 0 && 0 <= box.Max[0])
+                {
+                    float x0 = cs.ConvertX(0.0);
+                    graphics.DrawLine(prime_pen, x0, t, x0, t + h);
+                }
+                // X axis
+                if (box.Min[1] <= 0 && 0 <= box.Max[1])
+                {
+                    float y0 = cs.ConvertY(0.0);
+                    graphics.DrawLine(prime_pen, l, y0, l + w, y0);
+                }
+            }
+            else
+            {
+                Pen anti_pen = new Pen(Color.LightGray, 1);
+                anti_pen.DashStyle = DashStyle.Dash;
+                anti_pen.DashStyle = DashStyle.Custom;
+                anti_pen.DashPattern = new float[]{ 5, 5 };
+                double pi = Geometry.HalfAngle(traits.Unit);
+                double anti_mer_x = Geometry.NearestAntimeridian(box.Min[0], -1, traits.Unit);
+                double prime_mer_x = anti_mer_x + pi;
+                if (anti_mer_x < box.Min[0])
+                    anti_mer_x += 2 * pi;
+                if (prime_mer_x < box.Min[0])
+                    prime_mer_x += 2 * pi;
+                // Antimeridians
+                for (; anti_mer_x <= box.Max[0]; anti_mer_x += 2 * pi)
+                {
+                    float anti_mer_xf = cs.ConvertX(anti_mer_x);
+                    graphics.DrawLine(anti_pen, anti_mer_xf, t, anti_mer_xf, t + h);
+                }
+                // Prime meridians
+                for (; prime_mer_x <= box.Max[0]; prime_mer_x += 2 * pi)
+                {
+                    float prime_mer_xf = cs.ConvertX(prime_mer_x);
+                    graphics.DrawLine(prime_pen, prime_mer_xf, t, prime_mer_xf, t + h);
+                }
+                // Equator
+                if (box.Min[1] <= 0 && 0 <= box.Max[1])
+                {
+                    float e = cs.ConvertY(0.0);
+                    graphics.DrawLine(prime_pen, l, e, l + w, e);
+                }
+                // North pole
+                if (box.Min[1] <= pi / 2 && pi / 2 <= box.Max[1])
+                {
+                    float e = cs.ConvertY(pi/2);
+                    graphics.DrawLine(anti_pen, l, e, l + w, e);
+                }
+                // South pole
+                if (box.Min[1] <= -pi / 2 && -pi / 2 <= box.Max[1])
+                {
+                    float e = cs.ConvertY(-pi / 2);
+                    graphics.DrawLine(anti_pen, l, e, l + w, e);
+                }
+            }
+
+            float maxHeight = 20.0f;// Math.Min(Math.Max(graphics.VisibleClipBounds.Height - min_y, 0.0f), 20.0f);
+            if (maxHeight > 1)
+            {
+                string min_x_str = box.Min[0].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+                string min_y_str = box.Min[1].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+                string max_x_str = box.Max[0].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+                string max_y_str = box.Max[1].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+                Font font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), maxHeight / 2.0f);
+                StringFormat drawFormat = new StringFormat();
+                drawFormat.Alignment = StringAlignment.Center;
+                string minStr = "(" + min_x_str + " " + min_y_str + ")";
+                string maxStr = "(" + max_x_str + " " + max_y_str + ")";
+                SizeF minSize = graphics.MeasureString(minStr, font);
+                SizeF maxSize = graphics.MeasureString(maxStr, font);
+                RectangleF drawRectMin = new RectangleF(Math.Max(min_x - minSize.Width, 0.0f),
+                                                        Math.Min(min_y + 2, graphics.VisibleClipBounds.Height - maxSize.Height),
+                                                        minSize.Width,
+                                                        minSize.Height);
+                RectangleF drawRectMax = new RectangleF(Math.Min(max_x, graphics.VisibleClipBounds.Width - maxSize.Width),
+                                                        Math.Max(max_y - maxHeight, 0.0f),
+                                                        maxSize.Width,
+                                                        maxSize.Height);
+                graphics.DrawString(minStr, font, brush, drawRectMin, drawFormat);
+                graphics.DrawString(maxStr, font, brush, drawRectMax, drawFormat);
+            }
+
+            return true;
+        }
+
         // -------------------------------------------------
         // Loading expressions
         // -------------------------------------------------
@@ -557,43 +765,45 @@ namespace GraphicalDebugging
                            new Point(first_p[1], second_p[1]));
         }
 
-        private static Segment LoadSegment(Debugger debugger, string name, string first, string second)
+        private static Segment LoadSegment(Debugger debugger, string name, string first, string second, Geometry.Traits traits)
         {
             Point first_p = LoadPoint(debugger, name + "." + first);
             Point second_p = LoadPoint(debugger, name + "." + second);
 
             Segment result = new Segment(first_p, second_p);
+            result.Box = Geometry.Aabb(result, traits);
             return result;
         }
 
-        private static Linestring LoadLinestring(Debugger debugger, string name)
+        private static Linestring LoadLinestring(Debugger debugger, string name, Geometry.Traits traits)
         {
             Linestring result = new Linestring();
-            Geometry.Box box = new Geometry.Box();
-            Geometry.AssignInverse(box);
+            //Geometry.Box box = new Geometry.Box();
+            //Geometry.AssignInverse(box);
 
             int size = LoadSize(debugger, name);
             for (int i = 0; i < size; ++i)
             {
                 Point p = LoadPoint(debugger, name + "[" + i + "]");
                 result.Add(p);
-                Geometry.Expand(box, p);
+                //Geometry.Expand(box, p);
             }
 
-            result.Box = box;
+            //result.Box = box;
+            result.Box = Geometry.Aabb(result, traits);
             return result;
         }
 
-        private static Ring LoadRing(Debugger debugger, string name, string member)
+        private static Ring LoadRing(Debugger debugger, string name, string member, Geometry.Traits traits)
         {
             string name_suffix = member.Length > 0 ? "." + member : "";
-            Linestring ls = LoadLinestring(debugger, name + name_suffix);
+            Linestring ls = LoadLinestring(debugger, name + name_suffix, traits);
             return new Ring(ls, ls.Box);
         }
 
-        private static Polygon LoadPolygon(Debugger debugger, string name, string outer, string inners, bool inners_in_list, string ring_member)
+        private static Polygon LoadPolygon(Debugger debugger, string name, string outer, string inners, bool inners_in_list, string ring_member, Geometry.Traits traits)
         {
-            Ring outer_r = LoadRing(debugger, name + "." + outer, ring_member);
+            Ring outer_r = LoadRing(debugger, name + "." + outer, ring_member, traits);
 
             Geometry.Box box = new Geometry.Box();
             Geometry.AssignInverse(box);
@@ -604,7 +814,7 @@ namespace GraphicalDebugging
             ContainerElements inner_names = new ContainerElements(debugger, name + "." + inners);
             foreach(string inner_name in inner_names)
             {
-                Ring inner_r = LoadRing(debugger, inner_name, ring_member);
+                Ring inner_r = LoadRing(debugger, inner_name, ring_member, traits);
 
                 inners_r.Add(inner_r);
                 Geometry.Expand(box, inner_r.Box);
@@ -631,7 +841,7 @@ namespace GraphicalDebugging
             return new Multi<Point>(singles, box);
         }
 
-        private static Multi<Linestring> LoadMultiLinestring(Debugger debugger, string name)
+        private static Multi<Linestring> LoadMultiLinestring(Debugger debugger, string name, Geometry.Traits traits)
         {
             List<IDrawable> singles = new List<IDrawable>();
             Geometry.Box box = new Geometry.Box();
@@ -641,7 +851,7 @@ namespace GraphicalDebugging
 
             for (int i = 0; i < size; ++i)
             {
-                Linestring s = LoadLinestring(debugger, name + "[" + i + "]");
+                Linestring s = LoadLinestring(debugger, name + "[" + i + "]", traits);
                 singles.Add(s);
                 Geometry.Expand(box, s.Box);
             }
@@ -649,7 +859,7 @@ namespace GraphicalDebugging
             return new Multi<Linestring>(singles, box);
         }
 
-        private static Multi<Polygon> LoadMultiPolygon(Debugger debugger, string name, string outer, string inners)
+        private static Multi<Polygon> LoadMultiPolygon(Debugger debugger, string name, string outer, string inners, Geometry.Traits traits)
         {
             List<IDrawable> singles = new List<IDrawable>();
             Geometry.Box box = new Geometry.Box();
@@ -659,7 +869,7 @@ namespace GraphicalDebugging
 
             for (int i = 0; i < size; ++i)
             {
-                Polygon s = LoadPolygon(debugger, name + "[" + i + "]", outer, inners, false, "");
+                Polygon s = LoadPolygon(debugger, name + "[" + i + "]", outer, inners, false, "", traits);
                 singles.Add(s);
                 Geometry.Expand(box, s.Box);
             }
@@ -899,35 +1109,37 @@ namespace GraphicalDebugging
                 d = LoadGeometryBox(debugger, name);
             else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::segment")) != null
                   || (traits = LoadGeometryTraits(type, "boost::geometry::model::referring_segment")) != null)
-                d = LoadSegment(debugger, name, "first", "second");
+                d = LoadSegment(debugger, name, "first", "second", traits);
             else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::linestring")) != null)
-                d = LoadLinestring(debugger, name);
+                d = LoadLinestring(debugger, name, traits);
             else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::ring")) != null)
-                d = LoadRing(debugger, name, "");
+                d = LoadRing(debugger, name, "", traits);
             else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::polygon")) != null)
-                d = LoadPolygon(debugger, name, "m_outer", "m_inners", false, "");
+                d = LoadPolygon(debugger, name, "m_outer", "m_inners", false, "", traits);
             else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::multi_point")) != null)
                 d = LoadMultiPoint(debugger, name);
             else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::multi_linestring", "boost::geometry::model::linestring")) != null)
-                d = LoadMultiLinestring(debugger, name);
+                d = LoadMultiLinestring(debugger, name, traits);
             else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::multi_polygon", "boost::geometry::model::polygon")) != null)
-                d = LoadMultiPolygon(debugger, name, "m_outer", "m_inners");
+                d = LoadMultiPolygon(debugger, name, "m_outer", "m_inners", traits);
             else
             {
+                traits = new Geometry.Traits(2); // 2D cartesian;
+
                 string base_type = Util.BaseType(type);
                 if (base_type == "boost::polygon::point_data")
                     d = LoadPoint(debugger, name);
                 else if (base_type == "boost::polygon::segment_data")
-                    d = LoadSegment(debugger, name, "points_[0]", "points_[1]");
+                    d = LoadSegment(debugger, name, "points_[0]", "points_[1]", traits);
                 else if (base_type == "boost::polygon::rectangle_data")
                     d = LoadPolygonBox(debugger, name);
                 else if (base_type == "boost::polygon::polygon_data")
-                    d = LoadRing(debugger, name, "coords_");
+                    d = LoadRing(debugger, name, "coords_", traits);
                 else if (base_type == "boost::polygon::polygon_with_holes_data")
-                    d = LoadPolygon(debugger, name, "self_", "holes_", true, "coords_");
+                    d = LoadPolygon(debugger, name, "self_", "holes_", true, "coords_", traits);
 
-                if (d != null)
-                    traits = new Geometry.Traits(2); // 2D cartesian;
+                if (d == null)
+                    traits = null;
             }
 
             return new DrawablePair(d, traits);
@@ -1239,19 +1451,17 @@ namespace GraphicalDebugging
 
                 if (drawnCount > 0)
                 {
-                    int dimension = dimensions.Max();
-                    Geometry.CoordinateSystem csystem = csystems.First();
-                    Geometry.Unit unit = units.First();
+                    Geometry.Traits traits = new Geometry.Traits(dimensions.Max(), csystems.First(), units.First());
+
+                    ExpressionDrawer.DrawAabb(graphics, box, traits);
 
                     for (int i = 0; i < count; ++i)
                     {
                         if (drawables[i] != null && drawables[i].Drawable != null)
                         {
-                            drawables[i].Drawable.Draw(box, graphics, settings[i], drawables[i].Traits);
+                            drawables[i].Drawable.Draw(box, graphics, settings[i], traits);
                         }
                     }
-
-                    ExpressionDrawer.DrawAabb(graphics, box);
 
                     return true;
                 }
@@ -1263,73 +1473,6 @@ namespace GraphicalDebugging
 
             return false;
         }
-
-        // -------------------------------------------------
-        // private Draw
-        // -------------------------------------------------
-
-        private static void DrawMessage(Graphics graphics, string message, Color color)
-        {
-            SolidBrush brush = new SolidBrush(color);
-            Font font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), 10);
-            StringFormat drawFormat = new StringFormat();
-            drawFormat.Alignment = StringAlignment.Center;
-            float gh = graphics.VisibleClipBounds.Top + graphics.VisibleClipBounds.Height / 2;
-            RectangleF rect = new RectangleF(graphics.VisibleClipBounds.Left,
-                                             gh - 5,
-                                             graphics.VisibleClipBounds.Right,
-                                             gh + 5);
-
-            graphics.DrawString(message, font, brush, rect, drawFormat);
-        }
-
-        private static bool DrawAabb(Graphics graphics, Geometry.Box box)
-        {
-            if (!box.IsValid())
-                return false;
-
-            LocalCS cs = new LocalCS(box, graphics);
-
-            Pen pen = new Pen(Color.Black, 1);
-            SolidBrush brush = new SolidBrush(Color.Black);
-
-            float min_x = cs.ConvertX(box.Min[0]);
-            float min_y = cs.ConvertY(box.Min[1]);
-            float max_x = cs.ConvertX(box.Max[0]);
-            float max_y = cs.ConvertY(box.Max[1]);
-
-            graphics.DrawLine(pen, min_x - 1, min_y, min_x + 1, min_y);
-            graphics.DrawLine(pen, min_x, min_y - 1, min_x, min_y + 1);
-            graphics.DrawLine(pen, max_x - 1, max_y, max_x + 1, max_y);
-            graphics.DrawLine(pen, max_x, max_y - 1, max_x, max_y + 1);
-
-            float maxHeight = 20.0f;// Math.Min(Math.Max(graphics.VisibleClipBounds.Height - min_y, 0.0f), 20.0f);
-            if (maxHeight > 1)
-            {
-                string min_x_str = box.Min[0].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
-                string min_y_str = box.Min[1].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
-                string max_x_str = box.Max[0].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
-                string max_y_str = box.Max[1].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
-                Font font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), maxHeight / 2.0f);
-                StringFormat drawFormat = new StringFormat();
-                drawFormat.Alignment = StringAlignment.Center;
-                string minStr = "(" + min_x_str + " " + min_y_str + ")";
-                string maxStr = "(" + max_x_str + " " + max_y_str + ")";
-                SizeF minSize = graphics.MeasureString(minStr, font);
-                SizeF maxSize = graphics.MeasureString(maxStr, font);
-                RectangleF drawRectMin = new RectangleF(Math.Max(min_x - minSize.Width, 0.0f),
-                                                        Math.Min(min_y + 2, graphics.VisibleClipBounds.Height - maxSize.Height),
-                                                        minSize.Width,
-                                                        minSize.Height);
-                RectangleF drawRectMax = new RectangleF(Math.Min(max_x, graphics.VisibleClipBounds.Width - maxSize.Width),
-                                                        Math.Max(max_y - maxHeight, 0.0f),
-                                                        maxSize.Width,
-                                                        maxSize.Height);
-                graphics.DrawString(minStr, font, brush, drawRectMin, drawFormat);
-                graphics.DrawString(maxStr, font, brush, drawRectMax, drawFormat);
-            }
-
-            return true;
-        }
+        
     }
 }
