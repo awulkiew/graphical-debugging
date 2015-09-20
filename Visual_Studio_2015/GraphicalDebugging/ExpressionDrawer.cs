@@ -637,26 +637,18 @@ namespace GraphicalDebugging
             graphics.DrawLine(pen, max_x - 1, max_y, max_x + 1, max_y);
             graphics.DrawLine(pen, max_x, max_y - 1, max_x, max_y + 1);
 
-            float t = graphics.VisibleClipBounds.Top;
             float h = graphics.VisibleClipBounds.Height;
-            float l = graphics.VisibleClipBounds.Left;
             float w = graphics.VisibleClipBounds.Width;
             Pen prime_pen = new Pen(Color.LightGray, 1);
 
             if (traits.Unit == Geometry.Unit.None)
             {
                 // Y axis
-                if (box.Min[0] <= 0 && 0 <= box.Max[0])
-                {
-                    float x0 = cs.ConvertX(0.0);
-                    graphics.DrawLine(prime_pen, x0, t, x0, t + h);
-                }
+                float x0 = cs.ConvertX(0.0);
+                graphics.DrawLine(prime_pen, x0, 0, x0, h);
                 // X axis
-                if (box.Min[1] <= 0 && 0 <= box.Max[1])
-                {
-                    float y0 = cs.ConvertY(0.0);
-                    graphics.DrawLine(prime_pen, l, y0, l + w, y0);
-                }
+                float y0 = cs.ConvertY(0.0);
+                graphics.DrawLine(prime_pen, 0, y0, w, y0);
             }
             else
             {
@@ -665,41 +657,43 @@ namespace GraphicalDebugging
                 anti_pen.DashStyle = DashStyle.Custom;
                 anti_pen.DashPattern = new float[]{ 5, 5 };
                 double pi = Geometry.HalfAngle(traits.Unit);
-                double anti_mer_x = Geometry.NearestAntimeridian(box.Min[0], -1, traits.Unit);
-                double prime_mer_x = anti_mer_x + pi;
-                if (anti_mer_x < box.Min[0])
-                    anti_mer_x += 2 * pi;
-                if (prime_mer_x < box.Min[0])
-                    prime_mer_x += 2 * pi;
+                double anti_mer = Geometry.NearestAntimeridian(box.Min[0], -1, traits.Unit);
+                double prime_mer = anti_mer + pi;
+                double next_anti_mer = anti_mer + 2 * pi;
+                double next_prime_mer = prime_mer + 2 * pi;
+
+                float anti_mer_f = cs.ConvertX(anti_mer);
+                float anti_mer_step = cs.ConvertX(next_anti_mer) - anti_mer_f;
+                float prime_mer_f = cs.ConvertX(prime_mer);
+                float prime_mer_step = cs.ConvertX(next_prime_mer) - prime_mer_f;
+
                 // Antimeridians
-                for (; anti_mer_x <= box.Max[0]; anti_mer_x += 2 * pi)
+                for (; anti_mer_f <= w; anti_mer_f += anti_mer_step)
                 {
-                    float anti_mer_xf = cs.ConvertX(anti_mer_x);
-                    graphics.DrawLine(anti_pen, anti_mer_xf, t, anti_mer_xf, t + h);
+                    graphics.DrawLine(anti_pen, anti_mer_f, 0, anti_mer_f, h);
                 }
                 // Prime meridians
-                for (; prime_mer_x <= box.Max[0]; prime_mer_x += 2 * pi)
+                for (; prime_mer_f <= w; prime_mer_f += prime_mer_step)
                 {
-                    float prime_mer_xf = cs.ConvertX(prime_mer_x);
-                    graphics.DrawLine(prime_pen, prime_mer_xf, t, prime_mer_xf, t + h);
+                    graphics.DrawLine(prime_pen, prime_mer_f, 0, prime_mer_f, h);
                 }
                 // Equator
                 if (box.Min[1] <= 0 && 0 <= box.Max[1])
                 {
                     float e = cs.ConvertY(0.0);
-                    graphics.DrawLine(prime_pen, l, e, l + w, e);
+                    graphics.DrawLine(prime_pen, 0, e, w, e);
                 }
                 // North pole
                 if (box.Min[1] <= pi / 2 && pi / 2 <= box.Max[1])
                 {
                     float e = cs.ConvertY(pi/2);
-                    graphics.DrawLine(anti_pen, l, e, l + w, e);
+                    graphics.DrawLine(anti_pen, 0, e, w, e);
                 }
                 // South pole
                 if (box.Min[1] <= -pi / 2 && -pi / 2 <= box.Max[1])
                 {
                     float e = cs.ConvertY(-pi / 2);
-                    graphics.DrawLine(anti_pen, l, e, l + w, e);
+                    graphics.DrawLine(anti_pen, 0, e, w, e);
                 }
             }
 
