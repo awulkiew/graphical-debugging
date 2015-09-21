@@ -180,7 +180,7 @@ namespace GraphicalDebugging
                     double x1 = Geometry.NormalizedAngle(this[1][0], traits.Unit);
                     double dist = x1 - x0; // [-2pi, 2pi]
                     double pi = Geometry.HalfAngle(traits.Unit);
-                    bool intersectsAntimeridian = dist < -pi || pi < dist;
+                    //bool intersectsAntimeridian = dist < -pi || pi < dist;
                     double distNorm = Geometry.NormalizedAngle(dist, traits.Unit); // [-pi, pi]
 
                     p0.X = cs.ConvertX(this[0][0]);
@@ -228,15 +228,83 @@ namespace GraphicalDebugging
 
                 Pen pen = new Pen(Color.FromArgb(112, settings.color), 2);
 
-                for (int i = 1; i < Count; ++i)
+                if (traits.Unit == Geometry.Unit.None)
                 {
-                    //PointF p0 = cs.Convert(this[i - 1]);
-                    //PointF p1 = cs.Convert(this[i]);
+                    for (int i = 1; i < Count; ++i)
+                    {
+                        PointF p0 = cs.Convert(this[i - 1]);
+                        PointF p1 = cs.Convert(this[i]);
+                        DrawLine(graphics, pen, p0, p1, settings.showDir);
+                    }
+                }
+                else // Radian, Degree
+                {
+                    // for arbitrary Geometry
+                    // - recalculate the whole geometry and Aabb according to the first point
+                    // - do the same as below for all of the points using recalculated Aabb
+                    //   to check if a geometry should be drawed for current displacement
+                    // - the question remains - how to know which segment shoudl be solid and which dashed?
 
-                    //DrawLine(graphics, pen, p0, p1, settings.showDir);
+                    if (Count < 2)
+                        return;
 
-                    Segment s = new Segment(this[i - 1], this[i]);
-                    s.Draw(box, graphics, settings, traits);
+                    double pi = Geometry.HalfAngle(traits.Unit);
+                    PointF[] points = new PointF[Count];
+                    points[0] = cs.Convert(this[0]);
+                    float minf = points[0].X;
+                    float maxf = points[0].X;
+                    float periodf = cs.ConvertDimension(2 * pi);
+                    double x0 = Geometry.NormalizedAngle(this[0][0], traits.Unit);
+                    double x0_prev = this[0][0];
+                    for (int i = 1; i < Count; ++i)
+                    {
+                        double x1 = Geometry.NormalizedAngle(this[i][0], traits.Unit);
+                        double dist = x1 - x0; // [-2pi, 2pi]
+                        //bool intersectsAntimeridian = dist < -pi || pi < dist;
+                        double distNorm = Geometry.NormalizedAngle(dist, traits.Unit); // [-pi, pi]
+
+                        double x0_curr = x0_prev + distNorm;
+                        points[i] = new PointF(cs.ConvertX(x0_curr),
+                                               cs.ConvertY(this[i][1]));
+
+                        if (points[i].X < minf)
+                            minf = points[i].X;
+                        if (points[i].X > maxf)
+                            maxf = points[i].X;
+
+                        x0_prev = x0_curr;
+                        x0 = x1;
+                    }
+
+                    DrawLines(graphics, pen, points, false, settings.showDir);
+
+                    // west
+                    float box_minf = cs.ConvertX(box.Min[0]);
+                    float maxf_i = maxf;
+                    PointF[] transl_points = new PointF[Count];
+                    for (int i = 0; i < Count; ++i)
+                        transl_points[i] = new PointF(points[i].X, points[i].Y);
+                    while (maxf_i >= box_minf)
+                    {
+                        for (int i = 0; i < Count; ++i)
+                            transl_points[i].X -= periodf;
+
+                        DrawLines(graphics, pen, transl_points, false, settings.showDir);
+                        maxf_i -= periodf;
+                    }
+                    // east
+                    float box_maxf = cs.ConvertX(box.Max[0]);
+                    float minf_i = minf;
+                    for (int i = 0; i < Count; ++i)
+                        transl_points[i] = new PointF(points[i].X, points[i].Y);
+                    while (minf_i <= box_maxf)
+                    {
+                        for (int i = 0; i < Count; ++i)
+                            transl_points[i].X += periodf;
+
+                        DrawLines(graphics, pen, transl_points, false, settings.showDir);
+                        minf_i += periodf;
+                    }
                 }
             }
 
@@ -269,7 +337,7 @@ namespace GraphicalDebugging
                     graphics.DrawPolygon(pen, dst_points);
 
                     if (settings.showDir)
-                        DrawDir(dst_points, true, graphics, pen);
+                        DrawDirs(dst_points, true, graphics, pen);
                 }
             }
 
@@ -302,7 +370,7 @@ namespace GraphicalDebugging
                     gp.AddPolygon(dst_outer_points);
 
                     if (settings.showDir)
-                        DrawDir(dst_outer_points, true, graphics, pen);
+                        DrawDirs(dst_outer_points, true, graphics, pen);
 
                     foreach (Ring inner in inners)
                     {
@@ -312,7 +380,7 @@ namespace GraphicalDebugging
                             gp.AddPolygon(dst_inner_points);
 
                             if (settings.showDir)
-                                DrawDir(dst_inner_points, true, graphics, pen);
+                                DrawDirs(dst_inner_points, true, graphics, pen);
                         }
                     }
 
@@ -479,7 +547,7 @@ namespace GraphicalDebugging
             return true;
         }
 
-        private static void DrawDir(PointF[] points, bool closed, Graphics graphics, Pen pen)
+        private static void DrawDirs(PointF[] points, bool closed, Graphics graphics, Pen pen)
         {
             bool drawn = false;
             for (int i = 1; i < points.Length; ++i)
@@ -602,6 +670,15 @@ namespace GraphicalDebugging
                 DrawDir(p0, p1, graphics, pen);
         }
 
+        private static void DrawLines(Graphics graphics, Pen pen, PointF[] points, bool closed, bool drawDir)
+        {
+            graphics.DrawLines(pen, points);
+            if (closed && points.Length > 1)
+                graphics.DrawLine(pen, points[points.Length - 1], points[0]);
+            if (drawDir)
+                DrawDirs(points, closed, graphics, pen);
+        }
+
         private static void DrawMessage(Graphics graphics, string message, Color color)
         {
             SolidBrush brush = new SolidBrush(color);
@@ -653,7 +730,6 @@ namespace GraphicalDebugging
             else
             {
                 Pen anti_pen = new Pen(Color.LightGray, 1);
-                anti_pen.DashStyle = DashStyle.Dash;
                 anti_pen.DashStyle = DashStyle.Custom;
                 anti_pen.DashPattern = new float[]{ 5, 5 };
                 double pi = Geometry.HalfAngle(traits.Unit);
