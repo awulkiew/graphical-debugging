@@ -71,7 +71,7 @@ namespace GraphicalDebugging
                 {
                     float x = cs.ConvertX(this[0]);
                     float y = cs.ConvertY(this[1]);
-                    DrawCircle(graphics, pen, brush, x, y, 2.5f);
+                    DrawPoint(graphics, pen, brush, x, y, 2.5f);
                 }
                 else // Radian, Degree
                 {
@@ -109,7 +109,7 @@ namespace GraphicalDebugging
 
                 if (rw == 0 && rh == 0)
                 {
-                    DrawCircle(graphics, pen, brush, rx, ry, 2.5f);
+                    DrawPoint(graphics, pen, brush, rx, ry, 2.5f);
                 }
                 else if (rw == 0 || rh == 0)
                 {
@@ -189,9 +189,6 @@ namespace GraphicalDebugging
                 }
                 else // Radian, Degree
                 {
-                    if (Count < 2)
-                        return;
-
                     DrawPeriodicLines(graphics, pen, cs, this, box, false, settings.showDir, traits.Unit);
                 }
             }
@@ -229,16 +226,14 @@ namespace GraphicalDebugging
                         if (settings.showDir)
                         {
                             DrawDirs(dst_points, true, graphics, pen);
+                            DrawPoint(graphics, pen, brush, dst_points[0].X, dst_points[0].Y, 2.5f);
                         }
                     }
                 }
                 else
                 {
-                    if (Count < 2)
-                        return;
-
                     DrawPeriodicLines(graphics, pen, cs, this, box, true, settings.showDir, traits.Unit);
-                    if (settings.showDir)
+                    if (settings.showDir && this.Count > 0)
                         DrawPeriodicPoint(graphics, pen, brush, cs, this[0], box, traits.Unit);
                 }
             }
@@ -274,7 +269,10 @@ namespace GraphicalDebugging
                         gp.AddPolygon(dst_outer_points);
 
                         if (settings.showDir)
+                        {
                             DrawDirs(dst_outer_points, true, graphics, pen);
+                            DrawPoint(graphics, pen, brush, dst_outer_points[0].X, dst_outer_points[0].Y, 2.5f);
+                        }
 
                         foreach (Ring inner in inners)
                         {
@@ -284,7 +282,10 @@ namespace GraphicalDebugging
                                 gp.AddPolygon(dst_inner_points);
 
                                 if (settings.showDir)
+                                {
                                     DrawDirs(dst_inner_points, true, graphics, pen);
+                                    DrawPoint(graphics, pen, brush, dst_inner_points[0].X, dst_inner_points[0].Y, 2.5f);
+                                }
                             }
                         }
 
@@ -297,7 +298,7 @@ namespace GraphicalDebugging
                     if (outer.Count > 1)
                     {
                         DrawPeriodicLines(graphics, pen, cs, outer, box, true, settings.showDir, traits.Unit);
-                        if (settings.showDir)
+                        if (settings.showDir && outer.Count > 0)
                             DrawPeriodicPoint(graphics, pen, brush, cs, outer[0], box, traits.Unit);
                     }
 
@@ -306,7 +307,7 @@ namespace GraphicalDebugging
                         if (inner.Count > 1)
                         {
                             DrawPeriodicLines(graphics, pen, cs, inner, box, true, settings.showDir, traits.Unit);
-                            if (settings.showDir)
+                            if (settings.showDir && inner.Count > 0)
                                 DrawPeriodicPoint(graphics, pen, brush, cs, inner[0], box, traits.Unit);
                         }
                     }
@@ -425,7 +426,7 @@ namespace GraphicalDebugging
                 foreach (Turn turn in turns)
                 {
                     PointF p = cs.Convert(turn.point);
-                    DrawCircle(graphics, pen, brush, p.X, p.Y, 2.5f);
+                    DrawPoint(graphics, pen, brush, p.X, p.Y, 2.5f);
 
                     if (settings.showLabels)
                     {
@@ -473,18 +474,13 @@ namespace GraphicalDebugging
 
         private static void DrawDirs(PointF[] points, bool closed, Graphics graphics, Pen pen)
         {
-            bool drawn = false;
             for (int i = 1; i < points.Length; ++i)
             {
-                bool ok = DrawDir(points[i - 1], points[i], graphics, pen);
-                drawn = drawn || ok;
+                DrawDir(points[i - 1], points[i], graphics, pen);
             }
             if (closed && points.Length > 1)
             {
-                bool ok = DrawDir(points[points.Length - 1], points[0], graphics, pen);
-                drawn = drawn || ok;
-                if (drawn)
-                    graphics.DrawEllipse(pen, points[0].X - 2.5f, points[0].Y - 2.5f, 5, 5);
+                DrawDir(points[points.Length - 1], points[0], graphics, pen);
             }
         }
 
@@ -578,7 +574,7 @@ namespace GraphicalDebugging
             double scale;
         }
 
-        private static void DrawCircle(Graphics graphics, Pen pen, Brush brush, float x, float y, float r)
+        private static void DrawPoint(Graphics graphics, Pen pen, Brush brush, float x, float y, float r)
         {
             float mx = x - r;
             float my = y - r;
@@ -655,7 +651,7 @@ namespace GraphicalDebugging
         {
             float x = cs.ConvertX(point[0]);
             float y = cs.ConvertY(point[1]);
-            DrawCircle(graphics, pen, brush, x, y, 2.5f);
+            DrawPoint(graphics, pen, brush, x, y, 2.5f);
 
             Pen pen_dot = (Pen)pen.Clone();
             pen_dot.DashStyle = DashStyle.Dot;
@@ -666,7 +662,7 @@ namespace GraphicalDebugging
             while (x_tmp >= box.Min[0])
             {
                 x = cs.ConvertX(x_tmp);
-                DrawCircle(graphics, pen, brush, x, y, 2.5f);
+                DrawPoint(graphics, pen, brush, x, y, 2.5f);
                 x_tmp -= pi2;
             }
             // draw points on the east
@@ -674,13 +670,16 @@ namespace GraphicalDebugging
             while (x_tmp <= box.Max[0])
             {
                 x = cs.ConvertX(x_tmp);
-                DrawCircle(graphics, pen, brush, x, y, 2.5f);
+                DrawPoint(graphics, pen, brush, x, y, 2.5f);
                 x_tmp += pi2;
             }
         }
 
         private static void DrawPeriodicLines(Graphics graphics, Pen pen, LocalCS cs, Geometry.IRandomAccessRange<Geometry.Point> points, Geometry.Box box, bool closed, bool drawDirs, Geometry.Unit unit)
         {
+            if (points.Count < 2)
+                return;
+
             double pi = Geometry.HalfAngle(unit);
             float[] xs_orig = new float[points.Count];
             PointF[] points_rel = new PointF[points.Count];
