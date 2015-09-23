@@ -73,7 +73,7 @@ namespace GraphicalDebugging
             public Point Min, Max;
         }
 
-        public class Segment
+        public class Segment : IRandomAccessRange<Geometry.Point>
         {
             public Segment()
             { }
@@ -99,7 +99,13 @@ namespace GraphicalDebugging
             public Point Second;
         }
 
-        public class Linestring
+        public interface IRandomAccessRange<T>
+        {
+            T this[int i] { get; }
+            int Count { get; }
+        }
+
+        public class Linestring : IRandomAccessRange<Point>
         {
             public Linestring()
             {
@@ -116,7 +122,7 @@ namespace GraphicalDebugging
             protected List<Point> points;
         }
 
-        public class Ring
+        public class Ring : IRandomAccessRange<Point>
         {
             public Ring()
             {
@@ -146,7 +152,7 @@ namespace GraphicalDebugging
             protected List<Ring> inners;
         }
 
-        public class Multi<G>
+        public class Multi<G> : IRandomAccessRange<G>
         {
             public Multi()
             {

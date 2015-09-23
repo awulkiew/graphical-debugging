@@ -67,31 +67,15 @@ namespace GraphicalDebugging
                 Pen pen = new Pen(Color.FromArgb(112, settings.color), 2);
                 SolidBrush brush = new SolidBrush(Color.FromArgb(64, settings.color));
 
-                float x = cs.ConvertX(this[0]);
-                float y = cs.ConvertY(this[1]);
-                DrawCircle(graphics, pen, brush, x, y, 2.5f);
-                
-                // Radian, Degree
-                if (traits.Unit != Geometry.Unit.None)
+                if (traits.Unit == Geometry.Unit.None)
                 {
-                    pen.DashStyle = DashStyle.Dash;
-                    double pi2 = 2 * Geometry.HalfAngle(traits.Unit);
-                    // draw points on the west
-                    double x_tmp = this[0] - pi2;
-                    while(x_tmp >= box.Min[0])
-                    {
-                        x = cs.ConvertX(x_tmp);
-                        DrawCircle(graphics, pen, brush, x, y, 2.5f);
-                        x_tmp -= pi2;
-                    }
-                    // draw points on the east
-                    x_tmp = this[0] + pi2;
-                    while (x_tmp <= box.Max[0])
-                    {
-                        x = cs.ConvertX(x_tmp);
-                        DrawCircle(graphics, pen, brush, x, y, 2.5f);
-                        x_tmp += pi2;
-                    }
+                    float x = cs.ConvertX(this[0]);
+                    float y = cs.ConvertY(this[1]);
+                    DrawCircle(graphics, pen, brush, x, y, 2.5f);
+                }
+                else // Radian, Degree
+                {
+                    DrawPeriodicPoint(graphics, pen, brush, cs, this, box, traits.Unit);
                 }
             }
 
@@ -176,44 +160,7 @@ namespace GraphicalDebugging
                 }
                 else // Radian, Degree
                 {
-                    double x0 = Geometry.NormalizedAngle(this[0][0], traits.Unit);
-                    double x1 = Geometry.NormalizedAngle(this[1][0], traits.Unit);
-                    double dist = x1 - x0; // [-2pi, 2pi]
-                    double pi = Geometry.HalfAngle(traits.Unit);
-                    //bool intersectsAntimeridian = dist < -pi || pi < dist;
-                    double distNorm = Geometry.NormalizedAngle(dist, traits.Unit); // [-pi, pi]
-
-                    PointF[] points_rel = new PointF[2] {p0, p1};
-                    float[] xs_orig = new float[2] {p0.X, p1.X};
-                    //points_rel[0].X = cs.ConvertX(this[0][0]);
-                    points_rel[1].X = cs.ConvertX(this[0][0] + distNorm);
-
-                    DrawLines(graphics, pen, points_rel, 0, xs_orig, settings.showDir);
-
-                    //pen.DashStyle = DashStyle.Dash;
-                    double pi2 = 2 * pi;
-                    // draw lines on the west
-                    double x0_tmp = this[0][0] - pi2;
-                    double x1_tmp = x0_tmp + distNorm;
-                    while (x0_tmp >= box.Min[0] || x1_tmp >= box.Min[0])
-                    {
-                        points_rel[0].X = cs.ConvertX(x0_tmp);
-                        points_rel[1].X = cs.ConvertX(x1_tmp);
-                        DrawLines(graphics, pen, points_rel, 0, xs_orig, settings.showDir);
-                        x0_tmp -= pi2;
-                        x1_tmp -= pi2;
-                    }
-                    // draw lines on the east
-                    x0_tmp = this[0][0] + pi2;
-                    x1_tmp = x0_tmp + distNorm;
-                    while (x0_tmp <= box.Max[0] || x1_tmp <= box.Max[0])
-                    {
-                        points_rel[0].X = cs.ConvertX(x0_tmp);
-                        points_rel[1].X = cs.ConvertX(x1_tmp);
-                        DrawLines(graphics, pen, points_rel, 0, xs_orig, settings.showDir);
-                        x0_tmp += pi2;
-                        x1_tmp += pi2;
-                    }
+                    DrawPeriodicLines(graphics, pen, cs, this, box, false, settings.showDir, traits.Unit);
                 }
             }
 
@@ -245,62 +192,7 @@ namespace GraphicalDebugging
                     if (Count < 2)
                         return;
 
-                    double pi = Geometry.HalfAngle(traits.Unit);
-                    float[] xs_orig = new float[Count];
-                    PointF[] points_rel = new PointF[Count];
-                    xs_orig[0] = cs.ConvertX(this[0][0]);
-                    points_rel[0] = cs.Convert(this[0]);
-                    float minf = points_rel[0].X;
-                    float maxf = points_rel[0].X;
-                    float periodf = cs.ConvertDimension(2 * pi);
-                    double x0 = Geometry.NormalizedAngle(this[0][0], traits.Unit);
-                    double x0_prev = this[0][0];
-                    for (int i = 1; i < Count; ++i)
-                    {
-                        xs_orig[i] = cs.ConvertX(this[i][0]);
-
-                        double x1 = Geometry.NormalizedAngle(this[i][0], traits.Unit);
-                        double dist = x1 - x0; // [-2pi, 2pi]
-                        //bool intersectsAntimeridian = dist < -pi || pi < dist;
-                        double distNorm = Geometry.NormalizedAngle(dist, traits.Unit); // [-pi, pi]
-
-                        double x0_curr = x0_prev + distNorm;
-                        points_rel[i] = new PointF(cs.ConvertX(x0_curr),
-                                                   cs.ConvertY(this[i][1]));
-
-                        if (points_rel[i].X < minf)
-                            minf = points_rel[i].X;
-                        if (points_rel[i].X > maxf)
-                            maxf = points_rel[i].X;
-
-                        x0_prev = x0_curr;
-                        x0 = x1;
-                    }
-
-                    DrawLines(graphics, pen, points_rel, 0, xs_orig/*,false*/, settings.showDir);
-
-                    // west
-                    float box_minf = cs.ConvertX(box.Min[0]);
-                    float maxf_i = maxf;
-                    float translationf = 0;
-                    while (maxf_i >= box_minf)
-                    {
-                        translationf -= periodf;
-
-                        DrawLines(graphics, pen, points_rel, translationf, xs_orig/*,false*/, settings.showDir);
-                        maxf_i -= periodf;
-                    }
-                    // east
-                    float box_maxf = cs.ConvertX(box.Max[0]);
-                    float minf_i = minf;
-                    translationf = 0;
-                    while (minf_i <= box_maxf)
-                    {
-                        translationf += periodf;
-
-                        DrawLines(graphics, pen, points_rel, translationf, xs_orig/*,false*/, settings.showDir);
-                        minf_i += periodf;
-                    }
+                    DrawPeriodicLines(graphics, pen, cs, this, box, false, settings.showDir, traits.Unit);
                 }
             }
 
@@ -322,18 +214,32 @@ namespace GraphicalDebugging
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
-                PointF[] dst_points = cs.Convert(this);
+                Pen pen = new Pen(Color.FromArgb(112, settings.color), 2);
+                SolidBrush brush = new SolidBrush(Color.FromArgb(64, settings.color));
 
-                if (dst_points != null)
+                if (traits.Unit == Geometry.Unit.None)
                 {
-                    Pen pen = new Pen(Color.FromArgb(112, settings.color), 2);
-                    SolidBrush brush = new SolidBrush(Color.FromArgb(64, settings.color));
-                    
-                    graphics.FillPolygon(brush, dst_points);
-                    graphics.DrawPolygon(pen, dst_points);
+                    PointF[] dst_points = cs.Convert(this);
 
+                    if (dst_points != null)
+                    {
+                        graphics.FillPolygon(brush, dst_points);
+                        graphics.DrawPolygon(pen, dst_points);
+
+                        if (settings.showDir)
+                        {
+                            DrawDirs(dst_points, true, graphics, pen);
+                        }
+                    }
+                }
+                else
+                {
+                    if (Count < 2)
+                        return;
+
+                    DrawPeriodicLines(graphics, pen, cs, this, box, true, settings.showDir, traits.Unit);
                     if (settings.showDir)
-                        DrawDirs(dst_points, true, graphics, pen);
+                        DrawPeriodicPoint(graphics, pen, brush, cs, this[0], box, traits.Unit);
                 }
             }
 
@@ -356,32 +262,54 @@ namespace GraphicalDebugging
             {
                 LocalCS cs = new LocalCS(box, graphics);
 
-                PointF[] dst_outer_points = cs.Convert(outer);
-                if (dst_outer_points != null)
+                Pen pen = new Pen(Color.FromArgb(112, settings.color), 2);
+                SolidBrush brush = new SolidBrush(Color.FromArgb(64, settings.color));
+
+                if (traits.Unit == Geometry.Unit.None)
                 {
-                    Pen pen = new Pen(Color.FromArgb(112, settings.color), 2);
-                    SolidBrush brush = new SolidBrush(Color.FromArgb(64, settings.color));
+                    PointF[] dst_outer_points = cs.Convert(outer);
+                    if (dst_outer_points != null)
+                    {
+                        GraphicsPath gp = new GraphicsPath();
+                        gp.AddPolygon(dst_outer_points);
 
-                    GraphicsPath gp = new GraphicsPath();
-                    gp.AddPolygon(dst_outer_points);
+                        if (settings.showDir)
+                            DrawDirs(dst_outer_points, true, graphics, pen);
 
-                    if (settings.showDir)
-                        DrawDirs(dst_outer_points, true, graphics, pen);
+                        foreach (Ring inner in inners)
+                        {
+                            PointF[] dst_inner_points = cs.Convert(inner);
+                            if (dst_inner_points != null)
+                            {
+                                gp.AddPolygon(dst_inner_points);
+
+                                if (settings.showDir)
+                                    DrawDirs(dst_inner_points, true, graphics, pen);
+                            }
+                        }
+
+                        graphics.FillPath(brush, gp);
+                        graphics.DrawPath(pen, gp);
+                    }
+                }
+                else
+                {
+                    if (outer.Count > 1)
+                    {
+                        DrawPeriodicLines(graphics, pen, cs, outer, box, true, settings.showDir, traits.Unit);
+                        if (settings.showDir)
+                            DrawPeriodicPoint(graphics, pen, brush, cs, outer[0], box, traits.Unit);
+                    }
 
                     foreach (Ring inner in inners)
                     {
-                        PointF[] dst_inner_points = cs.Convert(inner);
-                        if (dst_inner_points != null)
+                        if (inner.Count > 1)
                         {
-                            gp.AddPolygon(dst_inner_points);
-
+                            DrawPeriodicLines(graphics, pen, cs, inner, box, true, settings.showDir, traits.Unit);
                             if (settings.showDir)
-                                DrawDirs(dst_inner_points, true, graphics, pen);
+                                DrawPeriodicPoint(graphics, pen, brush, cs, inner[0], box, traits.Unit);
                         }
                     }
-
-                    graphics.FillPath(brush, gp);
-                    graphics.DrawPath(pen, gp);
                 }
             }
 
@@ -675,39 +603,140 @@ namespace GraphicalDebugging
                 DrawDirs(points, closed, graphics, pen);
         }
 
-        private static void DrawLines(Graphics graphics, Pen pen, PointF[] points_rel, float translation_x, float[] xs_orig/*, bool closed*/, bool drawDir)
+        private static void DrawLine(Graphics graphics, Pen pen, PointF p0, PointF p1, float x0_orig, float x1_orig, bool drawDir)
+        {
+            bool sameP0 = Math.Abs(p0.X - x0_orig) < 0.0001;
+            bool sameP1 = Math.Abs(p1.X - x1_orig) < 0.0001;
+            //bool sameP0 = p0.X == x0_orig;
+            //bool sameP1 = p1.X == x1_orig;
+            if (sameP0 && sameP1)
+            {
+                DrawLine(graphics, pen, p0, p1, drawDir);
+            }
+            else
+            {
+                Pen pend = (Pen)pen.Clone();
+                pend.DashStyle = DashStyle.Dot;
+
+                if (sameP0 || sameP1)
+                {
+                    PointF ph = AddF(p0, DivF(SubF(p1, p0), 2));
+                    graphics.DrawLine(sameP0 ? pen : pend, p0, ph);
+                    graphics.DrawLine(sameP1 ? pen : pend, ph, p1);
+                    if (drawDir)
+                        DrawDir(p0, p1, graphics, pen);
+                }
+                else
+                {
+                    DrawLine(graphics, pend, p0, p1, drawDir);
+                }
+            }
+        }
+
+        private static void DrawLines(Graphics graphics, Pen pen, PointF[] points_rel, float translation_x, float[] xs_orig, bool closed, bool drawDir)
         {
             for (int i = 1; i < points_rel.Length; ++i)
             {
                 int i_1 = i - 1;
                 PointF p0 = new PointF(points_rel[i_1].X + translation_x, points_rel[i_1].Y);
                 PointF p1 = new PointF(points_rel[i].X + translation_x, points_rel[i].Y);
-                bool sameP0 = Math.Abs(p0.X - xs_orig[i_1]) < 0.0001;
-                bool sameP1 = Math.Abs(p1.X - xs_orig[i]) < 0.0001;
-                //bool sameP0 = p0.X == xs_orig[i_1];
-                //bool sameP1 = p1.X == xs_orig[i];
-                if (sameP0 && sameP1)
-                {
-                    DrawLine(graphics, pen, p0, p1, drawDir);
-                }
-                else
-                {
-                    Pen pend = (Pen)pen.Clone();
-                    pend.DashStyle = DashStyle.Dot;
+                DrawLine(graphics, pen, p0, p1, xs_orig[i_1], xs_orig[i], drawDir);
+            }
+            if (closed && points_rel.Length > 1)
+            {
+                int i_1 = points_rel.Length - 1;
+                PointF p0 = new PointF(points_rel[i_1].X + translation_x, points_rel[i_1].Y);
+                PointF p1 = new PointF(points_rel[0].X + translation_x, points_rel[0].Y);
+                DrawLine(graphics, pen, p0, p1, xs_orig[i_1], xs_orig[0], drawDir);
+            }
+        }
 
-                    if (sameP0 || sameP1)
-                    {
-                        PointF ph = AddF(p0, DivF(SubF(p1, p0), 2));
-                        graphics.DrawLine(sameP0 ? pen : pend, p0, ph);
-                        graphics.DrawLine(sameP1 ? pen : pend, ph, p1);
-                        if (drawDir)
-                            DrawDir(p0, p1, graphics, pen);
-                    }
-                    else
-                    {
-                        DrawLine(graphics, pend, p0, p1, drawDir);
-                    }
-                }
+        private static void DrawPeriodicPoint(Graphics graphics, Pen pen, Brush brush, LocalCS cs, Geometry.Point point, Geometry.Box box, Geometry.Unit unit)
+        {
+            float x = cs.ConvertX(point[0]);
+            float y = cs.ConvertY(point[1]);
+            DrawCircle(graphics, pen, brush, x, y, 2.5f);
+
+            Pen pen_dot = (Pen)pen.Clone();
+            pen_dot.DashStyle = DashStyle.Dot;
+
+            double pi2 = 2 * Geometry.HalfAngle(unit);
+            // draw points on the west
+            double x_tmp = point[0] - pi2;
+            while (x_tmp >= box.Min[0])
+            {
+                x = cs.ConvertX(x_tmp);
+                DrawCircle(graphics, pen, brush, x, y, 2.5f);
+                x_tmp -= pi2;
+            }
+            // draw points on the east
+            x_tmp = point[0] + pi2;
+            while (x_tmp <= box.Max[0])
+            {
+                x = cs.ConvertX(x_tmp);
+                DrawCircle(graphics, pen, brush, x, y, 2.5f);
+                x_tmp += pi2;
+            }
+        }
+
+        private static void DrawPeriodicLines(Graphics graphics, Pen pen, LocalCS cs, Geometry.IRandomAccessRange<Geometry.Point> points, Geometry.Box box, bool closed, bool drawDirs, Geometry.Unit unit)
+        {
+            double pi = Geometry.HalfAngle(unit);
+            float[] xs_orig = new float[points.Count];
+            PointF[] points_rel = new PointF[points.Count];
+            xs_orig[0] = cs.ConvertX(points[0][0]);
+            points_rel[0] = cs.Convert(points[0]);
+            float minf = points_rel[0].X;
+            float maxf = points_rel[0].X;
+            float periodf = cs.ConvertDimension(2 * pi);
+            double x0 = Geometry.NormalizedAngle(points[0][0], unit);
+            double x0_prev = points[0][0];
+            for (int i = 1; i < points.Count; ++i)
+            {
+                xs_orig[i] = cs.ConvertX(points[i][0]);
+
+                double x1 = Geometry.NormalizedAngle(points[i][0], unit);
+                double dist = x1 - x0; // [-2pi, 2pi]
+                //bool intersectsAntimeridian = dist < -pi || pi < dist;
+                double distNorm = Geometry.NormalizedAngle(dist, unit); // [-pi, pi]
+
+                double x0_curr = x0_prev + distNorm;
+                points_rel[i] = new PointF(cs.ConvertX(x0_curr),
+                                           cs.ConvertY(points[i][1]));
+
+                // expand relative box_x
+                if (points_rel[i].X < minf)
+                    minf = points_rel[i].X;
+                if (points_rel[i].X > maxf)
+                    maxf = points_rel[i].X;
+
+                x0_prev = x0_curr;
+                x0 = x1;
+            }
+
+            DrawLines(graphics, pen, points_rel, 0, xs_orig, closed, drawDirs);
+
+            // west
+            float box_minf = cs.ConvertX(box.Min[0]);
+            float maxf_i = maxf;
+            float translationf = 0;
+            while (maxf_i >= box_minf)
+            {
+                translationf -= periodf;
+
+                DrawLines(graphics, pen, points_rel, translationf, xs_orig, closed, drawDirs);
+                maxf_i -= periodf;
+            }
+            // east
+            float box_maxf = cs.ConvertX(box.Max[0]);
+            float minf_i = minf;
+            translationf = 0;
+            while (minf_i <= box_maxf)
+            {
+                translationf += periodf;
+
+                DrawLines(graphics, pen, points_rel, translationf, xs_orig, closed, drawDirs);
+                minf_i += periodf;
             }
         }
 
