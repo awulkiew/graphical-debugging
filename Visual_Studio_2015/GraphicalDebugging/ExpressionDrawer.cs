@@ -120,8 +120,7 @@ namespace GraphicalDebugging
                         graphics.DrawLine(pen, rx, ry, rx + rw, ry + rh);
                     else
                     {
-                        // TODO: here also a wrong box may be drawn ()shortest segment instead of min->max segment
-                        PeriodicDrawableRange pd = new PeriodicDrawableRange(cs, new Geometry.Segment(Min, Max), box, traits.Unit);
+                        PeriodicDrawableBox pd = new PeriodicDrawableBox(cs, new Geometry.Segment(Min, Max), box, traits.Unit);
                         DrawPeriodic(graphics, pen, brush, pd, false, false, false);
                     }
                 }
@@ -144,7 +143,6 @@ namespace GraphicalDebugging
                     }
                     else
                     {
-                        // TODO: Currently invalid Box is drawn as valid one
                         Geometry.Ring ring = new Geometry.Ring();
                         ring.Add(new Geometry.Point(Min[0], Min[1]));
                         ring.Add(new Geometry.Point(Max[0], Min[1]));
@@ -157,7 +155,6 @@ namespace GraphicalDebugging
             }
 
             public Geometry.Box Aabb { get {
-                    // TODO: Is this correct in the case of non-cartesian CS?
                     return Geometry.Aabb(Min, Max);
                 } }
 
