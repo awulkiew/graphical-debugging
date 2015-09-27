@@ -12,7 +12,7 @@ namespace GraphicalDebugging
 {
     class Geometry
     {
-        public enum CoordinateSystem { Cartesian, Spherical, Geographic };
+        public enum CoordinateSystem { Cartesian, Spherical, SphericalEquatorial, Geographic };
         public enum Unit { None, Radian, Degree };
 
         public class Traits

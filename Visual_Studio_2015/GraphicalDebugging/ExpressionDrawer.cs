@@ -1345,6 +1345,8 @@ namespace GraphicalDebugging
                             Geometry.CoordinateSystem coordinateSystem = Geometry.CoordinateSystem.Cartesian;
                             if (cs_base_type == "boost::geometry::cs::spherical")
                                 coordinateSystem = Geometry.CoordinateSystem.Spherical;
+                            else if (cs_base_type == "boost::geometry::cs::spherical_equatorial")
+                                coordinateSystem = Geometry.CoordinateSystem.SphericalEquatorial;
                             else if (cs_base_type == "boost::geometry::cs::geographic")
                                 coordinateSystem = Geometry.CoordinateSystem.Geographic;
 
@@ -1773,6 +1775,10 @@ namespace GraphicalDebugging
                 if (csystems.Count > 1)
                 {
                     throw new Exception("Multiple coordinate systems detected.");
+                }
+                if (csystems.First() == Geometry.CoordinateSystem.Spherical)
+                {
+                    throw new Exception("This coordinate system is not yet supported.");
                 }
                 if (units.Count > 1)
                 {
