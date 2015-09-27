@@ -1785,6 +1785,16 @@ namespace GraphicalDebugging
                     throw new Exception("Multiple units detected.");
                 }
 
+                {
+                    // CS info
+                    SolidBrush brush = new SolidBrush(Color.Black);
+                    Font font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), 10);
+                    string str = Geometry.Name(csystems.First());
+                    if (units.First() != Geometry.Unit.None)
+                        str += '[' + Geometry.Name(units.First()) + ']';
+                    graphics.DrawString(str, font, brush, 0, 0);
+                }              
+
                 if (drawnCount > 0)
                 {
                     Geometry.Traits traits = new Geometry.Traits(dimensions.Max(), csystems.First(), units.First());

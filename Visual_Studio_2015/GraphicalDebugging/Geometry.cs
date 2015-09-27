@@ -15,6 +15,29 @@ namespace GraphicalDebugging
         public enum CoordinateSystem { Cartesian, Spherical, SphericalEquatorial, Geographic };
         public enum Unit { None, Radian, Degree };
 
+        public static string Name(CoordinateSystem cs)
+        {
+            switch (cs)
+            {
+                case CoordinateSystem.Cartesian: return "cartesian";
+                case CoordinateSystem.Spherical: return "spherical";
+                case CoordinateSystem.SphericalEquatorial: return "spherical_equatorial";
+                case CoordinateSystem.Geographic: return "geographic";
+                default: return "unknown";
+            }
+        }
+
+        public static string Name(Unit unit)
+        {
+            switch (unit)
+            {
+                case Unit.None: return "";
+                case Unit.Radian: return "radian";
+                case Unit.Degree: return "degree";
+                default: return "unknown";
+            }
+        }
+
         public class Traits
         {
             public Traits(int dimension)
