@@ -109,30 +109,55 @@ namespace GraphicalDebugging
 
                 if (rw == 0 && rh == 0)
                 {
-                    DrawPoint(graphics, pen, brush, rx, ry, 2.5f);
+                    if (traits.Unit == Geometry.Unit.None)
+                        DrawPoint(graphics, pen, brush, rx, ry, 2.5f);
+                    else
+                        DrawPeriodicPoint(graphics, pen, brush, cs, Min, box, traits.Unit);
                 }
                 else if (rw == 0 || rh == 0)
                 {
-                    graphics.DrawLine(pen, rx, ry, rx + rw, ry + rh);
+                    if (traits.Unit == Geometry.Unit.None)
+                        graphics.DrawLine(pen, rx, ry, rx + rw, ry + rh);
+                    else
+                    {
+                        // TODO: here also a wrong box may be drawn ()shortest segment instead of min->max segment
+                        PeriodicDrawableRange pd = new PeriodicDrawableRange(cs, new Geometry.Segment(Min, Max), box, traits.Unit);
+                        DrawPeriodic(graphics, pen, brush, pd, false, false, false);
+                    }
                 }
                 else
                 {
-                    graphics.DrawRectangle(pen, rx, ry, rw, rh);
-
-                    bool isInvalid = Width < 0 || Height < 0;
-                    if (!isInvalid)
+                    if (traits.Unit == Geometry.Unit.None)
                     {
-                        graphics.FillRectangle(brush, rx, ry, rw, rh);
+                        graphics.DrawRectangle(pen, rx, ry, rw, rh);
+
+                        bool isInvalid = Width < 0 || Height < 0;
+                        if (!isInvalid)
+                        {
+                            graphics.FillRectangle(brush, rx, ry, rw, rh);
+                        }
+                        else
+                        {
+                            graphics.DrawLine(pen, rx, ry, rx + rw, ry + rh);
+                            graphics.DrawLine(pen, rx + rw, ry, rx, ry + rh);
+                        }
                     }
                     else
                     {
-                        graphics.DrawLine(pen, rx, ry, rx + rw, ry + rh);
-                        graphics.DrawLine(pen, rx + rw, ry, rx, ry + rh);
+                        // TODO: Currently invalid Box is drawn as valid one
+                        Geometry.Ring ring = new Geometry.Ring();
+                        ring.Add(new Geometry.Point(Min[0], Min[1]));
+                        ring.Add(new Geometry.Point(Max[0], Min[1]));
+                        ring.Add(new Geometry.Point(Max[0], Max[1]));
+                        ring.Add(new Geometry.Point(Min[0], Max[1]));
+                        PeriodicDrawableBox pd = new PeriodicDrawableBox(cs, ring, box, traits.Unit);
+                        DrawPeriodic(graphics, pen, brush, pd, true, true, false);
                     }
                 }
             }
 
             public Geometry.Box Aabb { get {
+                    // TODO: Is this correct in the case of non-cartesian CS?
                     return Geometry.Aabb(Min, Max);
                 } }
 
@@ -604,8 +629,8 @@ namespace GraphicalDebugging
 
         private static void DrawLine(Graphics graphics, Pen pen, PointF p0, PointF p1, float x0_orig, float x1_orig, bool drawDir)
         {
-            bool sameP0 = Math.Abs(p0.X - x0_orig) < 0.0001;
-            bool sameP1 = Math.Abs(p1.X - x1_orig) < 0.0001;
+            bool sameP0 = Math.Abs(p0.X - x0_orig) < 0.001;
+            bool sameP1 = Math.Abs(p1.X - x1_orig) < 0.001;
             //bool sameP0 = p0.X == x0_orig;
             //bool sameP1 = p1.X == x1_orig;
             if (sameP0 && sameP1)
@@ -692,12 +717,12 @@ namespace GraphicalDebugging
 
         private class PeriodicDrawableRange : IPeriodicDrawable
         {
+            protected PeriodicDrawableRange() { }
+
             public PeriodicDrawableRange(LocalCS cs, Geometry.IRandomAccessRange<Geometry.Point> points, Geometry.Box box, Geometry.Unit unit)
             {
                 if (points.Count < 2)
-                {
                     return;
-                }
 
                 double pi = Geometry.HalfAngle(unit);
                 periodf = cs.ConvertDimension(2 * pi);
@@ -741,6 +766,9 @@ namespace GraphicalDebugging
 
             public void DrawOne(Graphics graphics, Pen pen, Brush brush, float translation, bool closed, bool fill, bool drawDirs)
             {
+                if (!Good())
+                    return;
+
                 DrawLines(graphics, pen, points_rel, translation, xs_orig, closed, drawDirs);
 
                 if (fill && brush != null)
@@ -754,13 +782,56 @@ namespace GraphicalDebugging
 
             public bool Good() { return points_rel != null; }
 
-            public PointF[] points_rel { get; }
-            public float[] xs_orig { get; }
-            public float minf { get; }
-            public float maxf { get; }
-            public float periodf { get; }
-            public float box_minf { get; }
-            public float box_maxf { get; }
+            public PointF[] points_rel { get; protected set; }
+            public float[] xs_orig { get; protected set; }
+            public float minf { get; protected set; }
+            public float maxf { get; protected set; }
+            public float periodf { get; protected set; }
+            public float box_minf { get; protected set; }
+            public float box_maxf { get; protected set; }
+        }
+
+        private class PeriodicDrawableBox : PeriodicDrawableRange
+        {
+            public PeriodicDrawableBox(LocalCS cs, Geometry.IRandomAccessRange<Geometry.Point> points, Geometry.Box box, Geometry.Unit unit)
+            {
+                double pi = Geometry.HalfAngle(unit);
+                periodf = cs.ConvertDimension(2 * pi);
+
+                xs_orig = new float[points.Count];
+                points_rel = new PointF[points.Count];
+
+                xs_orig[0] = cs.ConvertX(points[0][0]);
+                points_rel[0] = cs.Convert(points[0]);
+
+                minf = points_rel[0].X;
+                maxf = points_rel[0].X;
+
+                double x0 = Geometry.NormalizedAngle(points[0][0], unit);
+                for (int i = 1; i < points.Count; ++i)
+                {
+                    xs_orig[i] = cs.ConvertX(points[i][0]);
+
+                    double x1 = Geometry.NormalizedAngle(points[i][0], unit);
+                    double dist = x1 - x0; // [-2pi, 2pi]
+                    double distNorm = Geometry.NormalizedAngle(dist, unit); // [-pi, pi]
+                    while (distNorm < 0)
+                        distNorm += 2 * Geometry.HalfAngle(unit); // [0, 2pi] - min is always lesser than max
+
+                    double x0_curr = points[0][0] + distNorm; // always relative to p0
+                    points_rel[i] = new PointF(cs.ConvertX(x0_curr),
+                                               cs.ConvertY(points[i][1]));
+
+                    // expand relative box X
+                    if (points_rel[i].X < minf)
+                        minf = points_rel[i].X;
+                    if (points_rel[i].X > maxf)
+                        maxf = points_rel[i].X;
+                }
+
+                box_minf = cs.ConvertX(box.Min[0]);
+                box_maxf = cs.ConvertX(box.Max[0]);
+            }
         }
 
         private class PeriodicDrawablePolygon : IPeriodicDrawable
@@ -795,6 +866,9 @@ namespace GraphicalDebugging
 
             public void DrawOne(Graphics graphics, Pen pen, Brush brush, float translation, bool closed, bool fill, bool drawDirs)
             {
+                if (!outer.Good())
+                    return;
+
                 outer.DrawOne(graphics, pen, brush, translation, closed, false, drawDirs);
 
                 GraphicsPath gp = new GraphicsPath();
