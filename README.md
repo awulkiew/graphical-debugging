@@ -42,9 +42,24 @@ Supported:
 * 2D cartesian geometries
   * Boost.Geometry: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon
   * Boost.Polygon: point_data, segment_data, rectangle_data, polygon_data, polygon_with_holes_data
-  * Boost.Variant: variant of geometries
+* Non-cartesian geometries (spherical_equatorial and geographic)
+  * Boost.Geometry: point, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon
+* Variants of geometries
+  * Boost.Variant
 
 ![GraphicalWatch](images/graphical_watch.png)
+
+Geometries in spherical_equatorial and geographic coordinate systems are displayed in a convenient, compact way.
+
+![GraphicalWatch](images/graphical_watch_sph.png)
+
+where
+
+    polygon_sd_t poly_sd{{{-100, 0},{100, 0},{100, 50},{-100, 50},{-100, 0}},
+                         {{-150, 10},{-150, 20},{150, 20},{150, 10},{-150, 10}}};
+    multi_polygon_sd_t mpoly_sd{{{{0, 0},{90, 10},{170, 20},{-170, 30},{-150, 60}},
+                                 {{0, 10},{-15, 20},{-50, 50},{0, 60}}}};
+    multi_point_sd_t mpt_sd{{0, 0},{90, 10},{170, 20},{-170, 30}};
 
 #### GeometryWatch
 
@@ -55,8 +70,23 @@ Supported:
 * 2D cartesian geometries
   * Boost.Geometry: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon
   * Boost.Polygon: point_data, segment_data, rectangle_data, polygon_data, polygon_with_holes_data
-  * Boost.Variant: variant of geometries
+* Non-cartesian geometries (spherical_equatorial and geographic)
+  * Boost.Geometry: point, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon
+* Variants of geometries
+  * Boost.Variant
 
 ![GeometryWatch](images/geometry_watch.png)
 
 ![GeometryWatch](images/geometry_watch2.png)
+
+Geometries in spherical_equatorial and geographic coordinate systems are displayed in a way allowing to see what coordinates were used to define a geometry. Note that various libraries may require coordinates in a certain range. However this extension tries to display any coordinates as good as possible.
+
+![GraphicalWatch](images/geometry_watch_sph.png)
+
+where
+
+    polygon_sd_t poly_sd{{{-100, 0},{100, 0},{100, 50},{-100, 50},{-100, 0}},
+                         {{-150, 10},{-150, 20},{150, 20},{150, 10},{-150, 10}}};
+    multi_polygon_sd_t mpoly_sd{{{{0, 0},{90, 10},{170, 20},{-170, 30},{-150, 60}},
+                                 {{0, 10},{-15, 20},{-50, 50},{0, 60}}}};
+    multi_point_sd_t mpt_sd{{0, 0},{90, 10},{170, 20},{-170, 30}};

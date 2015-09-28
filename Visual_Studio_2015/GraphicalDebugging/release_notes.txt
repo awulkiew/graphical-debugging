@@ -39,3 +39,10 @@ additions:
 bugfixes:
 - GeometryWatch wasn't redrawed if empty geometries were left after removal. Caused by an attempt of drawing of an invalid/inverted AABB.
 - Transparent color was added into the colors pool after removal of undrawable variable from the GeometryWatch list.
+
+version 0.5
+
+additions:
+- implement handling of various coordinate systems
+- support spherical_equatorial and geographic coordinate systems
+- in GeometryWatch draw axes/meridians/parallels, info about the coordinate system, units and error messages
