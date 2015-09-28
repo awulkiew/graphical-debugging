@@ -4,11 +4,11 @@ This extension contains:
 
 * Debugging vizualizers for Boost.Array, Boost.Geometry and Boost.Variant
 * GraphicalWatch tool window allowing to view graphical representation of variables, e.g. Boost.Geometry models or vectors of values
-* GeometryWatch tool window allowing to view Boost.Geometry 2D models drawn on a common plane
+* GeometryWatch tool window allowing to view geometries drawn in a common coordinate system
 
 To build you need e.g. Microsoft Visual Studio 2015 Community, .NET Framework 4.5.2 and Visual Studio 2015 SDK.
 
-To install double-click the *.vsix file from bin/Debug or bin/Relase directory, those files can also be found in bin branch of this repository.
+To install double-click the *.vsix file from bin/Debug or bin/Relase directory. The packages can also be found [here](https://github.com/awulkiew/graphical-debugging/tree/bin).
 
 To use:
 
@@ -16,6 +16,8 @@ To use:
 * start debugging
 * after a breakpoint hit enable the tool window from the menu View->Other Windows->GraphicalWatch or View->Other Windows->GeometryWatch
 * add variable to the list
+
+Feel free to report bugs, propose features and create pull requests. Any help is appreciated.
 
 #### Debugging vizualizers
 
