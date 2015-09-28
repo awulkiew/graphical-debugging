@@ -59,7 +59,7 @@ namespace GraphicalDebugging
             public Unit Unit { get; }
         }
 
-        public class Point
+        public class Point : ICloneable
         {
             public Point() { }
             //public Point(double x) { coords = new double[1] { x }; }
@@ -72,12 +72,18 @@ namespace GraphicalDebugging
                 set { coords[i] = value; }
             }
 
+            public object Clone()
+            {
+                return this.MemberwiseClone();
+            }
+
             public int Dimension { get { return 2/*coords != null ? coords.Length : 0*/; } }
 
             protected double[] coords;
+
         }
 
-        public class Box
+        public class Box : ICloneable
         {
             public Box()
             { }
@@ -92,6 +98,11 @@ namespace GraphicalDebugging
 
             public double Width { get { return Max[0] - Min[0]; } }
             public double Height { get { return Max[1] - Min[1]; } }
+
+            public object Clone()
+            {
+                return this.MemberwiseClone();
+            }
 
             public Point Min, Max;
         }
@@ -319,24 +330,57 @@ namespace GraphicalDebugging
             return result;
         }
 
-        /*public static Box Envelope(Segment seg)
+        public static Box Envelope(Segment seg, Traits traits)
         {
-            return new Box(
-                    new Point(Math.Min(seg[0][0], seg[1][0]),
-                              Math.Min(seg[0][1], seg[1][1])),
-                    new Point(Math.Max(seg[0][0], seg[1][0]),
-                              Math.Max(seg[0][1], seg[1][1]))
-                );
-        }*/
-        // NOTE: Geometries must be normalized
-        // U is Radian or Degree
-        /*public static Box Envelope(Segment seg)
+            return Envelope(seg[0], seg[1], traits);
+        }
+        public static Box Envelope(Point p0, Point p1, Traits traits)
         {
-            Box result = new Box(seg[0], seg[0]);
-            Expand(result, seg[1]);
-            return result;
-        }*/
-        
+            if (traits.Unit == Unit.None)
+                return Envelope(p0, p1);
+            else
+                return EnvelopeAngle(p0, p1, traits.Unit);
+        }
+        public static Box Envelope(Point p0, Point p1)
+        {
+            return new Box(new Point(Math.Min(p0[0], p1[0]),
+                                     Math.Min(p0[1], p1[1])),
+                           new Point(Math.Max(p0[0], p1[0]),
+                                     Math.Max(p0[1], p1[1])));
+        }
+        public static Box EnvelopeAngle(Point p0_, Point p1_, Unit unit)
+        {
+            Point p0 = Normalized(p0_, unit);
+            Point p1 = Normalized(p1_, unit);
+            double distNorm = NormalizedAngle(p1[0] - p0[0], unit); // [-pi, pi]
+            if (distNorm < 0)
+                p0[0] = p1[0] - distNorm;
+            else
+                p1[0] = p0[0] + distNorm;
+            return Envelope(p0, p1);
+        }
+
+        public static Box Envelope(Box box, Traits traits)
+        {
+            if (traits.Unit == Unit.None)
+                return Envelope(box);
+            else
+                return EnvelopeAngle(box, traits.Unit);
+        }
+        public static Box Envelope(Box box)
+        {
+            return new Box(new Point(box.Min[0], box.Min[1]),
+                           new Point(box.Max[0], box.Max[1]));
+        }
+        public static Box EnvelopeAngle(Box box, Unit unit)
+        {
+            Point p0 = Normalized(box.Min, unit);
+            Point p1 = Normalized(box.Max, unit);
+            if (p1[0] < p0[0])
+                p1[0] += 2 * HalfAngle(unit);
+            return Envelope(p0, p1);
+        }
+
         public static void Expand(Box box, Point p)
         {
             if (p[0] < box.Min[0]) box.Min[0] = p[0];
@@ -381,11 +425,74 @@ namespace GraphicalDebugging
             if (p[1] > box.Max[1]) box.Max[1] = p[1];
         }*/
 
+        public static Box Envelope(IRandomAccessRange<Point> range, Traits traits)
+        {
+            if (range.Count <= 0)
+            {
+                Box result = new Box();
+                AssignInverse(result);
+                return result;
+            }
+            else if (range.Count <= 1)
+            {
+                return new Box(range[0], range[0]);
+            }
+            else
+            {
+                Box result = Envelope(range[0], range[1], traits);
+                for (int i = 2; i < range.Count; ++i)
+                {
+                    Box b = Envelope(range[i], range[i - 1], traits);
+                    Expand(result, b, traits);
+                }
+                return result;
+            }
+        }
+
+        public static void Expand(Box box, Box b, Traits traits)
+        {
+            if (traits.Unit == Unit.None)
+                Expand(box, b);
+            else
+                ExpandAngle(box, b, traits.Unit);
+        }
         public static void Expand(Box box, Box b)
         {
             if (b.Min[0] < box.Min[0]) box.Min[0] = b.Min[0];
             if (b.Min[1] < box.Min[1]) box.Min[1] = b.Min[1];
             if (b.Max[0] > box.Max[0]) box.Max[0] = b.Max[0];
+            if (b.Max[1] > box.Max[1]) box.Max[1] = b.Max[1];
+        }
+        public static void ExpandAngle(Box box, Box b, Unit unit)
+        {
+            double xmin1 = NormalizedAngle(box.Min[0], unit);
+            double xmax1 = NormalizedAngle(box.Max[0], unit);
+            double xmin2 = NormalizedAngle(b.Min[0], unit);
+            double xmax2 = NormalizedAngle(b.Max[0], unit);
+            if (xmax1 < xmin1)
+                xmax1 += 2 * HalfAngle(unit);
+            if (xmax2 < xmin2)
+                xmax2 += 2 * HalfAngle(unit);
+
+            double twoPi = 2 * HalfAngle(unit);
+            double left_dist = NormalizedAngle(xmin1 - xmin2, unit);
+            double right_dist = NormalizedAngle(xmax2 - xmax1, unit);
+            if (left_dist >= 0 && right_dist >= 0)
+            {
+                if (left_dist < right_dist)
+                    box.Min[0] = xmin2;
+                else
+                    box.Max[0] = xmax2;
+            }
+            else if (left_dist >= 0)
+                box.Min[0] = xmin2;
+            else if (right_dist >= 0)
+                box.Max[0] = xmax2;
+
+            if (box.Max[0] < box.Min[0])
+                box.Max[0] += twoPi;
+
+            if (b.Min[1] < box.Min[1]) box.Min[1] = b.Min[1];
             if (b.Max[1] > box.Max[1]) box.Max[1] = b.Max[1];
         }
 
@@ -425,6 +532,11 @@ namespace GraphicalDebugging
         private static void NormalizeAngle(Point p, Unit unit)
         {
             p[0] = NormalizedAngle(p[0], unit);
+        }
+
+        public static Point Normalized(Point p, Unit unit)
+        {
+            return new Point(NormalizedAngle(p[0], unit), p[1]);
         }
 
         public static double NormalizedAngle(double x, Unit unit)

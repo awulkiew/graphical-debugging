@@ -154,9 +154,8 @@ namespace GraphicalDebugging
                 }
             }
 
-            public Geometry.Box Aabb { get {
-                    return Geometry.Aabb(Min, Max);
-                } }
+            public Geometry.Box Aabb { get { return Box_; } }
+            public Geometry.Box Box_ { get; set; }
 
             public Color DefaultColor { get { return Color.Red; } }
         }
@@ -536,6 +535,9 @@ namespace GraphicalDebugging
 
                 double src_w = src_box.Width;
                 double src_h = src_box.Height;
+                if (src_w < 0 || src_h < 0)
+                    throw new System.Exception("Invalid box dimensions.");
+
                 src_x0 = src_box.Min[0] + src_w / 2;
                 src_y0 = src_box.Min[1] + src_h / 2;
 
@@ -626,30 +628,39 @@ namespace GraphicalDebugging
 
         private static void DrawLine(Graphics graphics, Pen pen, PointF p0, PointF p1, float x0_orig, float x1_orig, bool drawDir)
         {
-            bool sameP0 = Math.Abs(p0.X - x0_orig) < 0.001;
-            bool sameP1 = Math.Abs(p1.X - x1_orig) < 0.001;
-            //bool sameP0 = p0.X == x0_orig;
-            //bool sameP1 = p1.X == x1_orig;
-            if (sameP0 && sameP1)
+            // actually this variable indicates that additional info should be drawn
+            // such as dirs, periodical segments as dotted lines etc.
+            if (!drawDir)
             {
-                DrawLine(graphics, pen, p0, p1, drawDir);
+                DrawLine(graphics, pen, p0, p1, false);
             }
             else
             {
-                Pen pend = (Pen)pen.Clone();
-                pend.DashStyle = DashStyle.Dot;
-
-                if (sameP0 || sameP1)
+                bool sameP0 = Math.Abs(p0.X - x0_orig) < 0.001;
+                bool sameP1 = Math.Abs(p1.X - x1_orig) < 0.001;
+                //bool sameP0 = p0.X == x0_orig;
+                //bool sameP1 = p1.X == x1_orig;
+                if (sameP0 && sameP1)
                 {
-                    PointF ph = AddF(p0, DivF(SubF(p1, p0), 2));
-                    graphics.DrawLine(sameP0 ? pen : pend, p0, ph);
-                    graphics.DrawLine(sameP1 ? pen : pend, ph, p1);
-                    if (drawDir)
-                        DrawDir(p0, p1, graphics, pen);
+                    DrawLine(graphics, pen, p0, p1, true);
                 }
                 else
                 {
-                    DrawLine(graphics, pend, p0, p1, drawDir);
+                    Pen pend = (Pen)pen.Clone();
+                    pend.DashStyle = DashStyle.Dot;
+
+                    if (sameP0 || sameP1)
+                    {
+                        PointF ph = AddF(p0, DivF(SubF(p1, p0), 2));
+                        graphics.DrawLine(sameP0 ? pen : pend, p0, ph);
+                        graphics.DrawLine(sameP1 ? pen : pend, ph, p1);
+
+                        DrawDir(p0, p1, graphics, pen);
+                    }
+                    else
+                    {
+                        DrawLine(graphics, pend, p0, p1, true);
+                    }
                 }
             }
         }
@@ -914,25 +925,32 @@ namespace GraphicalDebugging
             if (!pd.Good())
                 return;
 
-            pd.DrawOne(graphics, pen, brush, 0, closed, fill, drawDirs);
+            if (pd.maxf >= pd.box_minf && pd.minf <= pd.box_maxf)
+                pd.DrawOne(graphics, pen, brush, 0, closed, fill, drawDirs);
 
             // west
+            float minf_i = pd.minf;
             float maxf_i = pd.maxf;
             float translationf = 0;
             while (maxf_i >= pd.box_minf)
             {
                 translationf -= pd.periodf;
+                minf_i -= pd.periodf;
                 maxf_i -= pd.periodf;
-                pd.DrawOne(graphics, pen, brush, translationf, closed, fill, drawDirs);
+                if (maxf_i >= pd.box_minf && minf_i <= pd.box_maxf)
+                    pd.DrawOne(graphics, pen, brush, translationf, closed, fill, drawDirs);
             }
             // east
-            float minf_i = pd.minf;
+            minf_i = pd.minf;
+            maxf_i = pd.maxf;
             translationf = 0;
             while (minf_i <= pd.box_maxf)
             {
                 translationf += pd.periodf;
                 minf_i += pd.periodf;
-                pd.DrawOne(graphics, pen, brush, translationf, closed, fill, drawDirs);
+                maxf_i += pd.periodf;
+                if (maxf_i >= pd.box_minf && minf_i <= pd.box_maxf)
+                    pd.DrawOne(graphics, pen, brush, translationf, closed, fill, drawDirs);
             }
         }
 
@@ -1075,12 +1093,17 @@ namespace GraphicalDebugging
             return new Point(x, y);
         }
 
-        private static Box LoadGeometryBox(Debugger debugger, string name)
+        private static Box LoadGeometryBox(Debugger debugger, string name, bool calculateEnvelope, Geometry.Traits traits)
         {
             Point first_p = LoadPoint(debugger, name + ".m_min_corner");
             Point second_p = LoadPoint(debugger, name + ".m_max_corner");
 
-            return new Box(first_p, second_p);
+            Box result = new Box(first_p, second_p);
+            if (calculateEnvelope)
+                result.Box_ = Geometry.Envelope(result, traits);
+            else
+                result.Box_ = result;
+            return result;
         }
 
         private static Box LoadPolygonBox(Debugger debugger, string name)
@@ -1092,113 +1115,145 @@ namespace GraphicalDebugging
                            new Point(first_p[1], second_p[1]));
         }
 
-        private static Segment LoadSegment(Debugger debugger, string name, string first, string second, Geometry.Traits traits)
+        private static Segment LoadSegment(Debugger debugger, string name, string first, string second, bool calculateEnvelope, Geometry.Traits traits)
         {
             Point first_p = LoadPoint(debugger, name + "." + first);
             Point second_p = LoadPoint(debugger, name + "." + second);
 
             Segment result = new Segment(first_p, second_p);
-            result.Box = Geometry.Aabb(result, traits);
+            if (calculateEnvelope)
+                result.Box = Geometry.Envelope(result, traits);
+            else
+                result.Box = Geometry.Aabb(result, traits);
             return result;
         }
 
-        private static Linestring LoadLinestring(Debugger debugger, string name, Geometry.Traits traits)
+        private static Linestring LoadLinestring(Debugger debugger, string name, bool calculateEnvelope, Geometry.Traits traits)
         {
             Linestring result = new Linestring();
-            //Geometry.Box box = new Geometry.Box();
-            //Geometry.AssignInverse(box);
 
             int size = LoadSize(debugger, name);
             for (int i = 0; i < size; ++i)
             {
                 Point p = LoadPoint(debugger, name + "[" + i + "]");
                 result.Add(p);
-                //Geometry.Expand(box, p);
             }
 
-            //result.Box = box;
-            result.Box = Geometry.Aabb(result, traits);
+            if (calculateEnvelope)
+                result.Box = Geometry.Envelope(result, traits);
+            else
+                result.Box = Geometry.Aabb(result, traits);
             return result;
         }
 
-        private static Ring LoadRing(Debugger debugger, string name, string member, Geometry.Traits traits)
+        private static Ring LoadRing(Debugger debugger, string name, string member, bool calculateEnvelope, Geometry.Traits traits)
         {
             string name_suffix = member.Length > 0 ? "." + member : "";
-            Linestring ls = LoadLinestring(debugger, name + name_suffix, traits);
+            Linestring ls = LoadLinestring(debugger, name + name_suffix, calculateEnvelope, traits);
             return new Ring(ls, ls.Box);
         }
 
-        private static Polygon LoadPolygon(Debugger debugger, string name, string outer, string inners, bool inners_in_list, string ring_member, Geometry.Traits traits)
+        private static Polygon LoadPolygon(Debugger debugger, string name, string outer, string inners, bool inners_in_list, string ring_member, bool calculateEnvelope, Geometry.Traits traits)
         {
-            Ring outer_r = LoadRing(debugger, name + "." + outer, ring_member, traits);
+            Ring outer_r = LoadRing(debugger, name + "." + outer, ring_member, calculateEnvelope, traits);
 
-            Geometry.Box box = new Geometry.Box();
-            Geometry.AssignInverse(box);
-            Geometry.Expand(box, outer_r.Box);
-
+            Geometry.Box box = (Geometry.Box)outer_r.Box.Clone();
+            
             List<Geometry.Ring> inners_r = new List<Geometry.Ring>();
 
             ContainerElements inner_names = new ContainerElements(debugger, name + "." + inners);
             foreach(string inner_name in inner_names)
             {
-                Ring inner_r = LoadRing(debugger, inner_name, ring_member, traits);
+                Ring inner_r = LoadRing(debugger, inner_name, ring_member, calculateEnvelope, traits);
 
                 inners_r.Add(inner_r);
-                Geometry.Expand(box, inner_r.Box);
+
+                if (calculateEnvelope)
+                    Geometry.Expand(box, inner_r.Box, traits);
+                else
+                    Geometry.Expand(box, inner_r.Box);
             }
 
             return new Polygon(outer_r, inners_r, box);
         }
 
-        private static Multi<Point> LoadMultiPoint(Debugger debugger, string name)
+        private static Multi<Point> LoadMultiPoint(Debugger debugger, string name, bool calculateEnvelope, Geometry.Traits traits)
         {
             List<IDrawable> singles = new List<IDrawable>();
-            Geometry.Box box = new Geometry.Box();
-            Geometry.AssignInverse(box);
-
+            Geometry.Box box = null;
+            
             int size = LoadSize(debugger, name);
 
             for (int i = 0; i < size; ++i)
             {
                 Point s = LoadPoint(debugger, name + "[" + i + "]");
                 singles.Add(s);
-                Geometry.Expand(box, s);
+
+                // TODO: in general it's not necessary to create a box here
+                Geometry.Box b = new Geometry.Box(new Geometry.Point(s[0], s[1]),
+                                                  new Geometry.Point(s[0], s[1]));
+
+                if (box == null)
+                    box = b;
+                else
+                {
+                    if (calculateEnvelope)
+                        Geometry.Expand(box, b, traits);
+                    else
+                        Geometry.Expand(box, b);
+                }
             }
 
             return new Multi<Point>(singles, box);
         }
 
-        private static Multi<Linestring> LoadMultiLinestring(Debugger debugger, string name, Geometry.Traits traits)
+        private static Multi<Linestring> LoadMultiLinestring(Debugger debugger, string name, bool calculateEnvelope, Geometry.Traits traits)
         {
             List<IDrawable> singles = new List<IDrawable>();
-            Geometry.Box box = new Geometry.Box();
-            Geometry.AssignInverse(box);
+            Geometry.Box box = null;
 
             int size = LoadSize(debugger, name);
 
             for (int i = 0; i < size; ++i)
             {
-                Linestring s = LoadLinestring(debugger, name + "[" + i + "]", traits);
+                Linestring s = LoadLinestring(debugger, name + "[" + i + "]", calculateEnvelope, traits);
                 singles.Add(s);
-                Geometry.Expand(box, s.Box);
+
+                if (box == null)
+                    box = (Geometry.Box)s.Box.Clone();
+                else
+                {
+                    if (calculateEnvelope)
+                        Geometry.Expand(box, s.Box, traits);
+                    else
+                        Geometry.Expand(box, s.Box);
+                }  
             }
 
             return new Multi<Linestring>(singles, box);
         }
 
-        private static Multi<Polygon> LoadMultiPolygon(Debugger debugger, string name, string outer, string inners, Geometry.Traits traits)
+        private static Multi<Polygon> LoadMultiPolygon(Debugger debugger, string name, string outer, string inners, bool calculateEnvelope, Geometry.Traits traits)
         {
             List<IDrawable> singles = new List<IDrawable>();
-            Geometry.Box box = new Geometry.Box();
-            Geometry.AssignInverse(box);
+            Geometry.Box box = null;
 
             int size = LoadSize(debugger, name);
 
             for (int i = 0; i < size; ++i)
             {
-                Polygon s = LoadPolygon(debugger, name + "[" + i + "]", outer, inners, false, "", traits);
+                Polygon s = LoadPolygon(debugger, name + "[" + i + "]", outer, inners, false, "", calculateEnvelope, traits);
                 singles.Add(s);
-                Geometry.Expand(box, s.Box);
+
+                if (box == null)
+                    box = (Geometry.Box)s.Box.Clone();
+                else
+                {
+                    if (calculateEnvelope)
+                        Geometry.Expand(box, s.Box, traits);
+                    else
+                        Geometry.Expand(box, s.Box);
+                }
             }
 
             return new Multi<Polygon>(singles, box);
@@ -1427,7 +1482,7 @@ namespace GraphicalDebugging
             public Geometry.Traits Traits { get; set; }
         }
 
-        private static DrawablePair LoadGeometry(Debugger debugger, string name, string type)
+        private static DrawablePair LoadGeometry(Debugger debugger, string name, string type, bool calculateEnvelope)
         {
             IDrawable d = null;
             Geometry.Traits traits = null;
@@ -1435,22 +1490,22 @@ namespace GraphicalDebugging
             if ((traits = LoadPointTraits(type)) != null)
                 d = LoadPoint(debugger, name);
             else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::box")) != null)
-                d = LoadGeometryBox(debugger, name);
+                d = LoadGeometryBox(debugger, name, calculateEnvelope, traits);
             else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::segment")) != null
                   || (traits = LoadGeometryTraits(type, "boost::geometry::model::referring_segment")) != null)
-                d = LoadSegment(debugger, name, "first", "second", traits);
+                d = LoadSegment(debugger, name, "first", "second", calculateEnvelope, traits);
             else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::linestring")) != null)
-                d = LoadLinestring(debugger, name, traits);
+                d = LoadLinestring(debugger, name, calculateEnvelope, traits);
             else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::ring")) != null)
-                d = LoadRing(debugger, name, "", traits);
+                d = LoadRing(debugger, name, "", calculateEnvelope, traits);
             else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::polygon")) != null)
-                d = LoadPolygon(debugger, name, "m_outer", "m_inners", false, "", traits);
+                d = LoadPolygon(debugger, name, "m_outer", "m_inners", false, "", calculateEnvelope, traits);
             else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::multi_point")) != null)
-                d = LoadMultiPoint(debugger, name);
+                d = LoadMultiPoint(debugger, name, calculateEnvelope, traits);
             else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::multi_linestring", "boost::geometry::model::linestring")) != null)
-                d = LoadMultiLinestring(debugger, name, traits);
+                d = LoadMultiLinestring(debugger, name, calculateEnvelope, traits);
             else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::multi_polygon", "boost::geometry::model::polygon")) != null)
-                d = LoadMultiPolygon(debugger, name, "m_outer", "m_inners", traits);
+                d = LoadMultiPolygon(debugger, name, "m_outer", "m_inners", calculateEnvelope, traits);
             else
             {
                 traits = new Geometry.Traits(2); // 2D cartesian;
@@ -1459,13 +1514,13 @@ namespace GraphicalDebugging
                 if (base_type == "boost::polygon::point_data")
                     d = LoadPoint(debugger, name);
                 else if (base_type == "boost::polygon::segment_data")
-                    d = LoadSegment(debugger, name, "points_[0]", "points_[1]", traits);
+                    d = LoadSegment(debugger, name, "points_[0]", "points_[1]", false, traits);
                 else if (base_type == "boost::polygon::rectangle_data")
                     d = LoadPolygonBox(debugger, name);
                 else if (base_type == "boost::polygon::polygon_data")
-                    d = LoadRing(debugger, name, "coords_", traits);
+                    d = LoadRing(debugger, name, "coords_", false, traits);
                 else if (base_type == "boost::polygon::polygon_with_holes_data")
-                    d = LoadPolygon(debugger, name, "self_", "holes_", true, "coords_", traits);
+                    d = LoadPolygon(debugger, name, "self_", "holes_", true, "coords_", false, traits);
 
                 if (d == null)
                     traits = null;
@@ -1474,12 +1529,12 @@ namespace GraphicalDebugging
             return new DrawablePair(d, traits);
         }
 
-        private static DrawablePair LoadGeometryOrVariant(Debugger debugger, string name, string type)
+        private static DrawablePair LoadGeometryOrVariant(Debugger debugger, string name, string type, bool calculateEnvelope)
         {
             // Currently the supported types are hardcoded as follows:
 
             // Boost.Geometry models
-            DrawablePair result = LoadGeometry(debugger, name, type);
+            DrawablePair result = LoadGeometry(debugger, name, type, calculateEnvelope);
 
             if (result.Drawable == null)
             {
@@ -1497,7 +1552,7 @@ namespace GraphicalDebugging
                             Expression expr_value = debugger.GetExpression(value_str);
                             if (expr_value.IsValidValue)
                             {
-                                result = LoadGeometry(debugger, value_str, expr_value.Type);
+                                result = LoadGeometry(debugger, value_str, expr_value.Type, calculateEnvelope);
                             }
                         }
                     }
@@ -1522,9 +1577,9 @@ namespace GraphicalDebugging
             return new DrawablePair(d, traits);
         }
 
-        private static DrawablePair LoadDrawable(Debugger debugger, string name, string type)
+        private static DrawablePair LoadDrawable(Debugger debugger, string name, string type, bool calculateEnvelope)
         {
-            DrawablePair res = LoadGeometryOrVariant(debugger, name, type);
+            DrawablePair res = LoadGeometryOrVariant(debugger, name, type, calculateEnvelope);
 
             if (res.Drawable == null)
             {
@@ -1684,26 +1739,26 @@ namespace GraphicalDebugging
         // Make
         // -------------------------------------------------
 
-        private static DrawablePair MakeGeometry(Debugger debugger, string name)
+        private static DrawablePair MakeGeometry(Debugger debugger, string name, bool calculateEnvelope)
         {
             Expression expr = debugger.GetExpression(name);
             if (!expr.IsValidValue)
                 return new DrawablePair(null ,null);
 
-            DrawablePair res = LoadGeometryOrVariant(debugger, expr.Name, expr.Type);
+            DrawablePair res = LoadGeometryOrVariant(debugger, expr.Name, expr.Type, calculateEnvelope);
             if (res.Drawable != null)
                 return res;
 
             return LoadTurnsContainer(debugger, expr.Name, expr.Type);
         }
 
-        private static DrawablePair MakeDrawable(Debugger debugger, string name)
+        private static DrawablePair MakeDrawable(Debugger debugger, string name, bool calculateEnvelope)
         {
             Expression expr = debugger.GetExpression(name);
             if (!expr.IsValidValue)
                 return new DrawablePair(null, null);
 
-            return LoadDrawable(debugger, expr.Name, expr.Type);
+            return LoadDrawable(debugger, expr.Name, expr.Type, calculateEnvelope);
         }
 
         // -------------------------------------------------
@@ -1715,9 +1770,14 @@ namespace GraphicalDebugging
         {
             try
             {
-                DrawablePair d = MakeDrawable(debugger, name);
+                DrawablePair d = MakeDrawable(debugger, name, true);
                 if (d.Drawable != null)
                 {
+                    if (d.Traits.CoordinateSystem == Geometry.CoordinateSystem.Spherical)
+                    {
+                        throw new Exception("This coordinate system is not yet supported.");
+                    }
+                    
                     Settings settings = new Settings(d.Drawable.DefaultColor);
                     d.Drawable.Draw(d.Drawable.Aabb, graphics, settings, d.Traits);
                     return true;
@@ -1753,7 +1813,7 @@ namespace GraphicalDebugging
                 {
                     if (names[i] != null && names[i] != "")
                     {
-                        drawables[i] = ExpressionDrawer.MakeGeometry(debugger, names[i]);
+                        drawables[i] = ExpressionDrawer.MakeGeometry(debugger, names[i], false);
 
                         if (drawables[i].Drawable != null)
                         {
