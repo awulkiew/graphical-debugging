@@ -1,32 +1,14 @@
-version 0.1
-
-Debug visualizers for Boost.Array, Boost.Geometry, Boost.Variant
-GraphicalWatch
-GeometryWatch
-
-version 0.2
-
-additions:
-- debug visualizers for boost::geometry::debug::overlay::turn_info and boost::geometry::debug::overlay::traversal_turn_info
-- displaying Turns Containers in GraphicalWatch and GeometryWatch
+version 0.5.1
 
 bugfixes:
-- removed invalid comments at the beginning of natvis files
-- reusing color in GeometryWatch until a geometry is removed from the list
-- fix std::deque support in GraphicalWatch
-- support const types
+- improved icon and description
 
-version 0.3
+version 0.5
 
 additions:
-- drawing segments direction in GeometryWatch
-- supported all Boost.Variant parameters
-- display Turns methods and operations
-- avoid displaying labels of the same Turn point in the same place
-
-bugfixes:
-- fix drawing of Polygon inner rings in GeometryWatch
-- redraw GeometryWatch image after removal of list elements
+- implement handling of various coordinate systems
+- support spherical_equatorial and geographic coordinate systems
+- in GeometryWatch draw axes/meridians/parallels, info about the coordinate system, units and error messages
 
 version 0.4
 
@@ -40,9 +22,32 @@ bugfixes:
 - GeometryWatch wasn't redrawed if empty geometries were left after removal. Caused by an attempt of drawing of an invalid/inverted AABB.
 - Transparent color was added into the colors pool after removal of undrawable variable from the GeometryWatch list.
 
-version 0.5
+version 0.3
 
 additions:
-- implement handling of various coordinate systems
-- support spherical_equatorial and geographic coordinate systems
-- in GeometryWatch draw axes/meridians/parallels, info about the coordinate system, units and error messages
+- drawing segments direction in GeometryWatch
+- supported all Boost.Variant parameters
+- display Turns methods and operations
+- avoid displaying labels of the same Turn point in the same place
+
+bugfixes:
+- fix drawing of Polygon inner rings in GeometryWatch
+- redraw GeometryWatch image after removal of list elements
+
+version 0.2
+
+additions:
+- debug visualizers for boost::geometry::debug::overlay::turn_info and boost::geometry::debug::overlay::traversal_turn_info
+- displaying Turns Containers in GraphicalWatch and GeometryWatch
+
+bugfixes:
+- removed invalid comments at the beginning of natvis files
+- reusing color in GeometryWatch until a geometry is removed from the list
+- fix std::deque support in GraphicalWatch
+- support const types
+
+version 0.1
+
+Debug visualizers for Boost.Array, Boost.Geometry, Boost.Variant
+GraphicalWatch
+GeometryWatch

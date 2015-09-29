@@ -1,10 +1,10 @@
 # GraphicalDebugging extension for Visual Studio 2015
 
-This extension contains:
+This extension allows to display graphical representation of variables during debugging. Currently it supports Boost.Geometry and Boost.Polygon models, Boost.Variant and STL/Boost containers of values. It contains:
 
-* Debugging vizualizers for Boost.Array, Boost.Geometry and Boost.Variant
-* GraphicalWatch tool window allowing to view graphical representation of variables, e.g. Boost.Geometry models or vectors of values
-* GeometryWatch tool window allowing to view geometries drawn in a common coordinate system
+* Debugging visualizers for Boost.Array, Boost.Container, Boost.Geometry, Boost.Polygon and Boost.Variant
+* GraphicalWatch tool window displaying graphical representation of variables, e.g. Boost.Geometry models or vectors of values
+* GeometryWatch tool window displaying geometries some number of geometries in a common coordinate system, e.g. Boost.Geometry or Boost.Polygon polygons
 
 To build you need e.g. Microsoft Visual Studio 2015 Community, .NET Framework 4.5.2 and Visual Studio 2015 SDK.
 
@@ -33,7 +33,7 @@ Supported:
 
 #### GraphicalWatch
 
-Watch window displaying graphical representations of variables in a list. Each variable is placed and visualizaed in a separate row.
+Watch window displaying graphical representations of variables in a list. Each variable is placed and visualized in a separate row.
 
 Supported:
 
@@ -81,7 +81,7 @@ Supported:
 
 ![GeometryWatch](images/geometry_watch2.png)
 
-Geometries in spherical_equatorial and geographic coordinate systems are displayed in a way allowing to see what coordinates were used to define a geometry. Note that various libraries may require coordinates in a certain range. However this extension tries to display any coordinates as good as possible.
+Geometries in spherical_equatorial and geographic coordinate systems are displayed in a way allowing to see what coordinates were used to define a geometry. Note that various libraries may require coordinates in a certain range. This extension tries to display any coordinates as good as possible.
 
 ![GraphicalWatch](images/geometry_watch_sph.png)
 
