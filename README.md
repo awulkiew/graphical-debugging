@@ -6,20 +6,34 @@ This extension allows to display graphical representation of variables during de
 * GraphicalWatch tool window displaying graphical representation of variables, e.g. Boost.Geometry models or vectors of values
 * GeometryWatch tool window displaying geometries some number of geometries in a common coordinate system, e.g. Boost.Geometry or Boost.Polygon polygons
 
-To build you need e.g. Microsoft Visual Studio 2015 Community, .NET Framework 4.5.2 and Visual Studio 2015 SDK.
-
-To install double-click the *.vsix file from bin/Debug or bin/Relase directory. The packages can also be found [here](https://github.com/awulkiew/graphical-debugging/tree/bin).
-
-To use:
-
-* place a breakpoint somewhere in the code
-* start debugging
-* after a breakpoint hit enable the tool window from the menu View->Other Windows->GraphicalWatch or View->Other Windows->GeometryWatch
-* add variable to the list
-
 Feel free to report bugs, propose features and create pull requests. Any help is appreciated.
 
-#### Debugging vizualizers
+##### Download
+
+You can download this extension from [Visual Studio Gallery](https://visualstudiogallery.msdn.microsoft.com/4b81868b-8901-408f-a28e-25a6580788fb).
+
+##### Instructions
+
+###### Build
+
+You need e.g. Microsoft Visual Studio 2015 Community, .NET Framework 4.5.2 and Visual Studio 2015 SDK.
+
+###### Install
+
+To install after building double-click the *.vsix file from bin/Debug or bin/Relase directory.
+
+###### Use
+
+1. place a breakpoint somewhere in the code
+2. start debugging
+3. after a breakpoint hit enable the tool window from the menu
+   * **View**->**Other Windows**->**GraphicalWatch**
+   * **View**->**Other Windows**->**GeometryWatch**
+4. write the name of a variable in an edit box on the list
+
+#### Details
+
+##### Debugging vizualizers
 
 Supported:
 
@@ -31,7 +45,7 @@ Supported:
 
 ![Watch](images/natvis_watch.png)
 
-#### GraphicalWatch
+##### GraphicalWatch
 
 Watch window displaying graphical representations of variables in a list. Each variable is placed and visualized in a separate row.
 
@@ -63,7 +77,7 @@ where
                                  {{0, 10},{-15, 20},{-50, 50},{0, 60}}}};
     multi_point_sd_t mpt_sd{{0, 0},{90, 10},{170, 20},{-170, 30}};
 
-#### GeometryWatch
+##### GeometryWatch
 
 Watch window displaying graphical representation of variables in a single image. This allows to compare the variables easily.
 
