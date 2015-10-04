@@ -3,42 +3,63 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             Background="{DynamicResource VsBrush.Window}"
+             Foreground="{DynamicResource VsBrush.WindowText}"
              mc:Ignorable="d"
              d:DesignHeight="300" d:DesignWidth="300"
              Name="GraphicalWatchWindow">
     <Grid>
-        <ListView x:Name="listView" Margin="0" KeyDown="listView_KeyDown" >
-            <ListView.ItemContainerStyle>
-                <Style TargetType="ListViewItem">
-                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                    <Setter Property="VerticalContentAlignment" Value="Stretch" />
+        <DataGrid x:Name="dataGrid"
+                  AutoGenerateColumns="False"
+                  SelectionMode="Extended"
+                  SelectionUnit="FullRow"
+                  CanUserAddRows="False"
+                  CanUserDeleteRows="False"
+                  CanUserReorderColumns="False"
+                  CanUserResizeColumns="True"
+                  CanUserResizeRows="False"
+                  CanUserSortColumns="False"
+                  IsReadOnly="False"
+                  Background="{DynamicResource VsBrush.ToolWindowBackground}"
+                  Foreground="{DynamicResource VsBrush.ToolWindowText}"
+                  BorderThickness="0"
+                  PreviewKeyDown="dataGrid_PreviewKeyDown">
+            <DataGrid.ColumnHeaderStyle>
+                <Style TargetType="{x:Type DataGridColumnHeader}">
+                    <Setter Property="Background" Value="{DynamicResource VsBrush.GridHeadingBackground}" />
+                    <Setter Property="Foreground" Value="{DynamicResource VsBrush.GridHeadingText}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource VsBrush.ToolWindowBorder}" />
+                    <Setter Property="BorderThickness" Value="1, 1, 0, 1"/>
+                    <Setter Property="Padding" Value="5, 2, 5, 2" />
                 </Style>
-            </ListView.ItemContainerStyle>
-            <ListView.View>
-                <GridView>
-                    <GridViewColumn Header="Name" Width="100" >
-                        <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBox Text="{Binding Name}" TextWrapping="Wrap" Height="100" />
-                            </DataTemplate>
-                        </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
-                    <GridViewColumn Header="Image" >
-                        <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                                <Image Name="GridImage" Source="{Binding BmpImg}" Width="100" Height="100"/>
-                            </DataTemplate>
-                        </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
-                    <GridViewColumn Header="Type" Width="200" >
-                        <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Type}" TextWrapping="Wrap" Height="100" />
-                            </DataTemplate>
-                        </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
-                </GridView>
-            </ListView.View>
-        </ListView>
+            </DataGrid.ColumnHeaderStyle>
+            <DataGrid.RowHeaderStyle>
+                <Style TargetType="{x:Type DataGridRowHeader}">
+                    <Setter Property="Width" Value="0" />
+                </Style>
+            </DataGrid.RowHeaderStyle>
+            <DataGrid.RowStyle>
+                <Style TargetType="{x:Type DataGridRow}">
+                    <Setter Property="Background" Value="{DynamicResource VsBrush.ToolWindowBackground}" />
+                    <Setter Property="Foreground" Value="{DynamicResource VsBrush.ToolWindowText}" />
+                </Style>
+            </DataGrid.RowStyle>
+            <DataGrid.CellStyle>
+                <Style TargetType="{x:Type DataGridCell}">
+                    <Setter Property="BorderThickness" Value="0" />
+                </Style>
+            </DataGrid.CellStyle>
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="100" />
+                <DataGridTemplateColumn Header="Image" Width="100">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Image Name="GridImage" Source="{Binding BmpImg}" Width="100" Height="100"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Type"  Binding="{Binding Type}" Width="*" IsReadOnly="True" />
+            </DataGrid.Columns>
+        </DataGrid>
     </Grid>
 </UserControl>

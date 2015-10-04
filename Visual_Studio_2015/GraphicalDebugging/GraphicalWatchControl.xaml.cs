@@ -18,6 +18,8 @@ namespace GraphicalDebugging
     using Microsoft.VisualStudio.Shell;
     using Microsoft.VisualStudio.Utilities;
 
+    using System.Collections.ObjectModel;
+
     /// <summary>
     /// Interaction logic for GraphicalWatchControl.
     /// </summary>
@@ -26,6 +28,8 @@ namespace GraphicalDebugging
         private DTE2 m_dte;
         private Debugger m_debugger;
         private DebuggerEvents m_debuggerEvents;
+
+        ObservableCollection<VariableItem> Variables { get; set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="GraphicalWatchControl"/> class.
@@ -37,9 +41,13 @@ namespace GraphicalDebugging
             m_debuggerEvents = m_dte.Events.DebuggerEvents;
             m_debuggerEvents.OnEnterBreakMode += DebuggerEvents_OnEnterBreakMode;
 
+            Variables = new ObservableCollection<VariableItem>();
+
             this.InitializeComponent();
 
-            ResetAt(new VariableItem(), listView.Items.Count);
+            dataGrid.ItemsSource = Variables;
+
+            ResetAt(new VariableItem(), Variables.Count);
         }
 
         private void VariableItem_NameChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -47,18 +55,18 @@ namespace GraphicalDebugging
             //e.PropertyName == "Name"
 
             VariableItem variable = (VariableItem)sender;
-            int index = listView.Items.IndexOf(variable);
+            int index = Variables.IndexOf(variable);
 
             if (variable.Name == null || variable.Name == "")
             {
-                listView.Items.RemoveAt(index);
+                Variables.RemoveAt(index);
                 return;
             }
 
             // insert new empty row
-            if (index + 1 == listView.Items.Count)
+            if (index + 1 == Variables.Count)
             {
-                ResetAt(new VariableItem(), listView.Items.Count);
+                ResetAt(new VariableItem(), Variables.Count);
             }
 
             UpdateItem(index);
@@ -67,31 +75,31 @@ namespace GraphicalDebugging
         private void ResetAt(VariableItem item, int index)
         {
             ((System.ComponentModel.INotifyPropertyChanged)item).PropertyChanged += VariableItem_NameChanged;
-            if (index < listView.Items.Count)
-                listView.Items.RemoveAt(index);
-            listView.Items.Insert(index, item);
+            if (index < Variables.Count)
+                Variables.RemoveAt(index);
+            Variables.Insert(index, item);
         }
 
         private void DebuggerEvents_OnEnterBreakMode(dbgEventReason Reason, ref dbgExecutionAction ExecutionAction)
         {
             if (m_debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
             {
-                for (int index = 0 ; index < listView.Items.Count; ++index)
+                for (int index = 0 ; index < Variables.Count; ++index)
                 {
                     UpdateItem(index);
                 }
             }
         }
 
-        private void listView_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        private void dataGrid_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
             if (e.Key == System.Windows.Input.Key.Delete)
             {
-                int[] indexes = new int[listView.SelectedItems.Count];
+                int[] indexes = new int[dataGrid.SelectedItems.Count];
                 int i = 0;
-                foreach (var item in listView.SelectedItems)
+                foreach (var item in dataGrid.SelectedItems)
                 {
-                    indexes[i] = listView.Items.IndexOf(item);
+                    indexes[i] = dataGrid.Items.IndexOf(item);
                     ++i;
                 }
                 System.Array.Sort(indexes, delegate (int l, int r) {
@@ -100,15 +108,15 @@ namespace GraphicalDebugging
 
                 foreach (int index in indexes)
                 {
-                    if ( index + 1 < listView.Items.Count)
-                        listView.Items.RemoveAt(index);
+                    if ( index + 1 < Variables.Count)
+                        Variables.RemoveAt(index);
                 }
             }
         }
 
         private void UpdateItem(int index)
         {
-            VariableItem variable = (VariableItem)listView.Items[index];
+            VariableItem variable = Variables[index];
 
             Bitmap bmp = null;
             string type = null;

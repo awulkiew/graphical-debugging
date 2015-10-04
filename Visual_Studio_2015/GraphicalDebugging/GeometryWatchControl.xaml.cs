@@ -19,6 +19,9 @@ namespace GraphicalDebugging
     using Microsoft.VisualStudio.Shell;
     using Microsoft.VisualStudio.Utilities;
 
+    using System.Collections.Generic;
+    using System.Collections.ObjectModel;
+
     /// <summary>
     /// Interaction logic for GeometryWatchControl.
     /// </summary>
@@ -31,6 +34,8 @@ namespace GraphicalDebugging
         Util.ColorsPool m_colorsPool;
 
         Bitmap m_emptyBitmap;
+
+        ObservableCollection<GeometryItem> Geometries { get; set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="GeometryWatchControl"/> class.
@@ -46,49 +51,42 @@ namespace GraphicalDebugging
 
             m_emptyBitmap = new Bitmap(100, 100);
             Graphics graphics = Graphics.FromImage(m_emptyBitmap);
-            graphics.Clear(Color.White);
+            Clear(graphics);
+
+            Geometries = new ObservableCollection<GeometryItem>();
 
             this.InitializeComponent();
 
+            dataGrid.ItemsSource = Geometries;
+
             image.Source = Util.BitmapToBitmapImage(m_emptyBitmap);
 
-            ResetAt(new GeometryItem(m_colorsPool.Transparent), listView.Items.Count);
+            ResetAt(new GeometryItem(m_colorsPool.Transparent), Geometries.Count);
         }
-
-        /// <summary>
-        /// Handles click on the button by displaying a message box.
-        /// </summary>
-        /// <param name="sender">The event sender.</param>
-        /// <param name="e">The event args.</param>
-        [SuppressMessage("Microsoft.Globalization", "CA1300:SpecifyMessageBoxOptions", Justification = "Sample code")]
-        [SuppressMessage("StyleCop.CSharp.NamingRules", "SA1300:ElementMustBeginWithUpperCaseLetter", Justification = "Default event handler naming pattern")]
-        private void button1_Click(object sender, RoutedEventArgs e)
-        {
-            MessageBox.Show(
-                string.Format(System.Globalization.CultureInfo.CurrentUICulture, "Invoked '{0}'", this.ToString()),
-                "GeometriesWatch");
-        }
-
+        
         private void GeometryItem_NameChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             //e.PropertyName == "Name"
 
             GeometryItem geometry = (GeometryItem)sender;
-            int index = listView.Items.IndexOf(geometry);
+            int index = Geometries.IndexOf(geometry);
+
+            if (index < 0 || index >= dataGrid.Items.Count)
+                return;
 
             if (geometry.Name == null || geometry.Name == "")
             {
                 m_colorsPool.Push(Util.ConvertColor(geometry.Color));
-                listView.Items.RemoveAt(index);
+                Geometries.RemoveAt(index);
                 if (index >= 0)
                     UpdateItems();
                 return;
             }
 
             // insert new empty row
-            if (index + 1 == listView.Items.Count)
+            if (index + 1 == Geometries.Count)
             {
-                ResetAt(new GeometryItem(m_colorsPool.Transparent), listView.Items.Count);
+                ResetAt(new GeometryItem(m_colorsPool.Transparent), Geometries.Count);
             }
 
             UpdateItems(index);
@@ -97,9 +95,9 @@ namespace GraphicalDebugging
         private void ResetAt(GeometryItem item, int index)
         {
             ((System.ComponentModel.INotifyPropertyChanged)item).PropertyChanged += GeometryItem_NameChanged;
-            if (index < listView.Items.Count)
-                listView.Items.RemoveAt(index);
-            listView.Items.Insert(index, item);
+            if (index < Geometries.Count)
+                Geometries.RemoveAt(index);
+            Geometries.Insert(index, item);
         }
 
         private void DebuggerEvents_OnEnterBreakMode(dbgEventReason Reason, ref dbgExecutionAction ExecutionAction)
@@ -117,15 +115,15 @@ namespace GraphicalDebugging
             UpdateItems();
         }
 
-        private void listView_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        private void dataGrid_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
             if (e.Key == System.Windows.Input.Key.Delete)
             {
-                int[] indexes = new int[listView.SelectedItems.Count];
+                int[] indexes = new int[dataGrid.SelectedItems.Count];
                 int i = 0;
-                foreach (var item in listView.SelectedItems)
+                foreach (var item in dataGrid.SelectedItems)
                 {
-                    indexes[i] = listView.Items.IndexOf(item);
+                    indexes[i] = dataGrid.Items.IndexOf(item);
                     ++i;
                 }
                 System.Array.Sort(indexes, delegate (int l, int r) {
@@ -135,11 +133,11 @@ namespace GraphicalDebugging
                 bool removed = false;
                 foreach (int index in indexes)
                 {
-                    if (index + 1 < listView.Items.Count)
+                    if (index + 1 < Geometries.Count)
                     {
-                        GeometryItem geometry = (GeometryItem)listView.Items[index];
+                        GeometryItem geometry = Geometries[index];
                         m_colorsPool.Push(Util.ConvertColor(geometry.Color));
-                        listView.Items.RemoveAt(index);
+                        Geometries.RemoveAt(index);
 
                         removed = true;
                     }
@@ -154,14 +152,14 @@ namespace GraphicalDebugging
         {
             if (m_debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
             {
-                string[] names = new string[listView.Items.Count];
-                ExpressionDrawer.Settings[] settings = new ExpressionDrawer.Settings[listView.Items.Count];
+                string[] names = new string[Geometries.Count];
+                ExpressionDrawer.Settings[] settings = new ExpressionDrawer.Settings[Geometries.Count];
                 bool tryDrawing = false;
 
                 // update the list, gather names and settings
-                for (int index = 0; index < listView.Items.Count; ++index)
+                for (int index = 0; index < Geometries.Count; ++index)
                 {
-                    GeometryItem geometry = (GeometryItem)listView.Items[index];
+                    GeometryItem geometry = Geometries[index];
 
                     System.Windows.Media.Color color = geometry.Color;
                     string type = null;
@@ -200,12 +198,12 @@ namespace GraphicalDebugging
 
                     Graphics graphics = Graphics.FromImage(bmp);
                     graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                    graphics.Clear(Color.White);
+                    Clear(graphics);
 
                     ExpressionDrawer.DrawGeometries(graphics, m_debugger, names, settings);
 
                     image.Source = Util.BitmapToBitmapImage(bmp);
-                }
+                    }
                 else
                 {
                     image.Source = Util.BitmapToBitmapImage(m_emptyBitmap);
@@ -215,6 +213,22 @@ namespace GraphicalDebugging
             {
                 image.Source = Util.BitmapToBitmapImage(m_emptyBitmap);
             }
+        }
+
+        private void Clear(Graphics graphics)
+        {
+            Color backgroundColor = Color.White;
+            /*try
+            {
+                var tmp = (System.Windows.Media.Color)FindResource(VsColors.ToolWindowBackgroundKey);
+                backgroundColor = Util.ConvertColor(tmp);
+                if (backgroundColor.GetSaturation() >= 0.5f)
+                    backgroundColor = Color.White;
+                else
+                    backgroundColor = Color.FromArgb(0xFF, 24, 24, 24);
+            }
+            catch (System.Exception) { }*/
+            graphics.Clear(backgroundColor);
         }
     }
 }
