@@ -10,25 +10,37 @@ namespace GraphicalDebugging
 {
     class GeometryItem : VariableItem
     {
-        public GeometryItem(System.Drawing.Color color)
+        public GeometryItem(int colorId, Colors colors)
             : base()
         {
-            Color = Util.ConvertColor(color);
+            SetColor(colorId, colors);
         }
 
-        public GeometryItem(string name, /*ExpressionDrawer.IDrawable drawable,*/ string type, Color color)
+        public GeometryItem(string name, /*ExpressionDrawer.IDrawable drawable,*/ string type, int colorId, Colors colors)
             : base(name, null, type)
         {
-            Color = color;
+            SetColor(colorId, colors);
             //Drawable = drawable;
+        }
+
+        private int colorId;
+        public int ColorId
+        {
+            get { return colorId; }
         }
 
         private Color color;
         public Color Color
         {
-            get { return this.color; }
-            set { this.color = value; }
+            get { return color; }
         }
+
+        private void SetColor(int colorId, Colors colors)
+        {
+            this.colorId = colorId;
+            color = Util.ConvertColor(colors[colorId]);
+        }
+
         /*
         private ExpressionDrawer.IDrawable drawable;
         public ExpressionDrawer.IDrawable Drawable

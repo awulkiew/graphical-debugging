@@ -16,6 +16,7 @@ namespace GraphicalDebugging
 
     using EnvDTE;
     using EnvDTE80;
+    using Microsoft.VisualStudio.PlatformUI;
     using Microsoft.VisualStudio.Shell;
     using Microsoft.VisualStudio.Utilities;
 
@@ -31,8 +32,9 @@ namespace GraphicalDebugging
         private Debugger m_debugger;
         private DebuggerEvents m_debuggerEvents;
 
-        Util.ColorsPool m_colorsPool;
+        Util.IntsPool m_intsPool;
 
+        Colors m_colors;
         Bitmap m_emptyBitmap;
 
         ObservableCollection<GeometryItem> Geometries { get; set; }
@@ -47,11 +49,13 @@ namespace GraphicalDebugging
             m_debuggerEvents = m_dte.Events.DebuggerEvents;
             m_debuggerEvents.OnEnterBreakMode += DebuggerEvents_OnEnterBreakMode;
 
-            m_colorsPool = new Util.ColorsPool();
+            VSColorTheme.ThemeChanged += VSColorTheme_ThemeChanged;
 
+            m_colors = new Colors(this);
+            m_intsPool = new Util.IntsPool(m_colors.Count);
             m_emptyBitmap = new Bitmap(100, 100);
             Graphics graphics = Graphics.FromImage(m_emptyBitmap);
-            Clear(graphics);
+            graphics.Clear(m_colors.ClearColor);
 
             Geometries = new ObservableCollection<GeometryItem>();
 
@@ -61,9 +65,17 @@ namespace GraphicalDebugging
 
             image.Source = Util.BitmapToBitmapImage(m_emptyBitmap);
 
-            ResetAt(new GeometryItem(m_colorsPool.Transparent), Geometries.Count);
+            ResetAt(new GeometryItem(-1, m_colors), Geometries.Count);
         }
-        
+
+        private void VSColorTheme_ThemeChanged(ThemeChangedEventArgs e)
+        {
+            m_colors.Update();
+            Graphics graphics = Graphics.FromImage(m_emptyBitmap);
+            graphics.Clear(m_colors.ClearColor);
+            UpdateItems();
+        }
+
         private void GeometryItem_NameChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             //e.PropertyName == "Name"
@@ -76,20 +88,29 @@ namespace GraphicalDebugging
 
             if (geometry.Name == null || geometry.Name == "")
             {
-                m_colorsPool.Push(Util.ConvertColor(geometry.Color));
-                Geometries.RemoveAt(index);
-                if (index >= 0)
+                if (index < dataGrid.Items.Count - 1)
+                {
+                    m_intsPool.Push(geometry.ColorId);
+                    Geometries.RemoveAt(index);
                     UpdateItems();
-                return;
+                }
             }
-
-            // insert new empty row
-            if (index + 1 == Geometries.Count)
+            else
             {
-                ResetAt(new GeometryItem(m_colorsPool.Transparent), Geometries.Count);
-            }
+                UpdateItems(index);
 
-            UpdateItems(index);
+                // insert new empty row
+                int next_index = index + 1;
+                if (next_index == Geometries.Count)
+                {
+                    ResetAt(new GeometryItem(-1, m_colors), index + 1);
+                    SelectAt(index + 1, true);
+                }
+                else
+                {
+                    SelectAt(index + 1);
+                }
+            }
         }
 
         private void ResetAt(GeometryItem item, int index)
@@ -98,6 +119,24 @@ namespace GraphicalDebugging
             if (index < Geometries.Count)
                 Geometries.RemoveAt(index);
             Geometries.Insert(index, item);
+        }
+
+        private void SelectAt(int index, bool isNew = false)
+        {
+            object item = dataGrid.Items[index];
+
+            if (isNew)
+            {
+                dataGrid.SelectedItem = item;
+                dataGrid.ScrollIntoView(item);
+                DataGridRow dgrow = (DataGridRow)dataGrid.ItemContainerGenerator.ContainerFromItem(item);
+                dgrow.MoveFocus(new System.Windows.Input.TraversalRequest(System.Windows.Input.FocusNavigationDirection.Next));
+            }
+            else
+            {
+                dataGrid.SelectedItem = item;
+                dataGrid.ScrollIntoView(item);
+            }
         }
 
         private void DebuggerEvents_OnEnterBreakMode(dbgEventReason Reason, ref dbgExecutionAction ExecutionAction)
@@ -119,32 +158,38 @@ namespace GraphicalDebugging
         {
             if (e.Key == System.Windows.Input.Key.Delete)
             {
-                int[] indexes = new int[dataGrid.SelectedItems.Count];
-                int i = 0;
-                foreach (var item in dataGrid.SelectedItems)
+                if (dataGrid.SelectedItems.Count > 0)
                 {
-                    indexes[i] = dataGrid.Items.IndexOf(item);
-                    ++i;
-                }
-                System.Array.Sort(indexes, delegate (int l, int r) {
-                    return -l.CompareTo(r);
-                });
-
-                bool removed = false;
-                foreach (int index in indexes)
-                {
-                    if (index + 1 < Geometries.Count)
+                    int[] indexes = new int[dataGrid.SelectedItems.Count];
+                    int i = 0;
+                    foreach (var item in dataGrid.SelectedItems)
                     {
-                        GeometryItem geometry = Geometries[index];
-                        m_colorsPool.Push(Util.ConvertColor(geometry.Color));
-                        Geometries.RemoveAt(index);
+                        indexes[i] = dataGrid.Items.IndexOf(item);
+                        ++i;
+                    }
+                    System.Array.Sort(indexes, delegate (int l, int r)
+                    {
+                        return -l.CompareTo(r);
+                    });
 
-                        removed = true;
+                    bool removed = false;
+                    foreach (int index in indexes)
+                    {
+                        if (index + 1 < Geometries.Count)
+                        {
+                            GeometryItem geometry = Geometries[index];
+                            m_intsPool.Push(geometry.ColorId);
+                            Geometries.RemoveAt(index);
+
+                            removed = true;
+                        }
+                    }
+
+                    if (removed)
+                    {
+                        UpdateItems();
                     }
                 }
-
-                if (removed)
-                    UpdateItems();
             }
         }
 
@@ -162,6 +207,7 @@ namespace GraphicalDebugging
                     GeometryItem geometry = Geometries[index];
 
                     System.Windows.Media.Color color = geometry.Color;
+                    int colorId = geometry.ColorId;
                     string type = null;
 
                     bool updateRequred = modified_index < 0 || modified_index == index;
@@ -176,8 +222,11 @@ namespace GraphicalDebugging
 
                             names[index] = geometry.Name;
 
-                            if (geometry.Color == Util.ConvertColor(m_colorsPool.Transparent))
-                                color = Util.ConvertColor(m_colorsPool.Pull());
+                            if (updateRequred && geometry.ColorId < 0)
+                            {
+                                colorId = m_intsPool.Pull();
+                                color = Util.ConvertColor(m_colors[colorId]);
+                            }
 
                             settings[index] = new ExpressionDrawer.Settings(Util.ConvertColor(color), true, true);
 
@@ -187,7 +236,7 @@ namespace GraphicalDebugging
 
                     // set new row
                     if (updateRequred)
-                        ResetAt(new GeometryItem(geometry.Name, type, color), index);
+                        ResetAt(new GeometryItem(geometry.Name, type, colorId, m_colors), index);
                 }
 
                 // draw variables
@@ -198,12 +247,12 @@ namespace GraphicalDebugging
 
                     Graphics graphics = Graphics.FromImage(bmp);
                     graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                    Clear(graphics);
+                    graphics.Clear(m_colors.ClearColor);
 
-                    ExpressionDrawer.DrawGeometries(graphics, m_debugger, names, settings);
+                    ExpressionDrawer.DrawGeometries(graphics, m_debugger, names, settings, m_colors);
 
                     image.Source = Util.BitmapToBitmapImage(bmp);
-                    }
+                }
                 else
                 {
                     image.Source = Util.BitmapToBitmapImage(m_emptyBitmap);
@@ -213,22 +262,6 @@ namespace GraphicalDebugging
             {
                 image.Source = Util.BitmapToBitmapImage(m_emptyBitmap);
             }
-        }
-
-        private void Clear(Graphics graphics)
-        {
-            Color backgroundColor = Color.White;
-            /*try
-            {
-                var tmp = (System.Windows.Media.Color)FindResource(VsColors.ToolWindowBackgroundKey);
-                backgroundColor = Util.ConvertColor(tmp);
-                if (backgroundColor.GetSaturation() >= 0.5f)
-                    backgroundColor = Color.White;
-                else
-                    backgroundColor = Color.FromArgb(0xFF, 24, 24, 24);
-            }
-            catch (System.Exception) { }*/
-            graphics.Clear(backgroundColor);
         }
     }
 }

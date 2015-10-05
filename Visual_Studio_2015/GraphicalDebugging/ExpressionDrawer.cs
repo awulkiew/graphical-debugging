@@ -51,7 +51,7 @@ namespace GraphicalDebugging
         {
             void Draw(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits);
             Geometry.Box Aabb { get; }
-            Color DefaultColor { get; }
+            Color DefaultColor(Colors colors);
         }
 
         private class Point : Geometry.Point, IDrawable
@@ -83,7 +83,7 @@ namespace GraphicalDebugging
                     return new Geometry.Box(this, this);
                 } }
 
-            public Color DefaultColor { get { return Color.Orange; } }
+            public Color DefaultColor(Colors colors) { return colors.PointColor; }
         }
 
         private class Box : Geometry.Box, IDrawable
@@ -157,7 +157,7 @@ namespace GraphicalDebugging
             public Geometry.Box Aabb { get { return Box_; } }
             public Geometry.Box Box_ { get; set; }
 
-            public Color DefaultColor { get { return Color.Red; } }
+            public Color DefaultColor(Colors colors) { return colors.BoxColor; }
         }
 
         private class Segment : Geometry.Segment, IDrawable
@@ -187,7 +187,7 @@ namespace GraphicalDebugging
             }
 
             public Geometry.Box Aabb { get { return Box; } }
-            public Color DefaultColor { get { return Color.YellowGreen; } }
+            public Color DefaultColor(Colors colors) { return colors.SegmentColor; }
 
             public Geometry.Box Box { get; set; }
         }
@@ -217,7 +217,7 @@ namespace GraphicalDebugging
             }
 
             public Geometry.Box Aabb { get { return Box; } }
-            public Color DefaultColor { get { return Color.Green; } }
+            public Color DefaultColor(Colors colors) { return colors.LinestringColor; }
 
             public Geometry.Box Box { get; set; }
         }
@@ -264,7 +264,7 @@ namespace GraphicalDebugging
             }
 
             public Geometry.Box Aabb { get { return Box; } }
-            public Color DefaultColor { get { return Color.SlateBlue; } }
+            public Color DefaultColor(Colors colors) { return colors.RingColor; }
 
             public Geometry.Box Box { get; set; }
         }
@@ -336,7 +336,7 @@ namespace GraphicalDebugging
             }
 
             public Geometry.Box Aabb { get { return Box; } }
-            public Color DefaultColor { get { return Color.RoyalBlue; } }
+            public Color DefaultColor(Colors colors) { return colors.PolygonColor; }
 
             public Geometry.Box Box { get; set; }
         }
@@ -358,7 +358,7 @@ namespace GraphicalDebugging
             }
 
             public Geometry.Box Aabb { get { return Box; } }
-            public Color DefaultColor { get { return singles.Count > 0 ? singles.First().DefaultColor : Color.Black; } }
+            public Color DefaultColor(Colors colors) { return singles.Count > 0 ? singles.First().DefaultColor(colors) : colors.DrawColor; }
 
             public Geometry.Box Box { get; set; }
 
@@ -400,7 +400,7 @@ namespace GraphicalDebugging
             public void Add(double v) { values.Add(v); }
 
             public Geometry.Box Aabb { get { return Box; } }
-            public Color DefaultColor { get { return Color.Black; } }
+            public Color DefaultColor(Colors colors) { return colors.DrawColor; }
 
             public Geometry.Box Box { get; set; }
 
@@ -470,7 +470,7 @@ namespace GraphicalDebugging
             }
 
             public Geometry.Box Aabb { get { return Box; } }
-            public Color DefaultColor { get { return Color.DarkOrange; } }
+            public Color DefaultColor(Colors colors) { return colors.TurnColor; }
 
             public Geometry.Box Box { get; set; }
 
@@ -969,30 +969,17 @@ namespace GraphicalDebugging
             graphics.DrawString(message, font, brush, rect, drawFormat);
         }
 
-        private static bool DrawAabb(Graphics graphics, Geometry.Box box, Geometry.Traits traits)
+        private static bool DrawAabb(Graphics graphics, Geometry.Box box, Geometry.Traits traits, Colors colors)
         {
             if (!box.IsValid())
                 return false;
 
             LocalCS cs = new LocalCS(box, graphics);
 
-            Pen pen = new Pen(Color.Black, 1);
-            SolidBrush brush = new SolidBrush(Color.Black);
-
-            float min_x = cs.ConvertX(box.Min[0]);
-            float min_y = cs.ConvertY(box.Min[1]);
-            float max_x = cs.ConvertX(box.Max[0]);
-            float max_y = cs.ConvertY(box.Max[1]);
-
-            graphics.DrawLine(pen, min_x - 1, min_y, min_x + 1, min_y);
-            graphics.DrawLine(pen, min_x, min_y - 1, min_x, min_y + 1);
-            graphics.DrawLine(pen, max_x - 1, max_y, max_x + 1, max_y);
-            graphics.DrawLine(pen, max_x, max_y - 1, max_x, max_y + 1);
-
+            // Axes
             float h = graphics.VisibleClipBounds.Height;
             float w = graphics.VisibleClipBounds.Width;
-            Pen prime_pen = new Pen(Color.LightGray, 1);
-
+            Pen prime_pen = new Pen(colors.AxisColor, 1);
             if (traits.Unit == Geometry.Unit.None)
             {
                 // Y axis
@@ -1004,7 +991,7 @@ namespace GraphicalDebugging
             }
             else
             {
-                Pen anti_pen = new Pen(Color.LightGray, 1);
+                Pen anti_pen = new Pen(colors.AxisColor, 1);
                 anti_pen.DashStyle = DashStyle.Custom;
                 anti_pen.DashPattern = new float[]{ 5, 5 };
                 double pi = Geometry.HalfAngle(traits.Unit);
@@ -1048,6 +1035,19 @@ namespace GraphicalDebugging
                 }
             }
 
+            // Aabb            
+            float min_x = cs.ConvertX(box.Min[0]);
+            float min_y = cs.ConvertY(box.Min[1]);
+            float max_x = cs.ConvertX(box.Max[0]);
+            float max_y = cs.ConvertY(box.Max[1]);
+
+            Pen penAabb = new Pen(colors.AabbColor, 1);
+            graphics.DrawLine(penAabb, min_x - 1, min_y, min_x + 5, min_y);
+            graphics.DrawLine(penAabb, min_x, min_y - 5, min_x, min_y + 1);
+            graphics.DrawLine(penAabb, max_x - 5, max_y, max_x + 1, max_y);
+            graphics.DrawLine(penAabb, max_x, max_y - 1, max_x, max_y + 5);
+
+            // Aabb's coordinates
             float maxHeight = 20.0f;// Math.Min(Math.Max(graphics.VisibleClipBounds.Height - min_y, 0.0f), 20.0f);
             if (maxHeight > 1)
             {
@@ -1070,8 +1070,9 @@ namespace GraphicalDebugging
                                                         Math.Max(max_y - maxHeight, 0.0f),
                                                         maxSize.Width,
                                                         maxSize.Height);
-                graphics.DrawString(minStr, font, brush, drawRectMin, drawFormat);
-                graphics.DrawString(maxStr, font, brush, drawRectMax, drawFormat);
+                SolidBrush brushText = new SolidBrush(colors.TextColor);
+                graphics.DrawString(minStr, font, brushText, drawRectMin, drawFormat);
+                graphics.DrawString(maxStr, font, brushText, drawRectMax, drawFormat);
             }
 
             return true;
@@ -1766,7 +1767,7 @@ namespace GraphicalDebugging
         // -------------------------------------------------
 
         // For GraphicalWatch
-        public static bool Draw(Graphics graphics, Debugger debugger, string name)
+        public static bool Draw(Graphics graphics, Debugger debugger, string name, Colors colors)
         {
             try
             {
@@ -1778,7 +1779,7 @@ namespace GraphicalDebugging
                         throw new Exception("This coordinate system is not yet supported.");
                     }
                     
-                    Settings settings = new Settings(d.Drawable.DefaultColor);
+                    Settings settings = new Settings(d.Drawable.DefaultColor(colors));
                     d.Drawable.Draw(d.Drawable.Aabb, graphics, settings, d.Traits);
                     return true;
                 }
@@ -1792,7 +1793,7 @@ namespace GraphicalDebugging
         }
 
         // For GeometryWatch
-        public static bool DrawGeometries(Graphics graphics, Debugger debugger, string[] names, Settings[] settings)
+        public static bool DrawGeometries(Graphics graphics, Debugger debugger, string[] names, Settings[] settings, Colors colors)
         {
             try
             {
@@ -1829,34 +1830,35 @@ namespace GraphicalDebugging
                     }
                 }
 
-                if (csystems.Count > 1)
-                {
-                    throw new Exception("Multiple coordinate systems detected.");
-                }
-                if (csystems.First() == Geometry.CoordinateSystem.Spherical)
-                {
-                    throw new Exception("This coordinate system is not yet supported.");
-                }
-                if (units.Count > 1)
-                {
-                    throw new Exception("Multiple units detected.");
-                }
-
-                {
-                    // CS info
-                    SolidBrush brush = new SolidBrush(Color.Black);
-                    Font font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), 10);
-                    string str = Geometry.Name(csystems.First());
-                    if (units.First() != Geometry.Unit.None)
-                        str += '[' + Geometry.Name(units.First()) + ']';
-                    graphics.DrawString(str, font, brush, 0, 0);
-                }              
-
                 if (drawnCount > 0)
                 {
+                    if (csystems.Count > 1)
+                    {
+                        throw new Exception("Multiple coordinate systems detected.");
+                    }
+                    if (csystems.First() == Geometry.CoordinateSystem.Spherical)
+                    {
+                        throw new Exception("This coordinate system is not yet supported.");
+                    }
+                    if (units.Count > 1)
+                    {
+                        throw new Exception("Multiple units detected.");
+                    }
+
                     Geometry.Traits traits = new Geometry.Traits(dimensions.Max(), csystems.First(), units.First());
 
-                    ExpressionDrawer.DrawAabb(graphics, box, traits);
+                    // Aabb
+                    ExpressionDrawer.DrawAabb(graphics, box, traits, colors);
+
+                    {
+                        // CS info
+                        SolidBrush brush = new SolidBrush(colors.TextColor);
+                        Font font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), 10);
+                        string str = Geometry.Name(csystems.First());
+                        if (units.First() != Geometry.Unit.None)
+                            str += '[' + Geometry.Name(units.First()) + ']';
+                        graphics.DrawString(str, font, brush, 0, 0);
+                    }
 
                     for (int i = 0; i < count; ++i)
                     {

@@ -52,42 +52,33 @@ namespace GraphicalDebugging
             return System.Drawing.Color.FromArgb(color.A, color.R, color.G, color.B);
         }
 
-        public class ColorsPool
+        public class IntsPool
         {
-            public ColorsPool()
+            public IntsPool(int count)
             {
-                Colors = new HashSet<Color>();
-                foreach (System.UInt32 v in ColorValues)
-                    Colors.Add(Color.FromArgb((int)v));
+                values = new SortedSet<int>();
+                for (int i = 0; i < count; ++i)
+                    values.Add(i);
             }
 
-            public Color Pull()
+            public int Pull()
             {
-                var en = Colors.GetEnumerator();
+                var en = values.GetEnumerator();
                 if (!en.MoveNext())
-                    return Color.Black;
+                    return -1;
 
-                Color result = en.Current;
-                Colors.Remove(result);
+                int result = en.Current;
+                values.Remove(result);
                 return result;
             }
 
-            public void Push(Color color)
+            public void Push(int value)
             {
-                Color c = Color.FromArgb(color.A, color.R, color.G, color.B);
-                if (c.A != 0)
-                    Colors.Add(c);
+                if (value >= 0)
+                    values.Add(value);
             }
-
-            public Color Transparent { get { return Color.FromArgb(0x00FFFFFF); } }
-
-            private HashSet<Color> Colors;
-
-            private static System.UInt32[] ColorValues = new System.UInt32[] {
-                0xFFC00000, 0xFF00C000, 0xFF0000C0,
-                0xFFC08000, 0xFF00C080, 0xFF8000C0, 0xFFC00080, 0xFF80C000, 0xFF0080C0,
-                0xFFC08080, 0xFF80C080, 0xFF8080C0
-            };
+            
+            private SortedSet<int> values;
         }
 
         public static string BaseType(string type)

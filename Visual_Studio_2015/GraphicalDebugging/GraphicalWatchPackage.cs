@@ -68,8 +68,8 @@ namespace GraphicalDebugging
         /// </summary>
         protected override void Initialize()
         {
-            GraphicalWatchCommand.Initialize(this);
             base.Initialize();
+            GraphicalWatchCommand.Initialize(this);
             GeometryWatchCommand.Initialize(this);
         }
 

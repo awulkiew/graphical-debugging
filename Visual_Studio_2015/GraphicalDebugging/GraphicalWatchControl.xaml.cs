@@ -15,6 +15,7 @@ namespace GraphicalDebugging
 
     using EnvDTE;
     using EnvDTE80;
+    using Microsoft.VisualStudio.PlatformUI;
     using Microsoft.VisualStudio.Shell;
     using Microsoft.VisualStudio.Utilities;
 
@@ -29,6 +30,8 @@ namespace GraphicalDebugging
         private Debugger m_debugger;
         private DebuggerEvents m_debuggerEvents;
 
+        private Colors m_colors;
+
         ObservableCollection<VariableItem> Variables { get; set; }
 
         /// <summary>
@@ -41,6 +44,10 @@ namespace GraphicalDebugging
             m_debuggerEvents = m_dte.Events.DebuggerEvents;
             m_debuggerEvents.OnEnterBreakMode += DebuggerEvents_OnEnterBreakMode;
 
+            VSColorTheme.ThemeChanged += VSColorTheme_ThemeChanged;
+
+            m_colors = new Colors(this);
+
             Variables = new ObservableCollection<VariableItem>();
 
             this.InitializeComponent();
@@ -50,6 +57,12 @@ namespace GraphicalDebugging
             ResetAt(new VariableItem(), Variables.Count);
         }
 
+        private void VSColorTheme_ThemeChanged(ThemeChangedEventArgs e)
+        {
+            m_colors.Update();
+            UpdateItems();
+        }
+
         private void VariableItem_NameChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             //e.PropertyName == "Name"
@@ -57,19 +70,32 @@ namespace GraphicalDebugging
             VariableItem variable = (VariableItem)sender;
             int index = Variables.IndexOf(variable);
 
+            if (index < 0 || index >= dataGrid.Items.Count)
+                return;
+
             if (variable.Name == null || variable.Name == "")
             {
-                Variables.RemoveAt(index);
-                return;
+                if (index < dataGrid.Items.Count - 1)
+                {
+                    Variables.RemoveAt(index);
+                }
             }
-
-            // insert new empty row
-            if (index + 1 == Variables.Count)
+            else
             {
-                ResetAt(new VariableItem(), Variables.Count);
-            }
+                UpdateItem(index);
 
-            UpdateItem(index);
+                // insert new empty row
+                int next_index = index + 1;
+                if (next_index == Variables.Count)
+                {
+                    ResetAt(new VariableItem(), Variables.Count);
+                    SelectAt(index + 1, true);
+                }
+                else
+                {
+                    SelectAt(index + 1);
+                }
+            }
         }
 
         private void ResetAt(VariableItem item, int index)
@@ -80,14 +106,29 @@ namespace GraphicalDebugging
             Variables.Insert(index, item);
         }
 
+        private void SelectAt(int index, bool isNew = false)
+        {
+            object item = dataGrid.Items[index];
+
+            if (isNew)
+            {
+                dataGrid.SelectedItem = item;
+                dataGrid.ScrollIntoView(item);
+                DataGridRow dgrow = (DataGridRow)dataGrid.ItemContainerGenerator.ContainerFromItem(item);
+                dgrow.MoveFocus(new System.Windows.Input.TraversalRequest(System.Windows.Input.FocusNavigationDirection.Next));
+            }
+            else
+            {
+                dataGrid.SelectedItem = item;
+                dataGrid.ScrollIntoView(item);
+            }
+        }
+
         private void DebuggerEvents_OnEnterBreakMode(dbgEventReason Reason, ref dbgExecutionAction ExecutionAction)
         {
             if (m_debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
             {
-                for (int index = 0 ; index < Variables.Count; ++index)
-                {
-                    UpdateItem(index);
-                }
+                UpdateItems();
             }
         }
 
@@ -114,6 +155,14 @@ namespace GraphicalDebugging
             }
         }
 
+        private void UpdateItems()
+        {
+            for (int index = 0; index < Variables.Count; ++index)
+            {
+                UpdateItem(index);
+            }
+        }
+
         private void UpdateItem(int index)
         {
             VariableItem variable = Variables[index];
@@ -131,9 +180,9 @@ namespace GraphicalDebugging
 
                     Graphics graphics = Graphics.FromImage(bmp);
                     graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                    graphics.Clear(System.Drawing.Color.White);
+                    graphics.Clear(m_colors.ClearColor);
 
-                    if (!ExpressionDrawer.Draw(graphics, m_debugger, variable.Name))
+                    if (!ExpressionDrawer.Draw(graphics, m_debugger, variable.Name, m_colors))
                         bmp = null;
 
                     type = expression.Type;

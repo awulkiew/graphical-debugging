@@ -29,7 +29,7 @@
                     <Setter Property="Background" Value="{DynamicResource VsBrush.GridHeadingBackground}" />
                     <Setter Property="Foreground" Value="{DynamicResource VsBrush.GridHeadingText}" />
                     <Setter Property="BorderBrush" Value="{DynamicResource VsBrush.ToolWindowBorder}" />
-                    <Setter Property="BorderThickness" Value="1, 1, 0, 1"/>
+                    <Setter Property="BorderThickness" Value="0, 1, 1, 1"/>
                     <Setter Property="Padding" Value="5, 2, 5, 2" />
                 </Style>
             </DataGrid.ColumnHeaderStyle>
@@ -47,6 +47,30 @@
             <DataGrid.CellStyle>
                 <Style TargetType="{x:Type DataGridCell}">
                     <Setter Property="BorderThickness" Value="0" />
+                    <!--Override Highlighting so that its easy to see what is selected even when the control is not focused-->
+                    <Style.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Background" Value="{x:Static SystemColors.HighlightBrush}" />
+                            <Setter Property="Foreground" Value="{x:Static SystemColors.HighlightTextBrush}" />
+                            <Setter Property="BorderBrush" Value="{x:Static SystemColors.HighlightBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="False">
+                            <Setter Property="Background" Value="{DynamicResource VsBrush.ToolWindowBackground}" />
+                            <Setter Property="Foreground" Value="{DynamicResource VsBrush.ToolWindowText}" />
+                            <Setter Property="BorderBrush" Value="{DynamicResource VsBrush.ToolWindowBorder}" />
+                        </Trigger>
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=IsSelected}" Value="True" />
+                                <Condition Binding="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=DataGrid}, Path=IsKeyboardFocusWithin}" Value="False" />
+                            </MultiDataTrigger.Conditions>
+                            <MultiDataTrigger.Setters>
+                                <Setter Property="Background" Value="{DynamicResource VsBrush.ToolWindowBackground}" />
+                                <Setter Property="Foreground" Value="{DynamicResource VsBrush.ToolWindowText}" />
+                                <Setter Property="BorderBrush" Value="{DynamicResource VsBrush.ToolWindowBorder}" />
+                            </MultiDataTrigger.Setters>
+                        </MultiDataTrigger>
+                    </Style.Triggers>
                 </Style>
             </DataGrid.CellStyle>
             <DataGrid.Columns>
