@@ -1,3 +1,10 @@
+version 0.6
+
+additions:
+- Visual Studio themes support
+- visualization colors depending on currently used theme
+- ListViews replaced with DataGrids
+
 version 0.5.1
 
 bugfixes:

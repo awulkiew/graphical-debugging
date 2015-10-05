@@ -106,3 +106,9 @@ where
     multi_polygon_sd_t mpoly_sd{{{{0, 0},{90, 10},{170, 20},{-170, 30},{-150, 60}},
                                  {{0, 10},{-15, 20},{-50, 50},{0, 60}}}};
     multi_point_sd_t mpt_sd{{0, 0},{90, 10},{170, 20},{-170, 30}};
+
+##### Themes
+
+The extension supports Visual Studio themes. The visualization of variables may be drawn in two versions, dark or light depending on the brightness of the theme background color.
+
+![Themes](images/themes.png)
