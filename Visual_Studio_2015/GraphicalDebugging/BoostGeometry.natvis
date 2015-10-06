@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?> 
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
 
+    <!-- model -->
+    
 	<!-- boost::geometry::model::point -->
 	<Type Name="boost::geometry::model::point&lt;*,1,*&gt;">
 		<DisplayString>{{{m_values[0]}}}</DisplayString>
@@ -86,6 +88,37 @@
 		</Expand>
 	</Type>
 
+    <!-- de9im -->
+    
+    <!-- boost::geometry::de9im::matrix -->
+    <Type Name="boost::geometry::de9im::matrix">
+        <DisplayString>{m_array,9s}</DisplayString>
+        <Expand>
+            <ArrayItems>
+                <Size>9</Size>
+                <ValuePointer>m_array</ValuePointer>
+            </ArrayItems>
+        </Expand>
+    </Type>
+
+    <!-- boost::geometry::de9im::mask -->
+    <Type Name="boost::geometry::de9im::mask">
+        <DisplayString>{m_array,9s}</DisplayString>
+        <Expand>
+            <ArrayItems>
+                <Size>9</Size>
+                <ValuePointer>m_array</ValuePointer>
+            </ArrayItems>
+        </Expand>
+    </Type>
+
+    <!-- boost::geometry::de9im::static_mask -->
+    <Type Name="boost::geometry::de9im::static_mask&lt;*&gt;">
+        <DisplayString>{$T1,c}, {$T2,c}, {$T3,c}, {$T4,c}, {$T5,c}, {$T6,c}, {$T7,c}, {$T8,c}, {$T9,c}</DisplayString>
+    </Type>
+
+    <!-- index -->
+    
 	<!-- boost::geometry::index::rtree -->
 	<Type Name="boost::geometry::index::rtree&lt;*&gt;">
 		<DisplayString>{{ size = {m_members.values_count} }}</DisplayString>
@@ -106,6 +139,8 @@
 		</Expand>
 	</Type>
 
+    <!-- detail -->
+    
 	<!-- boost::geometry::detail::overlay::turn_info -->
 	<Type Name="boost::geometry::detail::overlay::turn_info&lt;*&gt;">
 		<DisplayString>{{ {method} {operations.elems[0].operation}/{operations.elems[1].operation} }}</DisplayString>

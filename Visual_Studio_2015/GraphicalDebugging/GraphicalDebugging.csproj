@@ -84,7 +84,13 @@
     <Content Include="BoostContainer.natvis">
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
+    <Content Include="BoostMPL.natvis">
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
     <Content Include="BoostPolygon.natvis">
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="BoostTuple.natvis">
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
     <Content Include="icon.ico">
