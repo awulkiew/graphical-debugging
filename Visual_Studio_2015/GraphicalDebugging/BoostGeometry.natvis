@@ -56,8 +56,8 @@
 	<Type Name="boost::geometry::model::box&lt;*&gt;">
 		<DisplayString>{{{m_min_corner}, {m_max_corner}}}</DisplayString>
 		<Expand>
-			<Item Name="&lt;0&gt;">m_min_corner</Item>
-			<Item Name="&lt;1&gt;">m_max_corner</Item>
+			<Item Name="[0]">m_min_corner</Item>
+			<Item Name="[1]">m_max_corner</Item>
 		</Expand>
 	</Type>
 
@@ -65,8 +65,8 @@
 	<Type Name="boost::geometry::model::segment&lt;*&gt;">
 		<DisplayString>{{{first}, {second}}}</DisplayString>
 		<Expand>
-			<Item Name="&lt;0&gt;">first</Item>
-			<Item Name="&lt;1&gt;">second</Item>
+			<Item Name="[0]">first</Item>
+			<Item Name="[1]">second</Item>
 		</Expand>
 	</Type>
 
@@ -74,8 +74,8 @@
 	<Type Name="boost::geometry::model::referring_segment&lt;*&gt;">
 		<DisplayString>{{{first}, {second}}}</DisplayString>
 		<Expand>
-			<Item Name="&lt;0&gt;">first</Item>
-			<Item Name="&lt;1&gt;">second</Item>
+			<Item Name="[0]">first</Item>
+			<Item Name="[1]">second</Item>
 		</Expand>
 	</Type>
 
