@@ -1112,8 +1112,11 @@ namespace GraphicalDebugging
             Point first_p = LoadPoint(debugger, name + ".ranges_[0]"); // interval X
             Point second_p = LoadPoint(debugger, name + ".ranges_[1]"); // interval Y
 
-            return new Box(new Point(first_p[0], second_p[0]),
-                           new Point(first_p[1], second_p[1]));
+            Box result = new Box(new Point(first_p[0], second_p[0]),
+                                 new Point(first_p[1], second_p[1]));
+            // NOTE: Instead of this assignment Box_ could be always set in the constructor to this.
+            result.Box_ = result;
+            return result;
         }
 
         private static Segment LoadSegment(Debugger debugger, string name, string first, string second, bool calculateEnvelope, Geometry.Traits traits)
