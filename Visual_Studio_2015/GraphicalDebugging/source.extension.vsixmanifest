@@ -1,14 +1,14 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="GraphicalDebugging.Adam.Wulkiewicz.ab1fcb4d-58d9-4d6e-b243-68bc2285475e" Version="0.6.1" Language="en-US" Publisher="Adam Wulkiewicz" />
+        <Identity Id="GraphicalDebugging.Adam.Wulkiewicz.ab1fcb4d-58d9-4d6e-b243-68bc2285475e" Version="0.6.2" Language="en-US" Publisher="Adam Wulkiewicz" />
         <DisplayName>GraphicalDebugging</DisplayName>
         <Description xml:space="preserve">GraphicalDebugging extension allows to view graphical representation of variables, e.g. Boost.Geometry models.</Description>
         <License>LICENSE_1_0.txt</License>
         <ReleaseNotes>release_notes.txt</ReleaseNotes>
         <Icon>icon.ico</Icon>
         <PreviewImage>preview.png</PreviewImage>
-        <Tags>boost array container geometry polygon variant graphical debugging debugger watch</Tags>
+        <Tags>c++ boost array container geometry mpl polygon tuple variant graphical debugging debugger watch</Tags>
     </Metadata>
     <Installation>
         <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[14.0]" />
