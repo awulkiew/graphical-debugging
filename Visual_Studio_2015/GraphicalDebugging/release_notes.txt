@@ -4,6 +4,9 @@ additions:
 - tooltip for variable type
 - wrapped type string in GraphicalWatch
 
+bugfixes:
+- fixed drawing of Boost.Polygon rectangle_data
+
 version 0.6.1
 
 additions:
