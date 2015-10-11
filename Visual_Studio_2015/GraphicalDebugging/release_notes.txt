@@ -1,3 +1,11 @@
+version 0.6.3
+
+additions:
+- simple context menu for GeometryWatch image (copy to clipboard)
+
+bugfixes:
+- removal of min height property sometimes causing problems for GeometryWatch controls
+
 version 0.6.2
 
 additions:
