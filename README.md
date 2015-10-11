@@ -1,6 +1,10 @@
 # GraphicalDebugging extension for Visual Studio 2015
 
-This extension allows to display graphical representation of variables during debugging. Currently it supports Boost.Geometry and Boost.Polygon models, Boost.Variant and STL/Boost containers of values. It contains:
+This extension allows to display graphical representation of variables during debugging.
+
+![Themes](images/themes.png)
+
+Currently it supports Boost.Geometry and Boost.Polygon models, Boost.Variant and STL/Boost containers of values. It contains:
 
 * Debugging visualizers for Boost.Array, Boost.Container, Boost.Geometry, Boost.MPL, Boost.Polygon, Boost.Tuple and Boost.Variant
 * GraphicalWatch tool window displaying graphical representation of variables, e.g. Boost.Geometry models or vectors of values
@@ -117,4 +121,3 @@ where
 
 The extension supports Visual Studio themes. The visualization of variables may be drawn in two versions, dark or light depending on the brightness of the theme background color.
 
-![Themes](images/themes.png)
