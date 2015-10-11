@@ -13,6 +13,7 @@ namespace GraphicalDebugging
     using System.Drawing;
     using System.Drawing.Imaging;
     using System.IO;
+    using System.Windows.Media.Imaging;
 
     using EnvDTE;
     using EnvDTE80;
@@ -53,17 +54,16 @@ namespace GraphicalDebugging
 
             m_colors = new Colors(this);
             m_intsPool = new Util.IntsPool(m_colors.Count);
+            
+            this.InitializeComponent();
+
             m_emptyBitmap = new Bitmap(100, 100);
             Graphics graphics = Graphics.FromImage(m_emptyBitmap);
             graphics.Clear(m_colors.ClearColor);
+            image.Source = Util.BitmapToBitmapImage(m_emptyBitmap);
 
             Geometries = new ObservableCollection<GeometryItem>();
-
-            this.InitializeComponent();
-
             dataGrid.ItemsSource = Geometries;
-
-            image.Source = Util.BitmapToBitmapImage(m_emptyBitmap);
 
             ResetAt(new GeometryItem(-1, m_colors), Geometries.Count);
         }
@@ -195,6 +195,7 @@ namespace GraphicalDebugging
 
         private void UpdateItems(int modified_index = -1)
         {
+            bool imageEmpty = true;
             if (m_debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
             {
                 string[] names = new string[Geometries.Count];
@@ -242,25 +243,43 @@ namespace GraphicalDebugging
                 // draw variables
                 if (tryDrawing)
                 {
-                    Bitmap bmp = new Bitmap((int)System.Math.Round(image.ActualWidth),
-                                            (int)System.Math.Round(image.ActualHeight));
+                    int width = (int)System.Math.Round(image.ActualWidth);
+                    int height = (int)System.Math.Round(image.ActualHeight);
+                    if (width > 0 && height > 0)
+                    {
+                        Bitmap bmp = new Bitmap(width, height);
 
-                    Graphics graphics = Graphics.FromImage(bmp);
-                    graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                    graphics.Clear(m_colors.ClearColor);
+                        Graphics graphics = Graphics.FromImage(bmp);
+                        graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                        graphics.Clear(m_colors.ClearColor);
 
-                    ExpressionDrawer.DrawGeometries(graphics, m_debugger, names, settings, m_colors);
+                        ExpressionDrawer.DrawGeometries(graphics, m_debugger, names, settings, m_colors);
 
-                    image.Source = Util.BitmapToBitmapImage(bmp);
-                }
-                else
-                {
-                    image.Source = Util.BitmapToBitmapImage(m_emptyBitmap);
+                        image.Source = Util.BitmapToBitmapImage(bmp);
+                        imageEmpty = false;
+                    }
                 }
             }
-            else
+            
+            if (imageEmpty)
             {
                 image.Source = Util.BitmapToBitmapImage(m_emptyBitmap);
+            }
+
+            image.ContextMenu = new ContextMenu();
+            MenuItem mi = new MenuItem();
+            mi.Header = "Copy";
+            mi.Click += MenuItem_Copy;
+            if (imageEmpty)
+                mi.IsEnabled = false;
+            image.ContextMenu.Items.Add(mi);
+        }
+
+        private void MenuItem_Copy(object sender, RoutedEventArgs e)
+        {
+            if (image != null && image.Source != null)
+            {
+                Clipboard.SetImage((BitmapImage)image.Source);
             }
         }
     }

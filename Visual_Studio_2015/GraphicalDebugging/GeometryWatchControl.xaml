@@ -11,9 +11,9 @@
              Name="GeometryWatchWindow" SizeChanged="GeometryWatchWindow_SizeChanged">
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition MinHeight="100" />
+            <RowDefinition Height="1*" />
             <RowDefinition Height="Auto" />
-            <RowDefinition MinHeight="100" Height="0.5*" />
+            <RowDefinition Height="0.5*" />
         </Grid.RowDefinitions>
         <DockPanel Grid.Row="0">
             <Image x:Name="image" Stretch="Fill" Height="Auto" Width="Auto" />

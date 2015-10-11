@@ -31,8 +31,13 @@ namespace GraphicalDebugging
 
         public static BitmapImage BitmapToBitmapImage(Bitmap bmp)
         {
+            return BitmapToBitmapImage(bmp, ImageFormat.Png);
+        }
+
+        public static BitmapImage BitmapToBitmapImage(Bitmap bmp, ImageFormat format)
+        {
             MemoryStream memory = new MemoryStream();
-            bmp.Save(memory, ImageFormat.Bmp);
+            bmp.Save(memory, format);
             memory.Position = 0;
             BitmapImage result = new BitmapImage();
             result.BeginInit();
