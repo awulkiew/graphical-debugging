@@ -47,7 +47,7 @@ namespace GraphicalDebugging
                 PointColor = Color.FromArgb(0xFF, 255, 165, 0); // Color.Orange;
                 BoxColor = Color.Red;
                 SegmentColor = Color.YellowGreen;
-                NSphereColor = Color.MediumOrchid;
+                NSphereColor = Color.Crimson;
                 LinestringColor = Color.Green;
                 RingColor = Color.SlateBlue;
                 PolygonColor = Color.RoyalBlue;
@@ -67,7 +67,7 @@ namespace GraphicalDebugging
                 PointColor = Color.FromArgb(0xFF, 255, 205, 128);
                 BoxColor = Color.FromArgb(0xFF, 255, 128, 128);
                 SegmentColor = Color.FromArgb(0xFF, 205, 0xFF, 150);
-                NSphereColor = Color.FromArgb(0xFF, 220, 171, 233);
+                NSphereColor = Color.FromArgb(0xFF, 238, 138, 158);
                 LinestringColor = Color.FromArgb(0xFF, 128, 192, 128);
                 RingColor = Color.FromArgb(0xFF, 180, 172, 230);
                 PolygonColor = Color.FromArgb(0xFF, 160, 180, 245);
