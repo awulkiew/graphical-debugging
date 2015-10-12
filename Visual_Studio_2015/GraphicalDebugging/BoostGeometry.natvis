@@ -88,6 +88,15 @@
 		</Expand>
 	</Type>
 
+  <!-- boost::geometry::model::nsphere -->
+  <Type Name="boost::geometry::model::nsphere&lt;*&gt;">
+    <DisplayString>{{{m_center}, {m_radius}}}</DisplayString>
+    <Expand>
+      <Item Name="center">m_center</Item>
+      <Item Name="radius">m_radius</Item>
+    </Expand>
+  </Type>
+
     <!-- de9im -->
     
     <!-- boost::geometry::de9im::matrix -->
