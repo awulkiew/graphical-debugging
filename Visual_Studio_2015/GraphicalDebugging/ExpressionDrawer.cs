@@ -160,6 +160,57 @@ namespace GraphicalDebugging
             public Color DefaultColor(Colors colors) { return colors.BoxColor; }
         }
 
+        private class NSphere : Geometry.NSphere, IDrawable
+        {
+            public NSphere(Geometry.Point center, double radius)
+                : base(center, radius)
+            { }
+
+            public void Draw(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
+            {
+                LocalCS cs = new LocalCS(box, graphics);
+
+                Pen pen = new Pen(Color.FromArgb(112, settings.color), 2);
+                SolidBrush brush = new SolidBrush(Color.FromArgb(64, settings.color));
+
+                PointF c = cs.Convert(Center);
+                float r = cs.ConvertDimension(Radius);
+
+                if (r < 0)
+                {
+                    return;
+                }
+                else if (r == 0)
+                {
+                    if (traits.Unit == Geometry.Unit.None)
+                        DrawPoint(graphics, pen, brush, c.X, c.Y, 2.5f);
+                    else
+                        DrawPeriodicPoint(graphics, pen, brush, cs, Center, box, traits.Unit);
+                }
+                else
+                {
+                    if (traits.Unit == Geometry.Unit.None)
+                    {
+                        float x = c.X - r;
+                        float y = c.Y - r;
+                        float d = r * 2;
+                        graphics.DrawEllipse(pen, x, y, d, d);
+                        graphics.FillEllipse(brush, x, y, d, d);
+                    }
+                    else // Radian, Degree
+                    {
+                        PeriodicDrawableNSphere pd = new PeriodicDrawableNSphere(cs, this, box, traits.Unit);
+                        DrawPeriodic(graphics, pen, brush, pd, true, true, false);
+                    }
+                }
+            }
+
+            public Geometry.Box Aabb { get { return Box; } }
+            public Color DefaultColor(Colors colors) { return colors.NSphereColor; }
+
+            public Geometry.Box Box { get; set; }
+        }
+
         private class Segment : Geometry.Segment, IDrawable
         {
             public Segment(Geometry.Point first, Geometry.Point second)
@@ -628,39 +679,31 @@ namespace GraphicalDebugging
 
         private static void DrawLine(Graphics graphics, Pen pen, PointF p0, PointF p1, float x0_orig, float x1_orig, bool drawDir)
         {
-            // actually this variable indicates that additional info should be drawn
-            // such as dirs, periodical segments as dotted lines etc.
-            if (!drawDir)
+            bool sameP0 = Math.Abs(p0.X - x0_orig) < 0.001;
+            bool sameP1 = Math.Abs(p1.X - x1_orig) < 0.001;
+            //bool sameP0 = p0.X == x0_orig;
+            //bool sameP1 = p1.X == x1_orig;
+            if (sameP0 && sameP1)
             {
-                DrawLine(graphics, pen, p0, p1, false);
+                DrawLine(graphics, pen, p0, p1, drawDir);
             }
             else
             {
-                bool sameP0 = Math.Abs(p0.X - x0_orig) < 0.001;
-                bool sameP1 = Math.Abs(p1.X - x1_orig) < 0.001;
-                //bool sameP0 = p0.X == x0_orig;
-                //bool sameP1 = p1.X == x1_orig;
-                if (sameP0 && sameP1)
+                Pen pend = (Pen)pen.Clone();
+                pend.DashStyle = DashStyle.Dot;
+
+                if (sameP0 || sameP1)
                 {
-                    DrawLine(graphics, pen, p0, p1, true);
+                    PointF ph = AddF(p0, DivF(SubF(p1, p0), 2));
+                    graphics.DrawLine(sameP0 ? pen : pend, p0, ph);
+                    graphics.DrawLine(sameP1 ? pen : pend, ph, p1);
+
+                    if (drawDir)
+                        DrawDir(p0, p1, graphics, pen);
                 }
                 else
                 {
-                    Pen pend = (Pen)pen.Clone();
-                    pend.DashStyle = DashStyle.Dot;
-
-                    if (sameP0 || sameP1)
-                    {
-                        PointF ph = AddF(p0, DivF(SubF(p1, p0), 2));
-                        graphics.DrawLine(sameP0 ? pen : pend, p0, ph);
-                        graphics.DrawLine(sameP1 ? pen : pend, ph, p1);
-
-                        DrawDir(p0, p1, graphics, pen);
-                    }
-                    else
-                    {
-                        DrawLine(graphics, pend, p0, p1, true);
-                    }
+                    DrawLine(graphics, pend, p0, p1, drawDir);
                 }
             }
         }
@@ -698,7 +741,7 @@ namespace GraphicalDebugging
             while (x_tmp >= box.Min[0])
             {
                 x = cs.ConvertX(x_tmp);
-                DrawPoint(graphics, pen, brush, x, y, 2.5f);
+                DrawPoint(graphics, pen_dot, brush, x, y, 2.5f);
                 x_tmp -= pi2;
             }
             // draw points on the east
@@ -706,7 +749,7 @@ namespace GraphicalDebugging
             while (x_tmp <= box.Max[0])
             {
                 x = cs.ConvertX(x_tmp);
-                DrawPoint(graphics, pen, brush, x, y, 2.5f);
+                DrawPoint(graphics, pen_dot, brush, x, y, 2.5f);
                 x_tmp += pi2;
             }
         }
@@ -792,6 +835,7 @@ namespace GraphicalDebugging
 
             public PointF[] points_rel { get; protected set; }
             public float[] xs_orig { get; protected set; }
+
             public float minf { get; protected set; }
             public float maxf { get; protected set; }
             public float periodf { get; protected set; }
@@ -840,6 +884,61 @@ namespace GraphicalDebugging
                 box_minf = cs.ConvertX(box.Min[0]);
                 box_maxf = cs.ConvertX(box.Max[0]);
             }
+        }
+
+        private class PeriodicDrawableNSphere : IPeriodicDrawable
+        {
+            public PeriodicDrawableNSphere(LocalCS cs, Geometry.NSphere nsphere, Geometry.Box box, Geometry.Unit unit)
+            {
+                double pi = Geometry.HalfAngle(unit);
+                periodf = cs.ConvertDimension(2 * pi);
+
+                c_rel = cs.Convert(nsphere.Center);
+                r = cs.ConvertDimension(nsphere.Radius); 
+
+                minf = c_rel.X - r;
+                maxf = c_rel.X + r;
+
+                box_minf = cs.ConvertX(box.Min[0]);
+                box_maxf = cs.ConvertX(box.Max[0]);
+            }
+
+            public void DrawOne(Graphics graphics, Pen pen, Brush brush, float translation, bool closed, bool fill, bool drawDirs)
+            {
+                if (!Good())
+                    return;
+
+                float cx = c_rel.X - r + translation;
+                float cy = c_rel.Y - r;
+                float d = r * 2;
+
+                if (Math.Abs(translation) < 0.001)
+                {
+                    graphics.DrawEllipse(pen, cx, cy, d, d);
+                }
+                else
+                {
+                    Pen pend = (Pen)pen.Clone();
+                    pend.DashStyle = DashStyle.Dot;
+                    graphics.DrawEllipse(pend, cx, cy, d, d);
+                }
+
+                if (fill && brush != null)
+                {
+                    graphics.FillEllipse(brush, cx, cy, d, d);
+                }
+            }
+
+            public bool Good() { return r >= 0; }
+
+            protected PointF c_rel { get; set; }
+            protected float r { get; set; }
+
+            public float minf { get; protected set; }
+            public float maxf { get; protected set; }
+            public float periodf { get; protected set; }
+            public float box_minf { get; protected set; }
+            public float box_maxf { get; protected set; }
         }
 
         private class PeriodicDrawablePolygon : IPeriodicDrawable
@@ -1082,14 +1181,17 @@ namespace GraphicalDebugging
         // Loading expressions
         // -------------------------------------------------
 
+        private static double LoadValue(Debugger debugger, string name)
+        {
+            Expression expr = debugger.GetExpression("(double)" + name);
+            double v = double.Parse(expr.Value, System.Globalization.CultureInfo.InvariantCulture);
+            return v;
+        }
+
         private static Point LoadPoint(Debugger debugger, string name)
         {
-            string name_prefix = "(double)" + name;
-            Expression expr_x = debugger.GetExpression(name_prefix + "[0]");
-            Expression expr_y = debugger.GetExpression(name_prefix + "[1]");
-
-            double x = double.Parse(expr_x.Value, System.Globalization.CultureInfo.InvariantCulture);
-            double y = double.Parse(expr_y.Value, System.Globalization.CultureInfo.InvariantCulture);
+            double x = LoadValue(debugger, name + "[0]");
+            double y = LoadValue(debugger, name + "[1]");
 
             return new Point(x, y);
         }
@@ -1129,6 +1231,21 @@ namespace GraphicalDebugging
                 result.Box = Geometry.Envelope(result, traits);
             else
                 result.Box = Geometry.Aabb(result, traits);
+            return result;
+        }
+
+        private static NSphere LoadNSphere(Debugger debugger, string name, string center, string radius, bool calculateEnvelope, Geometry.Traits traits)
+        {
+            Point center_p = LoadPoint(debugger, name + "." + center);
+            double radius_v = LoadValue(debugger, name + "." + radius);
+
+            NSphere result = new NSphere(center_p, radius_v);
+            Geometry.Point p_min = new Geometry.Point(center_p[0] - radius_v, center_p[1] - radius_v);
+            Geometry.Point p_max = new Geometry.Point(center_p[0] + radius_v, center_p[1] + radius_v);
+            if (calculateEnvelope)
+                result.Box = Geometry.Envelope(p_min, p_max, traits);
+            else
+                result.Box = Geometry.Aabb(p_min, p_max, traits.Unit);
             return result;
         }
 
@@ -1495,6 +1612,8 @@ namespace GraphicalDebugging
                 d = LoadPoint(debugger, name);
             else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::box")) != null)
                 d = LoadGeometryBox(debugger, name, calculateEnvelope, traits);
+            else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::nsphere")) != null)
+                d = LoadNSphere(debugger, name, "m_center", "m_radius", calculateEnvelope, traits);
             else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::segment")) != null
                   || (traits = LoadGeometryTraits(type, "boost::geometry::model::referring_segment")) != null)
                 d = LoadSegment(debugger, name, "first", "second", calculateEnvelope, traits);

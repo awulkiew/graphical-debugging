@@ -133,6 +133,21 @@ namespace GraphicalDebugging
             public Point Second;
         }
 
+        public class NSphere
+        {
+            public NSphere()
+            { }
+
+            public NSphere(Point center, double radius)
+            {
+                Center = center;
+                Radius = radius;
+            }
+
+            public Point Center;
+            public double Radius;
+        }
+
         public interface IRandomAccessRange<T>
         {
             T this[int i] { get; }
