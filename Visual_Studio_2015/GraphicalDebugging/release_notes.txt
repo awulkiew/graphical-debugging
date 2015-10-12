@@ -1,3 +1,11 @@
+version 0.6.4
+
+additions:
+- support for Boost.Geometry NSphere
+
+bugfixes:
+- periodic Points and Boxes wasn't drew with dotted pen
+
 version 0.6.3
 
 additions:
