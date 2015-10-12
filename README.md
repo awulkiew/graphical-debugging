@@ -47,7 +47,7 @@ Supported:
   * de9im: mask, matrix, static_mask
   * detail: turn_info, traversal_turn_info
   * index: rtree, varray
-  * model: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon
+  * model: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
 * Boost.MPL: int_, size_t, integral_c, vector, vector_c
 * Boost.Polygon: point_data, interval_data, segment_data, rectangle_data, polygon_data, polygon_with_holes_data
 * Boost.Tuple: tuple, cons
@@ -66,10 +66,10 @@ Supported:
   * Boost.Array: array
   * Boost.Container: vector, static_vector
 * 2D cartesian geometries
-  * Boost.Geometry: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon
+  * Boost.Geometry: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
   * Boost.Polygon: point_data, segment_data, rectangle_data, polygon_data, polygon_with_holes_data
 * Non-cartesian geometries (spherical_equatorial and geographic)
-  * Boost.Geometry: point, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon
+  * Boost.Geometry: point, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
 * Variants of geometries
   * Boost.Variant
 
@@ -94,10 +94,10 @@ Watch window displaying graphical representation of variables in a single image.
 Supported:
 
 * 2D cartesian geometries
-  * Boost.Geometry: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon
+  * Boost.Geometry: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
   * Boost.Polygon: point_data, segment_data, rectangle_data, polygon_data, polygon_with_holes_data
 * Non-cartesian geometries (spherical_equatorial and geographic)
-  * Boost.Geometry: point, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon
+  * Boost.Geometry: point, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
 * Variants of geometries
   * Boost.Variant
 
