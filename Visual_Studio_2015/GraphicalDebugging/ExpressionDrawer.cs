@@ -222,6 +222,7 @@ namespace GraphicalDebugging
                 LocalCS cs = new LocalCS(box, graphics);
 
                 Pen pen = new Pen(Color.FromArgb(112, settings.color), 2);
+                pen.EndCap = LineCap.Round;
 
                 PointF p0 = cs.Convert(this[0]);
                 PointF p1 = cs.Convert(this[1]);
@@ -250,6 +251,7 @@ namespace GraphicalDebugging
                 LocalCS cs = new LocalCS(box, graphics);
 
                 Pen pen = new Pen(Color.FromArgb(112, settings.color), 2);
+                pen.EndCap = LineCap.Round;
 
                 if (traits.Unit == Geometry.Unit.None)
                 {
@@ -286,6 +288,8 @@ namespace GraphicalDebugging
                 LocalCS cs = new LocalCS(box, graphics);
 
                 Pen pen = new Pen(Color.FromArgb(112, settings.color), 2);
+                pen.LineJoin = LineJoin.Round;
+                pen.EndCap = LineCap.Round;
                 SolidBrush brush = new SolidBrush(Color.FromArgb(64, settings.color));
 
                 if (traits.Unit == Geometry.Unit.None)
@@ -334,6 +338,8 @@ namespace GraphicalDebugging
                 LocalCS cs = new LocalCS(box, graphics);
 
                 Pen pen = new Pen(Color.FromArgb(112, settings.color), 2);
+                pen.LineJoin = LineJoin.Round;
+                pen.EndCap = LineCap.Round;
                 SolidBrush brush = new SolidBrush(Color.FromArgb(64, settings.color));
 
                 if (traits.Unit == Geometry.Unit.None)
@@ -1325,6 +1331,12 @@ namespace GraphicalDebugging
                 }
             }
 
+            if (box == null)
+            {
+                box = new Geometry.Box();
+                Geometry.AssignInverse(box);
+            }
+
             return new Multi<Point>(singles, box);
         }
 
@@ -1351,6 +1363,12 @@ namespace GraphicalDebugging
                 }  
             }
 
+            if (box == null)
+            {
+                box = new Geometry.Box();
+                Geometry.AssignInverse(box);
+            }
+
             return new Multi<Linestring>(singles, box);
         }
 
@@ -1375,6 +1393,12 @@ namespace GraphicalDebugging
                     else
                         Geometry.Expand(box, s.Box);
                 }
+            }
+
+            if (box == null)
+            {
+                box = new Geometry.Box();
+                Geometry.AssignInverse(box);
             }
 
             return new Multi<Polygon>(singles, box);
