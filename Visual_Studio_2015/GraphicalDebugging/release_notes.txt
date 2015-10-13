@@ -1,3 +1,11 @@
+version 0.6.5
+
+additions:
+- use round joins of drawn segments to avoid visual spikes
+
+bugfixes:
+- exception thrown while drawing of empty multi-geometry in GeometryWatch
+
 version 0.6.4
 
 additions:
