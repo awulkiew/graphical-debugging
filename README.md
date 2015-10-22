@@ -8,7 +8,7 @@ Currently it supports Boost.Geometry and Boost.Polygon models, Boost.Variant and
 
 * Debugging visualizers for Boost.Array, Boost.Container, Boost.Geometry, Boost.MPL, Boost.Polygon, Boost.Tuple and Boost.Variant
 * GraphicalWatch tool window displaying graphical representation of variables, e.g. Boost.Geometry models or vectors of values
-* GeometryWatch tool window displaying geometries some number of geometries in a common coordinate system, e.g. Boost.Geometry or Boost.Polygon polygons
+* GeometryWatch tool window displaying geometries in a common coordinate system, e.g. Boost.Geometry or Boost.Polygon polygons
 
 Feel free to report bugs, propose features and create pull requests. Any help is appreciated.
 
