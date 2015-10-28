@@ -1253,7 +1253,7 @@ namespace GraphicalDebugging
                 DrawablePair d = MakeDrawable(debugger, name, true);
                 if (d.Drawable != null)
                 {
-                    if (d.Traits.CoordinateSystem == Geometry.CoordinateSystem.Spherical)
+                    if (d.Traits != null && d.Traits.CoordinateSystem == Geometry.CoordinateSystem.Spherical)
                     {
                         throw new Exception("This coordinate system is not yet supported.");
                     }
