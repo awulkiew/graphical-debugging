@@ -94,13 +94,13 @@ namespace GraphicalDebugging
                 DrawDirs(points, closed);
         }
 
-        public void DrawLine(PointF p0, PointF p1, float x0_orig, float x1_orig, bool drawDir)
+        public void DrawLine(PointF p0, PointF p1, float x0_orig, float x1_orig, bool drawDir, bool drawDots)
         {
             bool sameP0 = Math.Abs(p0.X - x0_orig) < 0.001;
             bool sameP1 = Math.Abs(p1.X - x1_orig) < 0.001;
             //bool sameP0 = p0.X == x0_orig;
             //bool sameP1 = p1.X == x1_orig;
-            if (sameP0 && sameP1)
+            if (!drawDots || sameP0 && sameP1)
             {
                 DrawLine(p0, p1, drawDir);
             }
@@ -125,21 +125,21 @@ namespace GraphicalDebugging
             }
         }
 
-        public void DrawLines(PointF[] points_rel, float translation_x, float[] xs_orig, bool closed, bool drawDir)
+        public void DrawLines(PointF[] points_rel, float translation_x, float[] xs_orig, bool closed, bool drawDir, bool drawDots)
         {
             for (int i = 1; i < points_rel.Length; ++i)
             {
                 int i_1 = i - 1;
                 PointF p0 = new PointF(points_rel[i_1].X + translation_x, points_rel[i_1].Y);
                 PointF p1 = new PointF(points_rel[i].X + translation_x, points_rel[i].Y);
-                DrawLine(p0, p1, xs_orig[i_1], xs_orig[i], drawDir);
+                DrawLine(p0, p1, xs_orig[i_1], xs_orig[i], drawDir, drawDots);
             }
             if (closed && points_rel.Length > 1)
             {
                 int i_1 = points_rel.Length - 1;
                 PointF p0 = new PointF(points_rel[i_1].X + translation_x, points_rel[i_1].Y);
                 PointF p1 = new PointF(points_rel[0].X + translation_x, points_rel[0].Y);
-                DrawLine(p0, p1, xs_orig[i_1], xs_orig[0], drawDir);
+                DrawLine(p0, p1, xs_orig[i_1], xs_orig[0], drawDir, drawDots);
             }
         }
 
@@ -212,7 +212,7 @@ namespace GraphicalDebugging
 
         public interface IPeriodicDrawable
         {
-            void DrawOne(Drawer drawer, float translation, bool closed, bool fill, bool drawDirs);
+            void DrawOne(Drawer drawer, float translation, bool closed, bool fill, bool drawDirs, bool drawDots);
             bool Good();
 
             float minf { get; }
@@ -271,12 +271,12 @@ namespace GraphicalDebugging
                 box_maxf = cs.ConvertX(box.Max[0]);
             }
 
-            public void DrawOne(Drawer drawer, float translation, bool closed, bool fill, bool drawDirs)
+            public void DrawOne(Drawer drawer, float translation, bool closed, bool fill, bool drawDirs, bool drawDots)
             {
                 if (!Good())
                     return;
 
-                drawer.DrawLines(points_rel, translation, xs_orig, closed, drawDirs);
+                drawer.DrawLines(points_rel, translation, xs_orig, closed, drawDirs, drawDots);
 
                 if (fill)
                 {
@@ -359,7 +359,7 @@ namespace GraphicalDebugging
                 box_maxf = cs.ConvertX(box.Max[0]);
             }
 
-            public void DrawOne(Drawer drawer, float translation, bool closed, bool fill, bool drawDirs)
+            public void DrawOne(Drawer drawer, float translation, bool closed, bool fill, bool drawDirs, bool drawDots)
             {
                 if (!Good())
                     return;
@@ -368,7 +368,7 @@ namespace GraphicalDebugging
                 float cy = c_rel.Y - r;
                 float d = r * 2;
 
-                if (Math.Abs(translation) < 0.001)
+                if (!drawDots || Math.Abs(translation) < 0.001)
                 {
                     drawer.graphics.DrawEllipse(drawer.pen, cx, cy, d, d);
                 }
@@ -427,12 +427,12 @@ namespace GraphicalDebugging
                 }
             }
 
-            public void DrawOne(Drawer drawer, float translation, bool closed, bool fill, bool drawDirs)
+            public void DrawOne(Drawer drawer, float translation, bool closed, bool fill, bool drawDirs, bool drawDots)
             {
                 if (!outer.Good())
                     return;
 
-                outer.DrawOne(drawer, translation, closed, false, drawDirs);
+                outer.DrawOne(drawer, translation, closed, false, drawDirs, drawDots);
 
                 GraphicsPath gp = new GraphicsPath();
                 if (fill && outer.points_rel != null)
@@ -447,7 +447,7 @@ namespace GraphicalDebugging
                 {
                     if (inner.Good())
                     {
-                        inner.DrawOne(drawer, translation, closed, false, drawDirs);
+                        inner.DrawOne(drawer, translation, closed, false, drawDirs, drawDots);
 
                         if (fill && inner.points_rel != null)
                         {
@@ -475,13 +475,13 @@ namespace GraphicalDebugging
             public float box_maxf { get; }
         }
 
-        public void DrawPeriodic(IPeriodicDrawable pd, bool closed, bool fill, bool drawDirs)
+        public void DrawPeriodic(IPeriodicDrawable pd, bool closed, bool fill, bool drawDirs, bool drawDots)
         {
             if (!pd.Good())
                 return;
 
             if (pd.maxf >= pd.box_minf && pd.minf <= pd.box_maxf)
-                pd.DrawOne(this, 0, closed, fill, drawDirs);
+                pd.DrawOne(this, 0, closed, fill, drawDirs, drawDots);
 
             // west
             float minf_i = pd.minf;
@@ -493,7 +493,7 @@ namespace GraphicalDebugging
                 minf_i -= pd.periodf;
                 maxf_i -= pd.periodf;
                 if (maxf_i >= pd.box_minf && minf_i <= pd.box_maxf)
-                    pd.DrawOne(this, translationf, closed, fill, drawDirs);
+                    pd.DrawOne(this, translationf, closed, fill, drawDirs, drawDots);
             }
             // east
             minf_i = pd.minf;
@@ -505,7 +505,7 @@ namespace GraphicalDebugging
                 minf_i += pd.periodf;
                 maxf_i += pd.periodf;
                 if (maxf_i >= pd.box_minf && minf_i <= pd.box_maxf)
-                    pd.DrawOne(this, translationf, closed, fill, drawDirs);
+                    pd.DrawOne(this, translationf, closed, fill, drawDirs, drawDots);
             }
         }
 

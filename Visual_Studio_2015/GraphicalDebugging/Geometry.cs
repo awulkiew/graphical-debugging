@@ -383,8 +383,7 @@ namespace GraphicalDebugging
         }
         public static Box Envelope(Box box)
         {
-            return new Box(new Point(box.Min[0], box.Min[1]),
-                           new Point(box.Max[0], box.Max[1]));
+            return Envelope(box.Min, box.Max);
         }
         public static Box EnvelopeAngle(Box box, Unit unit)
         {

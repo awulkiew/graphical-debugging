@@ -136,7 +136,7 @@ namespace GraphicalDebugging
                     else if (rw == 0 || rh == 0)
                     {
                         Drawer.PeriodicDrawableBox pd = new Drawer.PeriodicDrawableBox(cs, new Geometry.Segment(Min, Max), box, traits.Unit);
-                        drawer.DrawPeriodic(pd, false, false, false);
+                        drawer.DrawPeriodic(pd, false, false, false, settings.showDir);
                     }
                     else
                     {
@@ -146,7 +146,7 @@ namespace GraphicalDebugging
                         ring.Add(new Geometry.Point(Max[0], Max[1]));
                         ring.Add(new Geometry.Point(Min[0], Max[1]));
                         Drawer.PeriodicDrawableBox pd = new Drawer.PeriodicDrawableBox(cs, ring, box, traits.Unit);
-                        drawer.DrawPeriodic(pd, true, true, false);
+                        drawer.DrawPeriodic(pd, true, true, false, settings.showDir);
                     }
                 }
             }
@@ -194,7 +194,7 @@ namespace GraphicalDebugging
                     else
                     {
                         Drawer.PeriodicDrawableNSphere pd = new Drawer.PeriodicDrawableNSphere(cs, this, box, traits.Unit);
-                        drawer.DrawPeriodic(pd, true, true, false);
+                        drawer.DrawPeriodic(pd, true, true, false, settings.showDir);
                     }
                 }
             }
@@ -225,7 +225,7 @@ namespace GraphicalDebugging
                 else // Radian, Degree
                 {
                     Drawer.PeriodicDrawableRange pd = new Drawer.PeriodicDrawableRange(cs, this, box, traits.Unit);
-                    drawer.DrawPeriodic(pd, false, false, settings.showDir);
+                    drawer.DrawPeriodic(pd, false, false, settings.showDir, settings.showDir);
                 }
             }
 
@@ -254,7 +254,7 @@ namespace GraphicalDebugging
                 else // Radian, Degree
                 {
                     Drawer.PeriodicDrawableRange pd = new Drawer.PeriodicDrawableRange(cs, this, box, traits.Unit);
-                    drawer.DrawPeriodic(pd, false, false, settings.showDir);
+                    drawer.DrawPeriodic(pd, false, false, settings.showDir, settings.showDir);
                 }
             }
 
@@ -296,7 +296,7 @@ namespace GraphicalDebugging
                 else
                 {
                     Drawer.PeriodicDrawableRange pd = new Drawer.PeriodicDrawableRange(cs, this, box, traits.Unit);
-                    drawer.DrawPeriodic(pd, true, true, settings.showDir);
+                    drawer.DrawPeriodic(pd, true, true, settings.showDir, settings.showDir);
                     
                     if (settings.showDir && this.Count > 0)
                         drawer.DrawPeriodicPoint(cs, this[0], box, traits.Unit);
@@ -359,7 +359,7 @@ namespace GraphicalDebugging
                 else
                 {
                     Drawer.PeriodicDrawablePolygon pd = new Drawer.PeriodicDrawablePolygon(cs, outer, inners, box, traits.Unit);
-                    drawer.DrawPeriodic(pd, true, true, settings.showDir);
+                    drawer.DrawPeriodic(pd, true, true, settings.showDir, settings.showDir);
 
                     if (settings.showDir)
                     {
