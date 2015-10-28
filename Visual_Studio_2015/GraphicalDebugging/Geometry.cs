@@ -64,7 +64,7 @@ namespace GraphicalDebugging
             public Point() { }
             //public Point(double x) { coords = new double[1] { x }; }
             public Point(double x, double y) { coords = new double[2] { x, y }; }
-            //public Point(double x, double y, double z) { coords = new double[3] { x, y, z }; }
+            public Point(double x, double y, double z) { coords = new double[3] { x, y, z }; }
 
             public double this[int i]
             {
@@ -77,10 +77,9 @@ namespace GraphicalDebugging
                 return this.MemberwiseClone();
             }
 
-            public int Dimension { get { return 2/*coords != null ? coords.Length : 0*/; } }
+            public int Dimension { get { return coords != null ? coords.Length : 0; } }
 
             protected double[] coords;
-
         }
 
         public class Box : ICloneable
