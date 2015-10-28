@@ -16,6 +16,10 @@ Feel free to report bugs, propose features and create pull requests. Any help is
 
 You can download this extension from [Visual Studio Gallery](https://visualstudiogallery.msdn.microsoft.com/4b81868b-8901-408f-a28e-25a6580788fb).
 
+##### Contact
+
+You may contact me at [Boost.Geometry mailing list](http://lists.boost.org/mailman/listinfo.cgi/geometry).
+
 ##### Instructions
 
 ###### Build
