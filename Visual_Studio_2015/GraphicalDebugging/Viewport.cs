@@ -659,8 +659,8 @@ namespace GraphicalDebugging
             float dst_w = w * 0.9f;
             float dst_h = h * 0.9f;
 
-            double src_w = src_box.Width;
-            double src_h = src_box.Height;
+            double src_w = src_box.Dim(0);
+            double src_h = src_box.Dim(1);
             if (src_w < 0 || src_h < 0)
                 throw new System.Exception("Invalid box dimensions.");
 

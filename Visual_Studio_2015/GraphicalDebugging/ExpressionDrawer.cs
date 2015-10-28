@@ -101,8 +101,10 @@ namespace GraphicalDebugging
                 LocalCS cs = new LocalCS(box, graphics);
                 Drawer drawer = new Drawer(graphics, settings.color);
 
-                float rw = cs.ConvertDimension(Math.Abs(Width));
-                float rh = cs.ConvertDimension(Math.Abs(Height));
+                double width = Dim(0);
+                double height = Dim(1);
+                float rw = cs.ConvertDimension(Math.Abs(width));
+                float rh = cs.ConvertDimension(Math.Abs(height));
 
                 if (traits.Unit == Geometry.Unit.None)
                 {
@@ -117,7 +119,7 @@ namespace GraphicalDebugging
                     {
                         drawer.DrawRectangle(rx, ry, rw, rh);
 
-                        bool isInvalid = Width < 0 || Height < 0;
+                        bool isInvalid = width < 0 || height < 0;
                         if (!isInvalid)
                         {
                             drawer.FillRectangle(rx, ry, rw, rh);
@@ -423,7 +425,7 @@ namespace GraphicalDebugging
                 float ay = cs.ConvertY(0);
                 graphics.DrawLine(axis_pen, ax0, ay, ax1, ay);
 
-                double width = box.Width;
+                double width = box.Dim(0);
                 double step = width / values.Count;
                 double i = step * 0.5;
                 foreach (double v in values)
@@ -760,10 +762,11 @@ namespace GraphicalDebugging
             // make square, scaling Y
             if (names.Count > 0)
             {
+                double height = box.Dim(1);
                 double threshold = float.Epsilon;
-                if (box.Height > threshold)
+                if (height > threshold)
                 {
-                    box.Max[0] = box.Min[0] + box.Height;
+                    box.Max[0] = box.Min[0] + height;
                 }
                 else
                 {

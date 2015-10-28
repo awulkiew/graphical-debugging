@@ -77,8 +77,6 @@ namespace GraphicalDebugging
                 return this.MemberwiseClone();
             }
 
-            public int Dimension { get { return coords != null ? coords.Length : 0; } }
-
             protected double[] coords;
         }
 
@@ -95,8 +93,7 @@ namespace GraphicalDebugging
 
             public bool IsValid() { return Min[0] <= Max[0] && Min[1] <= Max[1]; }
 
-            public double Width { get { return Max[0] - Min[0]; } }
-            public double Height { get { return Max[1] - Min[1]; } }
+            public double Dim(int i) { return Max[i] - Min[i]; }
 
             public object Clone()
             {
