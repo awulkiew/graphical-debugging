@@ -1,3 +1,9 @@
+version 0.7
+
+bugfixes:
+- fix drawing of some special cases of Boxes in spherical equatorial and geographic coordinate systems
+- fix drawing of one-dimensional values containers
+
 version 0.6.5
 
 additions:
