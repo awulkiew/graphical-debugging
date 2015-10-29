@@ -77,6 +77,21 @@ namespace GraphicalDebugging
                 return this.MemberwiseClone();
             }
 
+            public override string ToString()
+            {
+                string res = "";
+                if (coords != null)
+                {
+                    for (int i = 0; i < coords.Length; ++i)
+                    {
+                        res += coords[i].ToString();
+                        if (i + 1 < coords.Length)
+                            res += ", ";
+                    }
+                }
+                return res;
+            }
+
             protected double[] coords;
         }
 
@@ -98,6 +113,11 @@ namespace GraphicalDebugging
             public object Clone()
             {
                 return this.MemberwiseClone();
+            }
+
+            public override string ToString()
+            {
+                return "{" + Min.ToString() + "}, {" + Max.ToString() + "}";
             }
 
             public Point Min, Max;
@@ -125,6 +145,11 @@ namespace GraphicalDebugging
 
             public int Count { get { return 2; } }
 
+            public override string ToString()
+            {
+                return "{" + First.ToString() + "}, {" + Second.ToString() + "}";
+            }
+
             public Point First;
             public Point Second;
         }
@@ -138,6 +163,11 @@ namespace GraphicalDebugging
             {
                 Center = center;
                 Radius = radius;
+            }
+
+            public override string ToString()
+            {
+                return "{" + Center.ToString() + "}, " + Radius.ToString();
             }
 
             public Point Center;
@@ -164,6 +194,11 @@ namespace GraphicalDebugging
 
             public IEnumerator<Point> GetEnumerator() { return points.GetEnumerator(); }
 
+            public override string ToString()
+            {
+                return "Count=" + points.Count;
+            }
+
             protected List<Point> points;
         }
 
@@ -179,6 +214,11 @@ namespace GraphicalDebugging
             public Point this[int i] { get { return linestring[i]; } }
             public int Count { get { return linestring.Count; } }
 
+            public override string ToString()
+            {
+                return linestring.ToString();
+            }
+
             protected Linestring linestring;
         }
 
@@ -192,6 +232,11 @@ namespace GraphicalDebugging
 
             public Ring Outer { get { return outer; } }
             public List<Ring> Inners { get { return inners; } }
+
+            public override string ToString()
+            {
+                return "Outer={" + Outer.ToString() + "}, Inners={Count=" + inners.Count.ToString() + "}";
+            }
 
             protected Ring outer;
             protected List<Ring> inners;
@@ -208,6 +253,11 @@ namespace GraphicalDebugging
 
             public G this[int i] { get { return singles[i]; } }
             public int Count { get { return singles.Count; } }
+
+            public override string ToString()
+            {
+                return "Count=" + singles.Count.ToString();
+            }
 
             protected List<G> singles;
         }
