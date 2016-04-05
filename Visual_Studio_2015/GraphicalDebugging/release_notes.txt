@@ -1,3 +1,8 @@
+version 0.7.1
+
+bugfixes:
+- fixed exception while drawing very small non-cartesian geometries
+
 version 0.7
 
 bugfixes:
