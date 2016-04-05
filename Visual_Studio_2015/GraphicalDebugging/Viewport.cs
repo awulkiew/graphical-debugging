@@ -563,12 +563,18 @@ namespace GraphicalDebugging
                 // Antimeridians
                 for (; anti_mer_f <= w; anti_mer_f += anti_mer_step)
                 {
-                    graphics.DrawLine(anti_pen, anti_mer_f, 0, anti_mer_f, h);
+                    if (anti_mer_f >= 0)
+                    {
+                        graphics.DrawLine(anti_pen, anti_mer_f, 0, anti_mer_f, h);
+                    }
                 }
                 // Prime meridians
                 for (; prime_mer_f <= w; prime_mer_f += prime_mer_step)
                 {
-                    graphics.DrawLine(prime_pen, prime_mer_f, 0, prime_mer_f, h);
+                    if (prime_mer_f >= 0)
+                    {
+                        graphics.DrawLine(prime_pen, prime_mer_f, 0, prime_mer_f, h);
+                    }
                 }
                 // Equator
                 float e = cs.ConvertY(0.0);
