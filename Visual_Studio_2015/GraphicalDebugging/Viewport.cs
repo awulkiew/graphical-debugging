@@ -73,23 +73,56 @@ namespace GraphicalDebugging
         public void DrawPoint(PointF p, Pen pen) { DrawPoint(p.X, p.Y, pen); }
         public void DrawPoint(PointF p) { DrawPoint(p.X, p.Y, pen); }
 
+        public static void DrawLine(Graphics graphics, Pen pen, float x1, float y1, float x2, float y2)
+        {
+            if (Math.Abs(x1 - x2) < 1 && Math.Abs(y1 - y2) < 1)
+            {
+                float x = (x1 + x2) / 2 - 0.5f;
+                float y = (y1 + y2) / 2 - 0.5f;
+                graphics.DrawRectangle(pen, x, y, 1, 1);
+            }
+            else
+                graphics.DrawLine(pen, x1, y1, x2, y2);
+        }
+
+        public void DrawLine(Pen pen, float x1, float y1, float x2, float y2)
+        {
+            DrawLine(graphics, pen, x1, y1, x2, y2);
+        }
+
         public void DrawLine(float x1, float y1, float x2, float y2)
         {
-            graphics.DrawLine(pen, x1, y1, x2, y2);
+            DrawLine(graphics, pen, x1, y1, x2, y2);
+        }
+
+        public void DrawLine(Pen pen, PointF p0, PointF p1)
+        {
+            DrawLine(graphics, pen, p0.X, p0.Y, p1.X, p1.Y);
+        }
+
+        public void DrawLine(PointF p0, PointF p1)
+        {
+            DrawLine(graphics, pen, p0.X, p0.Y, p1.X, p1.Y);
+        }
+
+        public void DrawLines(PointF[] points)
+        {
+            for (int i = 0; i < points.Length - 1; ++i)
+                DrawLine(points[i], points[i + 1]);
         }
 
         public void DrawLine(PointF p0, PointF p1, bool drawDir)
         {
-            graphics.DrawLine(pen, p0, p1);
+            DrawLine(p0, p1);
             if (drawDir)
                 DrawDir(p0, p1);
         }
 
         public void DrawLines(PointF[] points, bool closed, bool drawDir)
         {
-            graphics.DrawLines(pen, points);
+            DrawLines(points);
             if (closed && points.Length > 1)
-                graphics.DrawLine(pen, points[points.Length - 1], points[0]);
+                DrawLine(points[points.Length - 1], points[0]);
             if (drawDir)
                 DrawDirs(points, closed);
         }
@@ -112,12 +145,12 @@ namespace GraphicalDebugging
                 if (sameP0 || sameP1)
                 {
                     PointF ph = AddF(p0, DivF(SubF(p1, p0), 2));
-                    graphics.DrawLine(sameP0 ? pen : pend, p0, ph);
-                    graphics.DrawLine(sameP1 ? pen : pend, ph, p1);
+                    DrawLine(sameP0 ? pen : pend, p0, ph);
+                    DrawLine(sameP1 ? pen : pend, ph, p1);
                 }
                 else
                 {
-                    graphics.DrawLine(pend, p0, p1);
+                    DrawLine(pend, p0, p1);
                 }
 
                 if (drawDir)
