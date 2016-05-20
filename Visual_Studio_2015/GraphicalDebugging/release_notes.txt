@@ -1,3 +1,11 @@
+version 0.8
+
+additions:
+- add more Boost.Geometry types to natvis
+
+bugfixes:
+- fixed drawing of geometries containing very short segments
+
 version 0.7.1
 
 bugfixes:

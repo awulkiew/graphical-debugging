@@ -49,7 +49,7 @@ Supported:
 * Boost.Container: vector, static_vector
 * Boost.Geometry:
   * de9im: mask, matrix, static_mask
-  * detail: turn_info, traversal_turn_info
+  * detail: turn_info, traversal_turn_info, turn_operation, turn_operation_linear, traversal_turn_operation, segment_ratio
   * index: rtree, varray
   * model: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
 * Boost.MPL: int_, size_t, integral_c, vector, vector_c
