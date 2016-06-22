@@ -64,13 +64,15 @@ namespace GraphicalDebugging
                 values = new SortedSet<int>();
                 for (int i = 0; i < count; ++i)
                     values.Add(i);
+
+                max_count = count;
             }
 
             public int Pull()
             {
                 var en = values.GetEnumerator();
                 if (!en.MoveNext())
-                    return -1;
+                    return max_count;
 
                 int result = en.Current;
                 values.Remove(result);
@@ -79,11 +81,12 @@ namespace GraphicalDebugging
 
             public void Push(int value)
             {
-                if (value >= 0)
+                if (value >= 0 && value < max_count)
                     values.Add(value);
             }
             
             private SortedSet<int> values;
+            private int max_count;
         }
 
         public static string BaseType(string type)

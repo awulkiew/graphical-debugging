@@ -127,10 +127,12 @@ namespace GraphicalDebugging
         {
             get
             {
-                if (0 <= i && i < m_colors.Count)
-                    return m_colors[i];
-                else
+                if (i < 0)
                     return Transparent;
+                else if (i >= m_colors.Count)
+                    return DrawColor;
+                else
+                    return m_colors[i];                    
             }
         }
 
