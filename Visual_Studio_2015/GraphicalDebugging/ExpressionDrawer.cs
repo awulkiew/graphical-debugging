@@ -900,24 +900,28 @@ namespace GraphicalDebugging
             return null;
         }
 
-        private static Geometry.Traits LoadGeometryTraits(string type, string single_type)
+        private static Geometry.Traits LoadT1Traits(string type)
+        {
+            Geometry.Traits traits = null;
+            List<string> tparams = Util.Tparams(type);
+            if (tparams.Count > 0)
+            {
+                string t1_type = tparams[0];
+
+                traits = LoadPointTraits(t1_type);
+                if (traits != null)
+                    return traits;
+
+                traits = LoadT1Traits(t1_type);
+            }
+            return traits;
+        }
+
+        private static Geometry.Traits LoadT1Traits(string type, string single_type)
         {
             if (Util.BaseType(type) == single_type)
             {
-                List<string> tparams = Util.Tparams(type);
-                if (tparams.Count > 0)
-                    return LoadPointTraits(tparams[0]);
-            }
-            return null;
-        }
-
-        private static Geometry.Traits LoadGeometryTraits(string type, string multi_type, string single_type)
-        {
-            if (Util.BaseType(type) == multi_type)
-            {
-                List<string> tparams = Util.Tparams(type);
-                if (tparams.Count > 0)
-                    return LoadGeometryTraits(tparams[0], single_type);
+                return LoadT1Traits(type);
             }
             return null;
         }
@@ -933,7 +937,8 @@ namespace GraphicalDebugging
                 {
                     string element_base_type = Util.BaseType(tparams[0]);
                     if (element_base_type == "boost::geometry::detail::overlay::turn_info"
-                     || element_base_type == "boost::geometry::detail::overlay::traversal_turn_info")
+                     || element_base_type == "boost::geometry::detail::overlay::traversal_turn_info"
+                     || element_base_type == "boost::geometry::detail::buffer::buffer_turn_info")
                     {
                         List<string> el_tparams = Util.Tparams(tparams[0]);
                         if (el_tparams.Count > 0)
@@ -967,25 +972,30 @@ namespace GraphicalDebugging
             
             if ((traits = LoadPointTraits(type)) != null)
                 d = LoadPoint(debugger, name);
-            else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::box")) != null)
+            else if ((traits = LoadT1Traits(type, "boost::geometry::model::box")) != null)
                 d = LoadGeometryBox(debugger, name, calculateEnvelope, traits);
-            else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::nsphere")) != null)
+            else if ((traits = LoadT1Traits(type, "boost::geometry::model::nsphere")) != null)
                 d = LoadNSphere(debugger, name, "m_center", "m_radius", calculateEnvelope, traits);
-            else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::segment")) != null
-                  || (traits = LoadGeometryTraits(type, "boost::geometry::model::referring_segment")) != null)
+            else if ((traits = LoadT1Traits(type, "boost::geometry::model::segment")) != null)
                 d = LoadSegment(debugger, name, "first", "second", calculateEnvelope, traits);
-            else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::linestring")) != null)
+            else if ((traits = LoadT1Traits(type, "boost::geometry::model::referring_segment")) != null)
+                d = LoadSegment(debugger, name, "first", "second", calculateEnvelope, traits);
+            else if ((traits = LoadT1Traits(type, "boost::geometry::model::linestring")) != null)
                 d = LoadLinestring(debugger, name, calculateEnvelope, traits);
-            else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::ring")) != null)
+            else if ((traits = LoadT1Traits(type, "boost::geometry::model::ring")) != null)
                 d = LoadRing(debugger, name, "", calculateEnvelope, traits);
-            else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::polygon")) != null)
+            else if ((traits = LoadT1Traits(type, "boost::geometry::model::polygon")) != null)
                 d = LoadPolygon(debugger, name, "m_outer", "m_inners", false, "", calculateEnvelope, traits);
-            else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::multi_point")) != null)
+            else if ((traits = LoadT1Traits(type, "boost::geometry::model::multi_point")) != null)
                 d = LoadMultiPoint(debugger, name, calculateEnvelope, traits);
-            else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::multi_linestring", "boost::geometry::model::linestring")) != null)
+            else if ((traits = LoadT1Traits(type, "boost::geometry::model::multi_linestring")) != null)
                 d = LoadMultiLinestring(debugger, name, calculateEnvelope, traits);
-            else if ((traits = LoadGeometryTraits(type, "boost::geometry::model::multi_polygon", "boost::geometry::model::polygon")) != null)
+            else if ((traits = LoadT1Traits(type, "boost::geometry::model::multi_polygon")) != null)
                 d = LoadMultiPolygon(debugger, name, "m_outer", "m_inners", calculateEnvelope, traits);
+            else if ((traits = LoadT1Traits(type, "boost::geometry::detail::buffer::buffered_ring")) != null)
+                d = LoadLinestring(debugger, name, calculateEnvelope, traits);
+            else if ((traits = LoadT1Traits(type, "boost::geometry::detail::buffer::buffered_ring_collection")) != null)
+                d = LoadMultiLinestring(debugger, name, calculateEnvelope, traits);
             else
             {
                 traits = new Geometry.Traits(2); // 2D cartesian;
