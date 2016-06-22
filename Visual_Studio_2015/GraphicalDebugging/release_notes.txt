@@ -1,3 +1,11 @@
+version 0.9
+
+additions:
+- support drawing of Boost.Geometry buffer_turn_info, buffered_ring, buffered_ring_collection
+
+bugfixes:
+- fixed colors of geometries when many are on the list
+
 version 0.8
 
 additions:
