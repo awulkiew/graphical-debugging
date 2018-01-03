@@ -1,4 +1,4 @@
-# GraphicalDebugging extension for Visual Studio 2015
+# GraphicalDebugging extension for Visual Studio 2015 and Visual Studio 2017
 
 This extension allows to display graphical representation of variables during debugging.
 
@@ -24,7 +24,7 @@ You may contact me at [Boost.Geometry mailing list](http://lists.boost.org/mailm
 
 ###### Build
 
-You need e.g. Microsoft Visual Studio 2015 Community, .NET Framework 4.5.2 and Visual Studio 2015 SDK.
+You need Microsoft Visual Studio 2015, .NET Framework 4.5.2 and Visual Studio 2015 SDK.
 
 ###### Install
 
