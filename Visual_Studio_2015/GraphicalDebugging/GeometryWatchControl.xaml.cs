@@ -35,6 +35,8 @@ namespace GraphicalDebugging
 
         Util.IntsPool m_intsPool;
 
+        private bool m_isDataGridEdited;
+
         Colors m_colors;
         Bitmap m_emptyBitmap;
 
@@ -51,6 +53,8 @@ namespace GraphicalDebugging
             m_debuggerEvents.OnEnterBreakMode += DebuggerEvents_OnEnterBreakMode;
 
             VSColorTheme.ThemeChanged += VSColorTheme_ThemeChanged;
+
+            m_isDataGridEdited = false;
 
             m_colors = new Colors(this);
             m_intsPool = new Util.IntsPool(m_colors.Count);
@@ -158,6 +162,9 @@ namespace GraphicalDebugging
         {
             if (e.Key == System.Windows.Input.Key.Delete)
             {
+                if (m_isDataGridEdited)
+                    return;
+
                 if (dataGrid.SelectedItems.Count > 0)
                 {
                     int[] indexes = new int[dataGrid.SelectedItems.Count];
@@ -191,6 +198,16 @@ namespace GraphicalDebugging
                     }
                 }
             }
+        }
+
+        private void dataGrid_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
+        {
+            m_isDataGridEdited = true;
+        }
+
+        private void dataGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            m_isDataGridEdited = false;
         }
 
         private void UpdateItems(int modified_index = -1)

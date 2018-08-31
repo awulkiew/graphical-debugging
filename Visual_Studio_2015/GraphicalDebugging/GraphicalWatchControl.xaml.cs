@@ -30,6 +30,8 @@ namespace GraphicalDebugging
         private Debugger m_debugger;
         private DebuggerEvents m_debuggerEvents;
 
+        private bool m_isDataGridEdited;
+
         private Colors m_colors;
 
         ObservableCollection<VariableItem> Variables { get; set; }
@@ -45,6 +47,8 @@ namespace GraphicalDebugging
             m_debuggerEvents.OnEnterBreakMode += DebuggerEvents_OnEnterBreakMode;
 
             VSColorTheme.ThemeChanged += VSColorTheme_ThemeChanged;
+
+            m_isDataGridEdited = false;
 
             m_colors = new Colors(this);
 
@@ -136,6 +140,9 @@ namespace GraphicalDebugging
         {
             if (e.Key == System.Windows.Input.Key.Delete)
             {
+                if (m_isDataGridEdited)
+                    return;
+
                 int[] indexes = new int[dataGrid.SelectedItems.Count];
                 int i = 0;
                 foreach (var item in dataGrid.SelectedItems)
@@ -153,6 +160,16 @@ namespace GraphicalDebugging
                         Variables.RemoveAt(index);
                 }
             }
+        }
+
+        private void dataGrid_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
+        {
+            m_isDataGridEdited = true;
+        }
+
+        private void dataGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            m_isDataGridEdited = false;
         }
 
         private void UpdateItems()
