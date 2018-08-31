@@ -1,3 +1,8 @@
+version 0.11
+
+additions:
+- prevent list row deletion if cell is being edited
+
 version 0.10
 
 additions:

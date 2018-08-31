@@ -1,34 +1,34 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
-    <Metadata>
-        <Identity Id="GraphicalDebugging.Adam.Wulkiewicz.ab1fcb4d-58d9-4d6e-b243-68bc2285475e" Version="0.10" Language="en-US" Publisher="Adam Wulkiewicz" />
-        <DisplayName>GraphicalDebugging</DisplayName>
-        <Description xml:space="preserve">GraphicalDebugging extension allows to view graphical representation of variables, e.g. Boost.Geometry models.</Description>
-        <License>LICENSE_1_0.txt</License>
-        <ReleaseNotes>release_notes.txt</ReleaseNotes>
-        <Icon>icon.ico</Icon>
-        <PreviewImage>preview.png</PreviewImage>
-        <Tags>c++ boost array container geometry mpl polygon tuple variant graphical debugging debugger watch</Tags>
-    </Metadata>
-    <Installation>
-        <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[14.0]" />
-        <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[15.0]" />
-    </Installation>
-    <Prerequisites>
-        <Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[15.0.25904.2,16.0)" DisplayName="Visual Studio core editor" />
-    </Prerequisites>
-    <Dependencies>
-        <Dependency Id="Microsoft.Framework.NDP" DisplayName="Microsoft .NET Framework" d:Source="Manual" Version="[4.5,)" />
-        <Dependency Id="Microsoft.VisualStudio.MPF.14.0" DisplayName="Visual Studio MPF 14.0" d:Source="Installed" Version="[14.0]" />
-    </Dependencies>
-    <Assets>
-        <Asset Type="Microsoft.VisualStudio.VsPackage" d:Source="Project" d:ProjectName="%CurrentProject%" Path="|%CurrentProject%;PkgdefProjectOutputGroup|" />
-        <Asset Type="NativeVisualizer" d:Source="File" Path="BoostArray.natvis" />
-        <Asset Type="NativeVisualizer" d:Source="File" Path="BoostContainer.natvis" />
-        <Asset Type="NativeVisualizer" d:Source="File" Path="BoostGeometry.natvis" />
-        <Asset Type="NativeVisualizer" d:Source="File" Path="BoostMPL.natvis" />
-        <Asset Type="NativeVisualizer" d:Source="File" Path="BoostPolygon.natvis" />
-        <Asset Type="NativeVisualizer" d:Source="File" Path="BoostTuple.natvis" />
-        <Asset Type="NativeVisualizer" d:Source="File" Path="BoostVariant.natvis" />
-    </Assets>
+  <Metadata>
+    <Identity Id="GraphicalDebugging.Adam.Wulkiewicz.ab1fcb4d-58d9-4d6e-b243-68bc2285475e" Version="0.11" Language="en-US" Publisher="Adam Wulkiewicz" />
+    <DisplayName>GraphicalDebugging</DisplayName>
+    <Description xml:space="preserve">GraphicalDebugging extension allows to view graphical representation of variables, e.g. Boost.Geometry models.</Description>
+    <License>LICENSE_1_0.txt</License>
+    <ReleaseNotes>release_notes.txt</ReleaseNotes>
+    <Icon>icon.ico</Icon>
+    <PreviewImage>preview.png</PreviewImage>
+    <Tags>c++ boost array container geometry mpl polygon tuple variant graphical debugging debugger watch</Tags>
+  </Metadata>
+  <Installation>
+    <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[14.0]" />
+    <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[15.0]" />
+  </Installation>
+  <Prerequisites>
+    <Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[15.0.25904.2,16.0)" DisplayName="Visual Studio core editor" />
+  </Prerequisites>
+  <Dependencies>
+    <Dependency Id="Microsoft.Framework.NDP" DisplayName="Microsoft .NET Framework" d:Source="Manual" Version="[4.5,)" />
+    <Dependency Id="Microsoft.VisualStudio.MPF.14.0" DisplayName="Visual Studio MPF 14.0" d:Source="Installed" Version="[14.0]" />
+  </Dependencies>
+  <Assets>
+    <Asset Type="Microsoft.VisualStudio.VsPackage" d:Source="Project" d:ProjectName="%CurrentProject%" Path="|%CurrentProject%;PkgdefProjectOutputGroup|" />
+    <Asset Type="NativeVisualizer" d:Source="File" Path="BoostArray.natvis" />
+    <Asset Type="NativeVisualizer" d:Source="File" Path="BoostContainer.natvis" />
+    <Asset Type="NativeVisualizer" d:Source="File" Path="BoostGeometry.natvis" />
+    <Asset Type="NativeVisualizer" d:Source="File" Path="BoostMPL.natvis" />
+    <Asset Type="NativeVisualizer" d:Source="File" Path="BoostPolygon.natvis" />
+    <Asset Type="NativeVisualizer" d:Source="File" Path="BoostTuple.natvis" />
+    <Asset Type="NativeVisualizer" d:Source="File" Path="BoostVariant.natvis" />
+  </Assets>
 </PackageManifest>
