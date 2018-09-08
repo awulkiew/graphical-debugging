@@ -34,6 +34,8 @@ namespace GraphicalDebugging
 
         private Colors m_colors;
 
+        ExpressionDrawer m_expressionDrawer = new ExpressionDrawer();
+
         ObservableCollection<VariableItem> Variables { get; set; }
 
         /// <summary>
@@ -199,7 +201,7 @@ namespace GraphicalDebugging
                     graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                     graphics.Clear(m_colors.ClearColor);
 
-                    if (!ExpressionDrawer.Draw(graphics, m_debugger, variable.Name, m_colors))
+                    if (!m_expressionDrawer.Draw(graphics, m_debugger, variable.Name, m_colors))
                         bmp = null;
 
                     type = expression.Type;

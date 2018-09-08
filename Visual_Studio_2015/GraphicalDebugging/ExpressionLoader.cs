@@ -263,12 +263,12 @@ namespace GraphicalDebugging
             {
                 traits = LoadTraits(type);
                 point = traits != null
-                      ? LoadPoint(debugger, name)
+                      ? LoadPoint(debugger, name, traits.Dimension)
                       : null;
             }
 
             abstract public Geometry.Traits LoadTraits(string type);
-            abstract public ExpressionDrawer.Point LoadPoint(Debugger debugger, string name);
+            abstract public ExpressionDrawer.Point LoadPoint(Debugger debugger, string name, int dimension);
         }
 
         abstract class BoxLoader : GeometryLoader<ExpressionDrawer.Box>
@@ -353,12 +353,14 @@ namespace GraphicalDebugging
                 return null;
             }
 
-            public override ExpressionDrawer.Point LoadPoint(Debugger debugger, string name)
+            public override ExpressionDrawer.Point LoadPoint(Debugger debugger, string name, int dimension)
             {
-                bool okx = false, oky = false;
-                double x = LoadAsDouble(debugger, name + ".m_values[0]", out okx);
-                double y = LoadAsDouble(debugger, name + ".m_values[1]", out oky);
-
+                bool okx = true, oky = true;
+                double x = 0, y = 0;
+                if (dimension > 0)
+                    x = LoadAsDouble(debugger, name + ".m_values[0]", out okx);
+                if (dimension > 1)
+                    y = LoadAsDouble(debugger, name + ".m_values[1]", out oky);
                 return IsOk(okx, oky)
                      ? new ExpressionDrawer.Point(x, y)
                      : null;
@@ -438,8 +440,8 @@ namespace GraphicalDebugging
                 if (traits == null)
                     return;
 
-                Geometry.Point fp = pointLoader.LoadPoint(debugger, name + ".m_min_corner");
-                Geometry.Point sp = pointLoader.LoadPoint(debugger, name + ".m_max_corner");
+                Geometry.Point fp = pointLoader.LoadPoint(debugger, name + ".m_min_corner", traits.Dimension);
+                Geometry.Point sp = pointLoader.LoadPoint(debugger, name + ".m_max_corner", traits.Dimension);
 
                 result = IsOk(fp, sp)
                        ? new ExpressionDrawer.Box(fp, sp)
@@ -480,8 +482,8 @@ namespace GraphicalDebugging
                 if (traits == null)
                     return;
 
-                Geometry.Point fp = pointLoader.LoadPoint(debugger, name + ".first");
-                Geometry.Point sp = pointLoader.LoadPoint(debugger, name + ".second");
+                Geometry.Point fp = pointLoader.LoadPoint(debugger, name + ".first", traits.Dimension);
+                Geometry.Point sp = pointLoader.LoadPoint(debugger, name + ".second", traits.Dimension);
 
                 segment = IsOk(fp, sp)
                         ? new ExpressionDrawer.Segment(fp, sp)
@@ -522,7 +524,7 @@ namespace GraphicalDebugging
                 if (traits == null)
                     return;
 
-                Geometry.Point center = pointLoader.LoadPoint(debugger, name + ".m_center");
+                Geometry.Point center = pointLoader.LoadPoint(debugger, name + ".m_center", traits.Dimension);
                 bool ok = false;
                 double radius = LoadAsDouble(debugger, name + ".m_radius", out ok);
 
@@ -577,7 +579,7 @@ namespace GraphicalDebugging
                 int size = containerLoader.LoadSize(debugger, name);
                 foreach (string n in containerLoader.GetElementsContainer(name, size))
                 {
-                    ExpressionDrawer.Point p = pointLoader.LoadPoint(debugger, n);
+                    ExpressionDrawer.Point p = pointLoader.LoadPoint(debugger, n, traits.Dimension);
                     if (p == null)
                     {
                         result = default(ResultType);
@@ -830,7 +832,7 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "boost::polygon::point_data"; }
 
-            public override ExpressionDrawer.Point LoadPoint(Debugger debugger, string name)
+            public override ExpressionDrawer.Point LoadPoint(Debugger debugger, string name, int dimension)
             {
                 bool okx = false, oky = false;
                 double x = LoadAsDouble(debugger, name + ".coords_[0]", out okx);
@@ -914,7 +916,7 @@ namespace GraphicalDebugging
                 traits = new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
                 result = null;
 
-                PointLoader pointLoader = (PointLoader)loaders.FindById(ExpressionLoader.Kind.Point, "boost::polygon::point_data");
+                BPPoint pointLoader = (BPPoint)loaders.FindById(ExpressionLoader.Kind.Point, "boost::polygon::point_data");
                 if (pointLoader == null)
                     return;
 
@@ -927,7 +929,7 @@ namespace GraphicalDebugging
                 int size = containerLoader.LoadSize(debugger, name + ".coords_");
                 foreach (string n in containerLoader.GetElementsContainer(name + ".coords_", size))
                 {
-                    ExpressionDrawer.Point p = pointLoader.LoadPoint(debugger, n);
+                    ExpressionDrawer.Point p = pointLoader.LoadPoint(debugger, n, 2);
                     if (p == null)
                     {
                         result = null;

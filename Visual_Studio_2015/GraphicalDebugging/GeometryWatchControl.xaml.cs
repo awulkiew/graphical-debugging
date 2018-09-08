@@ -40,6 +40,8 @@ namespace GraphicalDebugging
         Colors m_colors;
         Bitmap m_emptyBitmap;
 
+        ExpressionDrawer m_expressionDrawer = new ExpressionDrawer();
+
         ObservableCollection<GeometryItem> Geometries { get; set; }
 
         /// <summary>
@@ -58,7 +60,7 @@ namespace GraphicalDebugging
 
             m_colors = new Colors(this);
             m_intsPool = new Util.IntsPool(m_colors.Count);
-            
+
             this.InitializeComponent();
 
             m_emptyBitmap = new Bitmap(100, 100);
@@ -270,7 +272,7 @@ namespace GraphicalDebugging
                         graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                         graphics.Clear(m_colors.ClearColor);
 
-                        ExpressionDrawer.DrawGeometries(graphics, m_debugger, names, settings, m_colors);
+                        m_expressionDrawer.DrawGeometries(graphics, m_debugger, names, settings, m_colors);
 
                         image.Source = Util.BitmapToBitmapImage(bmp);
                         imageEmpty = false;

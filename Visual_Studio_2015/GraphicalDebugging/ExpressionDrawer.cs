@@ -22,6 +22,12 @@ namespace GraphicalDebugging
     class ExpressionDrawer
     {
         // -------------------------------------------------
+        // Members
+        // -------------------------------------------------
+
+        ExpressionLoader expressionLoader = new ExpressionLoader();
+
+        // -------------------------------------------------
         // Settings
         // -------------------------------------------------
 
@@ -745,345 +751,12 @@ namespace GraphicalDebugging
             
             private List<Turn> turns;
         }
-
-        // -------------------------------------------------
-        // Loading expressions
-        // -------------------------------------------------
-
-        private static double LoadValue(Debugger debugger, string name)
-        {
-            Expression expr = debugger.GetExpression("(double)" + name);
-            double v = double.Parse(expr.Value, System.Globalization.CultureInfo.InvariantCulture);
-            return v;
-        }
-
-        private static Point LoadPoint(Debugger debugger, string name)
-        {
-            double x = LoadValue(debugger, name + "[0]");
-            double y = LoadValue(debugger, name + "[1]");
-
-            return new Point(x, y);
-        }
-
-        private static Box LoadGeometryBox(Debugger debugger, string name, bool calculateEnvelope, Geometry.Traits traits)
-        {
-            Point first_p = LoadPoint(debugger, name + ".m_min_corner");
-            Point second_p = LoadPoint(debugger, name + ".m_max_corner");
-
-            Box result = new Box(first_p, second_p);
-            return result;
-        }
-
-        private static Box LoadPolygonBox(Debugger debugger, string name)
-        {
-            Point first_p = LoadPoint(debugger, name + ".ranges_[0]"); // interval X
-            Point second_p = LoadPoint(debugger, name + ".ranges_[1]"); // interval Y
-
-            Box result = new Box(new Point(first_p[0], second_p[0]),
-                                 new Point(first_p[1], second_p[1]));
-            return result;
-        }
-
-        private static Segment LoadSegment(Debugger debugger, string name, string first, string second, bool calculateEnvelope, Geometry.Traits traits)
-        {
-            Point first_p = LoadPoint(debugger, name + "." + first);
-            Point second_p = LoadPoint(debugger, name + "." + second);
-
-            Segment result = new Segment(first_p, second_p);
-            return result;
-        }
-
-        private static NSphere LoadNSphere(Debugger debugger, string name, string center, string radius, bool calculateEnvelope, Geometry.Traits traits)
-        {
-            Point center_p = LoadPoint(debugger, name + "." + center);
-            double radius_v = LoadValue(debugger, name + "." + radius);
-
-            NSphere result = new NSphere(center_p, radius_v);
-            return result;
-        }
-
-        private static Rng LoadRange<Rng>(Debugger debugger, string name, bool calculateEnvelope, Geometry.Traits traits)
-            where Rng : Geometry.Container<Geometry.Point>
-                      , IDrawable
-                      , new()
-        {
-            Rng result = new Rng();
-
-            int size = LoadSize(debugger, name);
-            for (int i = 0; i < size; ++i)
-            {
-                Point p = LoadPoint(debugger, name + "[" + i + "]");
-                result.Add(p);
-            }
-
-            return result;
-        }
-
-        private static Linestring LoadLinestring(Debugger debugger, string name, bool calculateEnvelope, Geometry.Traits traits)
-        {
-            return LoadRange<Linestring>(debugger, name, calculateEnvelope, traits);
-        }
-
-        private static Ring LoadRing(Debugger debugger, string name, string member, bool calculateEnvelope, Geometry.Traits traits)
-        {
-            string name_suffix = member.Length > 0 ? "." + member : "";
-            return LoadRange<Ring>(debugger, name + name_suffix, calculateEnvelope, traits);
-        }
-
-        private static Polygon LoadPolygon(Debugger debugger, string name, string outer, string inners, bool inners_in_list, string ring_member, bool calculateEnvelope, Geometry.Traits traits)
-        {
-            Ring outer_r = LoadRing(debugger, name + "." + outer, ring_member, calculateEnvelope, traits);
-
-            List<Geometry.Ring> inners_r = new List<Geometry.Ring>();
-
-            ContainerElements inner_names = new ContainerElements(debugger, name + "." + inners);
-            foreach(string inner_name in inner_names)
-            {
-                Ring inner_r = LoadRing(debugger, inner_name, ring_member, calculateEnvelope, traits);
-
-                inners_r.Add(inner_r);
-            }
-
-            return new Polygon(outer_r, inners_r);
-        }
-
-        private static MultiPoint LoadMultiPoint(Debugger debugger, string name, bool calculateEnvelope, Geometry.Traits traits)
-        {
-            MultiPoint result = new MultiPoint();
-
-            int size = LoadSize(debugger, name);
-            for (int i = 0; i < size; ++i)
-            {
-                Point s = LoadPoint(debugger, name + "[" + i + "]");
-                result.Add(s);
-            }
-
-            return result;
-        }
-
-        private static MultiLinestring LoadMultiLinestring(Debugger debugger, string name, bool calculateEnvelope, Geometry.Traits traits)
-        {
-            MultiLinestring result = new MultiLinestring();
-
-            int size = LoadSize(debugger, name);
-            for (int i = 0; i < size; ++i)
-            {
-                Linestring s = LoadLinestring(debugger, name + "[" + i + "]", calculateEnvelope, traits);
-                result.Add(s);
-            }
-
-            return result;
-        }
-
-        private static MultiPolygon LoadMultiPolygon(Debugger debugger, string name, string outer, string inners, bool calculateEnvelope, Geometry.Traits traits)
-        {
-            MultiPolygon result = new MultiPolygon();
-            
-            int size = LoadSize(debugger, name);
-            for (int i = 0; i < size; ++i)
-            {
-                Polygon s = LoadPolygon(debugger, name + "[" + i + "]", outer, inners, false, "", calculateEnvelope, traits);
-                result.Add(s);
-            }
-
-            return result;
-        }
-
-        private static ValuesContainer LoadValuesContainer(Debugger debugger, string name)
-        {
-            List<double> values = new List<double>();
-
-            ContainerElements names = new ContainerElements(debugger, name);
-
-            foreach (string elem_n in names)
-            {
-                Expression expr = debugger.GetExpression("(double)" + elem_n);
-                if (!expr.IsValidValue)
-                    continue;
-                double v = double.Parse(expr.Value, System.Globalization.CultureInfo.InvariantCulture);
-                values.Add(v);
-            }
-            
-            return new ValuesContainer(values);
-        }
-
-        private static char MethodChar(string method)
-        {
-            switch (method)
-            {
-                case "method_none": return '-';
-                case "method_disjoint": return 'd';
-                case "method_crosses": return 'i';
-                case "method_touch": return 't';
-                case "method_touch_interior": return 'm';
-                case "method_collinear": return 'c';
-                case "method_equal": return 'e';
-                case "method_error": return '!';
-                default: return '?';
-            }
-        }
-
-        private static char OperationChar(string operation)
-        {
-            switch (operation)
-            {
-                case "operation_none": return '-';
-                case "operation_union": return 'u';
-                case "operation_intersection": return 'i';
-                case "operation_blocked": return 'x';
-                case "operation_continue": return 'c';
-                case "operation_opposite": return 'o';
-                default: return '?';
-            }
-        }
-
-        private static Turn LoadTurn(Debugger debugger, string name)
-        {
-            Point p = LoadPoint(debugger, name + ".point");
-
-            char method = '?';
-            Expression expr_method = debugger.GetExpression(name + ".method");
-            if (expr_method.IsValidValue)
-                method = MethodChar(expr_method.Value);
-
-            char op0 = '?';
-            Expression expr_op0 = debugger.GetExpression(name + ".operations[0].operation");
-            if (expr_op0.IsValidValue)
-                op0 = OperationChar(expr_op0.Value);
-
-            char op1 = '?';
-            Expression expr_op1 = debugger.GetExpression(name + ".operations[1].operation");
-            if (expr_op1.IsValidValue)
-                op1 = OperationChar(expr_op1.Value);
-
-            return new Turn(p, method, op0, op1);
-        }
-
-        private static TurnsContainer LoadTurnsContainer(Debugger debugger, string name, int size)
-        {
-            List<Turn> turns = new List<Turn>();
-            Geometry.Box box = new Geometry.Box();
-            Geometry.AssignInverse(box);
-
-            for (int i = 0; i < size; ++i)
-            {
-                Turn t = LoadTurn(debugger, name + "[" + i + "]");
-
-                turns.Add(t);
-                Geometry.Expand(box, t.Point);
-            }
-
-            return new TurnsContainer(turns);
-        }
-
-        // -------------------------------------------------
-        // Traits
-        // -------------------------------------------------
-
-        private static Geometry.Traits LoadPointTraits(string type)
-        {
-            string base_type = Util.BaseType(type);
-            if (base_type == "boost::geometry::model::point")
-            {
-                List<string> tparams = Util.Tparams(type);
-                if (tparams.Count == 3)
-                {
-                    int dimension = int.Parse(tparams[1]);
-
-                    string cs = tparams[2];
-                    if (cs == "boost::geometry::cs::cartesian")
-                    {
-                        return new Geometry.Traits(dimension);
-                    }
-                    else
-                    {
-                        List<string> cs_tparams = Util.Tparams(cs);
-                        if (cs_tparams.Count == 1)
-                        {
-                            string cs_base_type = Util.BaseType(cs);
-                            Geometry.CoordinateSystem coordinateSystem = Geometry.CoordinateSystem.Cartesian;
-                            if (cs_base_type == "boost::geometry::cs::spherical")
-                                coordinateSystem = Geometry.CoordinateSystem.SphericalPolar;
-                            else if (cs_base_type == "boost::geometry::cs::spherical_equatorial")
-                                coordinateSystem = Geometry.CoordinateSystem.SphericalEquatorial;
-                            else if (cs_base_type == "boost::geometry::cs::geographic")
-                                coordinateSystem = Geometry.CoordinateSystem.Geographic;
-
-                            string u = cs_tparams[0];
-                            Geometry.Unit unit = Geometry.Unit.None;
-                            if (u == "boost::geometry::radian")
-                                unit = Geometry.Unit.Radian;
-                            else if (u == "boost::geometry::degree")
-                                unit = Geometry.Unit.Degree;
-
-                            return new Geometry.Traits(dimension, coordinateSystem, unit);
-                        }
-                    }
-                }
-            }
-            else if (base_type == "boost::geometry::model::d2::point_xy")
-            {
-                return new Geometry.Traits(2);
-            }
-
-            return null;
-        }
-
-        private static Geometry.Traits LoadT1Traits(string type)
-        {
-            Geometry.Traits traits = null;
-            List<string> tparams = Util.Tparams(type);
-            if (tparams.Count > 0)
-            {
-                string t1_type = tparams[0];
-
-                traits = LoadPointTraits(t1_type);
-                if (traits != null)
-                    return traits;
-
-                traits = LoadT1Traits(t1_type);
-            }
-            return traits;
-        }
-
-        private static Geometry.Traits LoadT1Traits(string type, string single_type)
-        {
-            if (Util.BaseType(type) == single_type)
-            {
-                return LoadT1Traits(type);
-            }
-            return null;
-        }
-
-        private static Geometry.Traits LoadTurnsContainerTraits(string type)
-        {
-            string base_type = Util.BaseType(type);
-            if (base_type == "std::vector"
-             || base_type == "std::deque")
-            {
-                List<string> tparams = Util.Tparams(type);
-                if (tparams.Count > 0)
-                {
-                    string element_base_type = Util.BaseType(tparams[0]);
-                    if (element_base_type == "boost::geometry::detail::overlay::turn_info"
-                     || element_base_type == "boost::geometry::detail::overlay::traversal_turn_info"
-                     || element_base_type == "boost::geometry::detail::buffer::buffer_turn_info")
-                    {
-                        List<string> el_tparams = Util.Tparams(tparams[0]);
-                        if (el_tparams.Count > 0)
-                            return LoadPointTraits(el_tparams[0]);
-                    }
-                }
-            }
-
-            return null;
-        }
-
+        
         // -------------------------------------------------
         // High level loading
         // -------------------------------------------------
 
-        public class DrawablePair
+        private class DrawablePair
         {
             public DrawablePair(IDrawable drawable, Geometry.Traits traits)
             {
@@ -1094,290 +767,24 @@ namespace GraphicalDebugging
             public Geometry.Traits Traits { get; set; }
         }
 
-        private static DrawablePair LoadGeometry(Debugger debugger, string name, string type, bool calculateEnvelope)
+        private DrawablePair LoadGeometry(Debugger debugger, string name)
         {
-            IDrawable d = null;
             Geometry.Traits traits = null;
+            IDrawable drawable = null;
+            expressionLoader.Load(debugger, name, out traits, out drawable);
+            if (traits == null)
+                drawable = null;
 
-            if ((traits = LoadPointTraits(type)) != null)
-                d = LoadPoint(debugger, name);
-            else if ((traits = LoadT1Traits(type, "boost::geometry::model::box")) != null)
-                d = LoadGeometryBox(debugger, name, calculateEnvelope, traits);
-            else if ((traits = LoadT1Traits(type, "boost::geometry::model::nsphere")) != null)
-                d = LoadNSphere(debugger, name, "m_center", "m_radius", calculateEnvelope, traits);
-            else if ((traits = LoadT1Traits(type, "boost::geometry::model::segment")) != null)
-                d = LoadSegment(debugger, name, "first", "second", calculateEnvelope, traits);
-            else if ((traits = LoadT1Traits(type, "boost::geometry::model::referring_segment")) != null)
-                d = LoadSegment(debugger, name, "first", "second", calculateEnvelope, traits);
-            else if ((traits = LoadT1Traits(type, "boost::geometry::model::linestring")) != null)
-                d = LoadLinestring(debugger, name, calculateEnvelope, traits);
-            else if ((traits = LoadT1Traits(type, "boost::geometry::model::ring")) != null)
-                d = LoadRing(debugger, name, "", calculateEnvelope, traits);
-            else if ((traits = LoadT1Traits(type, "boost::geometry::model::polygon")) != null)
-                d = LoadPolygon(debugger, name, "m_outer", "m_inners", false, "", calculateEnvelope, traits);
-            else if ((traits = LoadT1Traits(type, "boost::geometry::model::multi_point")) != null)
-                d = LoadMultiPoint(debugger, name, calculateEnvelope, traits);
-            else if ((traits = LoadT1Traits(type, "boost::geometry::model::multi_linestring")) != null)
-                d = LoadMultiLinestring(debugger, name, calculateEnvelope, traits);
-            else if ((traits = LoadT1Traits(type, "boost::geometry::model::multi_polygon")) != null)
-                d = LoadMultiPolygon(debugger, name, "m_outer", "m_inners", calculateEnvelope, traits);
-            else if ((traits = LoadT1Traits(type, "boost::geometry::detail::buffer::buffered_ring")) != null)
-                d = LoadLinestring(debugger, name, calculateEnvelope, traits);
-            else if ((traits = LoadT1Traits(type, "boost::geometry::detail::buffer::buffered_ring_collection")) != null)
-                d = LoadMultiLinestring(debugger, name, calculateEnvelope, traits);
-            else
-            {
-                traits = new Geometry.Traits(2); // 2D cartesian;
-
-                string base_type = Util.BaseType(type);
-                if (base_type == "boost::polygon::point_data")
-                    d = LoadPoint(debugger, name);
-                else if (base_type == "boost::polygon::segment_data")
-                    d = LoadSegment(debugger, name, "points_[0]", "points_[1]", false, traits);
-                else if (base_type == "boost::polygon::rectangle_data")
-                    d = LoadPolygonBox(debugger, name);
-                else if (base_type == "boost::polygon::polygon_data")
-                    d = LoadRing(debugger, name, "coords_", false, traits);
-                else if (base_type == "boost::polygon::polygon_with_holes_data")
-                    d = LoadPolygon(debugger, name, "self_", "holes_", true, "coords_", false, traits);
-
-                if (d == null)
-                    traits = null;
-            }
-
-            return new DrawablePair(d, traits);
+            return new DrawablePair(drawable, traits);
         }
 
-        private static DrawablePair LoadGeometryOrVariant(Debugger debugger, string name, string type, bool calculateEnvelope)
+        private DrawablePair LoadDrawable(Debugger debugger, string name)
         {
-            // Currently the supported types are hardcoded as follows:
+            Geometry.Traits traits = null;
+            IDrawable drawable = null;
+            expressionLoader.Load(debugger, name, out traits, out drawable);
 
-            // Boost.Geometry models
-            DrawablePair result = LoadGeometry(debugger, name, type, calculateEnvelope);
-
-            if (result.Drawable == null)
-            {
-                // Boost.Variant containing a Boost.Geometry model
-                if (Util.BaseType(type) == "boost::variant")
-                {
-                    Expression expr_which = debugger.GetExpression(name + ".which_");
-                    if (expr_which.IsValidValue)
-                    {
-                        int which = int.Parse(expr_which.Value);
-                        List<string> tparams = Util.Tparams(type);
-                        if (which >= 0 && which < tparams.Count)
-                        {
-                            string value_str = "(*(" + tparams[which] + "*)" + name + ".storage_.data_.buf)";
-                            Expression expr_value = debugger.GetExpression(value_str);
-                            if (expr_value.IsValidValue)
-                            {
-                                result = LoadGeometry(debugger, value_str, expr_value.Type, calculateEnvelope);
-                            }
-                        }
-                    }
-                }
-            }
-
-            return result;
-        }
-
-        private static DrawablePair LoadTurnsContainer(Debugger debugger, string name, string type)
-        {
-            // STL RandomAccess container of Turns
-            IDrawable d = null;
-            Geometry.Traits traits = LoadTurnsContainerTraits(type);
-
-            if (traits != null)
-            {
-                int size = LoadSize(debugger, name);
-                d = LoadTurnsContainer(debugger, name, size);
-            }
-
-            return new DrawablePair(d, traits);
-        }
-
-        private static DrawablePair LoadDrawable(Debugger debugger, string name, string type, bool calculateEnvelope)
-        {
-            DrawablePair res = LoadGeometryOrVariant(debugger, name, type, calculateEnvelope);
-
-            if (res.Drawable == null)
-            {
-                res = LoadTurnsContainer(debugger, name, type);
-            }
-
-            if (res.Drawable == null)
-            {
-                // container of 1D values convertible to double
-                IDrawable d = LoadValuesContainer(debugger, name);
-                res = new DrawablePair(d, null); // the traits are not needed in this case
-            }
-
-            return res;
-        }
-
-        private static int LoadSize(Debugger debugger, string name)
-        {
-            // VS2015 vector
-            Expression expr_size = debugger.GetExpression(name + "._Mypair._Myval2._Mylast-" + name + "._Mypair._Myval2._Myfirst");
-            if (expr_size.IsValidValue)
-            {
-                int result = int.Parse(expr_size.Value);
-                return Math.Max(result, 0);
-            }
-            // VS2015 deque, list
-            expr_size = debugger.GetExpression(name + "._Mypair._Myval2._Mysize");
-            if (expr_size.IsValidValue)
-            {
-                int result = int.Parse(expr_size.Value);
-                return Math.Max(result, 0);
-            }
-
-            return 0;
-        }
-
-        private class ContainerElements : IEnumerable
-        {
-            public ContainerElements(Debugger debugger, string name)
-            {
-                enumerator = new ContainerElementsEnumerator(debugger, name);
-            }
-
-            public IEnumerator GetEnumerator()
-            {
-                return enumerator;
-            }
-
-            public int Count { get { return enumerator.Count; } }
-
-            private ContainerElementsEnumerator enumerator;
-        }
-
-        private class ContainerElementsEnumerator : IEnumerator
-        {
-            public ContainerElementsEnumerator(Debugger debugger, string name)
-            {
-                this.name = name;
-                this.index = -1;
-                this.size = 0;
-
-                Expression expr = debugger.GetExpression(name);
-                if (!expr.IsValidValue)
-                    return;
-
-                string baseType = Util.BaseType(expr.Type);
-
-                if (baseType == "std::vector")
-                {
-                    // VS2015
-                    Expression size_expr = debugger.GetExpression(name + "._Mypair._Myval2._Mylast-" + name + "._Mypair._Myval2._Myfirst");
-                    if (size_expr.IsValidValue)
-                    {
-                        int result = int.Parse(size_expr.Value);
-                        this.size = Math.Max(result, 0);
-                    }
-                }
-                else if (baseType == "std::array" || baseType == "boost::array")
-                {
-                    List<string> tParams = Util.Tparams(expr.Type);
-                    int result = int.Parse(tParams[1]);
-                    this.size = Math.Max(result, 0);
-                }
-                else if (baseType == "std::deque" || baseType == "std::list")
-                {
-                    // VS2015
-                    Expression size_expr = debugger.GetExpression(name + "._Mypair._Myval2._Mysize");
-                    if (size_expr.IsValidValue)
-                    {
-                        int result = int.Parse(size_expr.Value);
-                        this.size = Math.Max(result, 0);
-                    }
-
-                    if (baseType == "std::list")
-                    {
-                        this.nextNode = name + "._Mypair._Myval2._Myhead"; // VS2015
-                    }
-                }
-                else if (baseType == "boost::container::vector" || baseType == "boost::container::static_vector")
-                {
-                    Expression size_expr = debugger.GetExpression(name + ".m_holder.m_size");
-                    if (size_expr.IsValidValue)
-                    {
-                        int result = int.Parse(size_expr.Value);
-                        this.size = Math.Max(result, 0);
-                    }
-                }
-            }
-
-            public string CurrentString
-            {
-                get
-                {
-                    if (index < 0 || index >= size)
-                        throw new InvalidOperationException();
-
-                    if (nextNode == null) // vector, deque, etc.
-                        return name + "[" + index + "]";
-                    else // list
-                        return nextNode + "->_Myval";
-                }
-            }
-
-            public object Current
-            {
-                get
-                {
-                    return CurrentString;
-                }
-            }
-
-            public bool MoveNext()
-            {
-                ++index;
-                if (nextNode != null)
-                    nextNode = nextNode + "->_Next";
-
-                return index < size;
-            }
-
-            public void Reset()
-            {
-                index = -1;
-                if (nextNode != null)
-                    nextNode = name + "._Mypair._Myval2._Myhead"; // VS2015
-            }
-
-            public int Count { get { return size; } }
-
-            private string name;
-            private int index;
-            private int size;
-            private string nextNode;
-        }
-
-        // -------------------------------------------------
-        // Make
-        // -------------------------------------------------
-
-        private static DrawablePair MakeGeometry(Debugger debugger, string name, bool calculateEnvelope)
-        {
-            Expression expr = debugger.GetExpression(name);
-            if (!expr.IsValidValue)
-                return new DrawablePair(null, null);
-
-            DrawablePair res = LoadGeometryOrVariant(debugger, expr.Name, expr.Type, calculateEnvelope);
-            if (res.Drawable != null)
-                return res;
-
-            return LoadTurnsContainer(debugger, expr.Name, expr.Type);
-        }
-
-        private static DrawablePair MakeDrawable(Debugger debugger, string name, bool calculateEnvelope)
-        {
-            Expression expr = debugger.GetExpression(name);
-            if (!expr.IsValidValue)
-                return new DrawablePair(null, null);
-
-            return LoadDrawable(debugger, expr.Name, expr.Type, calculateEnvelope);
+            return new DrawablePair(drawable, traits);
         }
 
         // -------------------------------------------------
@@ -1385,11 +792,11 @@ namespace GraphicalDebugging
         // -------------------------------------------------
 
         // For GraphicalWatch
-        public static bool Draw(Graphics graphics, Debugger debugger, string name, Colors colors)
+        public bool Draw(Graphics graphics, Debugger debugger, string name, Colors colors)
         {
             try
             {
-                DrawablePair d = MakeDrawable(debugger, name, true);
+                DrawablePair d = LoadDrawable(debugger, name);
                 if (d.Drawable != null)
                 {
                     if (d.Traits != null && d.Traits.CoordinateSystem == Geometry.CoordinateSystem.SphericalPolar)
@@ -1412,7 +819,7 @@ namespace GraphicalDebugging
         }
 
         // For GeometryWatch
-        public static bool DrawGeometries(Graphics graphics, Debugger debugger, string[] names, Settings[] settings, Colors colors)
+        public bool DrawGeometries(Graphics graphics, Debugger debugger, string[] names, Settings[] settings, Colors colors)
         {
             try
             {
@@ -1433,7 +840,7 @@ namespace GraphicalDebugging
                 {
                     if (names[i] != null && names[i] != "")
                     {
-                        drawables[i] = ExpressionDrawer.MakeGeometry(debugger, names[i], false);
+                        drawables[i] = LoadGeometry(debugger, names[i]);
 
                         if (drawables[i].Drawable != null)
                         {
@@ -1498,6 +905,5 @@ namespace GraphicalDebugging
 
             return false;
         }
-        
     }
 }
