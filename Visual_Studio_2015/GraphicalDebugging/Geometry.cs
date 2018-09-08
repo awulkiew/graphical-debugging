@@ -12,7 +12,7 @@ namespace GraphicalDebugging
 {
     class Geometry
     {
-        public enum CoordinateSystem { Cartesian, Spherical, SphericalEquatorial, Geographic };
+        public enum CoordinateSystem { None, Cartesian, SphericalPolar, SphericalEquatorial, Geographic };
         public enum Unit { None, Radian, Degree };
 
         public static string Name(CoordinateSystem cs)
@@ -20,7 +20,7 @@ namespace GraphicalDebugging
             switch (cs)
             {
                 case CoordinateSystem.Cartesian: return "cartesian";
-                case CoordinateSystem.Spherical: return "spherical";
+                case CoordinateSystem.SphericalPolar: return "spherical_polar";
                 case CoordinateSystem.SphericalEquatorial: return "spherical_equatorial";
                 case CoordinateSystem.Geographic: return "geographic";
                 default: return "unknown";
@@ -180,47 +180,33 @@ namespace GraphicalDebugging
             int Count { get; }
         }
 
-        public class Linestring : IRandomAccessRange<Point>
+        public interface IContainer<T>
         {
-            public Linestring()
-            {
-                points = new List<Point>();
-            }
+            void Add(T v);
+            void Clear();
+        }
 
-            public void Add(Point p) { points.Add(p); }
+        public class Container<T> : IRandomAccessRange<T>, IContainer<T>
+        {
+            public T this[int i] { get { return list[i]; } }
+            public int Count { get { return list.Count; } }
 
-            public Point this[int i] { get { return points[i]; } }
-            public int Count { get { return points.Count; } }
-
-            public IEnumerator<Point> GetEnumerator() { return points.GetEnumerator(); }
+            public void Add(T v) { list.Add(v); }
+            public void Clear() { list.Clear(); }
 
             public override string ToString()
             {
-                return "Count=" + points.Count;
+                return "Count=" + list.Count;
             }
 
-            protected List<Point> points;
+            protected List<T> list = new List<T>();
         }
 
-        public class Ring : IRandomAccessRange<Point>
-        {
-            public Ring()
-            {
-                linestring = new Linestring();
-            }
+        public class Linestring : Container<Point>
+        { }
 
-            public void Add(Point p) { linestring.Add(p); }
-
-            public Point this[int i] { get { return linestring[i]; } }
-            public int Count { get { return linestring.Count; } }
-
-            public override string ToString()
-            {
-                return linestring.ToString();
-            }
-
-            protected Linestring linestring;
-        }
+        public class Ring : Container<Point>
+        { }
 
         public class Polygon
         {
@@ -242,25 +228,17 @@ namespace GraphicalDebugging
             protected List<Ring> inners;
         }
 
-        public class Multi<G> : IRandomAccessRange<G>
-        {
-            public Multi()
-            {
-                singles = new List<G>();
-            }
+        public class Multi<G> : Container<G>
+        { }
 
-            public void Add(G g) { singles.Add(g); }
+        public class MultiPoint : Multi<Point>
+        { }
 
-            public G this[int i] { get { return singles[i]; } }
-            public int Count { get { return singles.Count; } }
+        public class MultiLinestring : Multi<Linestring>
+        { }
 
-            public override string ToString()
-            {
-                return "Count=" + singles.Count.ToString();
-            }
-
-            protected List<G> singles;
-        }
+        public class MultiPolygon : Multi<Polygon>
+        { }
 
         public static void AssignInverse(Box b)
         {
@@ -291,29 +269,32 @@ namespace GraphicalDebugging
             return result;
         }
 
-        public static Box Aabb(IEnumerator<Point> points, Unit unit)
+        public static Box Aabb(IRandomAccessRange<Point> points, Unit unit)
         {
             Box result = new Box();
 
-            if (!points.MoveNext())
+            if (points.Count < 1)
             {
                 AssignInverse(result);
                 return result;
             }
-            Point p1 = points.Current;
-            if (!points.MoveNext())
+
+            Point p1 = points[0];
+            if (points.Count < 2)
             {
                 // NOTE: unsafe, if this Box is modified then the original points will be modified as well
                 result = new Box(p1, p1);
                 return result;
             }
-            Point p2 = points.Current;
+            Point p2 = points[1];
+
+            // NOTE: This does not take into account the closing segment
 
             result = Aabb(p1, p2, unit);
-            while(points.MoveNext())
+            for (int i = 2; i < points.Count; ++i)
             {
                 p1 = p2;
-                p2 = points.Current;
+                p2 = points[i];
                 Box b = Aabb(p1, p2, unit);
                 Expand(result, b);
             }
@@ -337,7 +318,7 @@ namespace GraphicalDebugging
         }
         public static Box Aabb(Linestring linestring, Traits traits)
         {
-            return Aabb(linestring.GetEnumerator(), traits.Unit);
+            return Aabb(linestring, traits.Unit);
         }
 
         private static bool IntersectsAntimeridian(Point p1, Point p2, Unit unit)
