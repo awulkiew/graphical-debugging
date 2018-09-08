@@ -26,5 +26,16 @@
       </ArrayItems>
     </Expand>
   </Type>
+  <Type Name="boost::container::static_vector&lt;*&gt;">
+    <DisplayString>{{ size={m_holder.m_size} }}</DisplayString>
+    <Expand>
+      <Item Name="[capacity]" ExcludeView="simple">$T2</Item>
+      <Item Name="[allocator]" ExcludeView="simple">m_holder</Item>
+      <ArrayItems>
+        <Size>m_holder.m_size</Size>
+        <ValuePointer>($T1 *)m_holder.storage.data</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
   
 </AutoVisualizer>
