@@ -15,9 +15,10 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="0.5*" />
         </Grid.RowDefinitions>
-        <DockPanel Grid.Row="0">
+        <Grid x:Name="imageGrid" Background="Transparent" MouseDown="imageGrid_MouseDown" MouseMove="imageGrid_MouseMove" MouseUp="imageGrid_MouseUp" >
             <Image x:Name="image" Stretch="Fill" Height="Auto" Width="Auto" />
-        </DockPanel>
+            <Canvas x:Name="imageCanvas" Height="Auto" Width="Auto" />
+        </Grid>
         <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch"
                       ResizeDirection="Rows"
                       Height="5"

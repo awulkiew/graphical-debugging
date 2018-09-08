@@ -6,6 +6,7 @@
 
 namespace GraphicalDebugging
 {
+    using System;
     using System.Diagnostics.CodeAnalysis;
     using System.Windows;
     using System.Windows.Controls;
@@ -40,6 +41,10 @@ namespace GraphicalDebugging
         Colors m_colors;
         Bitmap m_emptyBitmap;
 
+        System.Windows.Shapes.Rectangle m_selectionRect = new System.Windows.Shapes.Rectangle();
+        Geometry.Point m_pointDown = new Geometry.Point(0, 0);
+        bool m_mouseDown = false;
+
         ExpressionDrawer m_expressionDrawer = new ExpressionDrawer();
 
         ObservableCollection<GeometryItem> Geometries { get; set; }
@@ -67,6 +72,14 @@ namespace GraphicalDebugging
             Graphics graphics = Graphics.FromImage(m_emptyBitmap);
             graphics.Clear(m_colors.ClearColor);
             image.Source = Util.BitmapToBitmapImage(m_emptyBitmap);
+
+            m_selectionRect.Width = 0;
+            m_selectionRect.Height = 0;
+            m_selectionRect.Visibility = Visibility.Hidden;
+            System.Windows.Media.Color col = System.Windows.SystemColors.HighlightColor;
+            col.A = 92;
+            m_selectionRect.Fill = new System.Windows.Media.SolidColorBrush(col);
+            imageCanvas.Children.Add(m_selectionRect);
 
             Geometries = new ObservableCollection<GeometryItem>();
             dataGrid.ItemsSource = Geometries;
@@ -285,13 +298,13 @@ namespace GraphicalDebugging
                 image.Source = Util.BitmapToBitmapImage(m_emptyBitmap);
             }
 
-            image.ContextMenu = new ContextMenu();
+            imageGrid.ContextMenu = new ContextMenu();
             MenuItem mi = new MenuItem();
             mi.Header = "Copy";
             mi.Click += MenuItem_Copy;
             if (imageEmpty)
                 mi.IsEnabled = false;
-            image.ContextMenu.Items.Add(mi);
+            imageGrid.ContextMenu.Items.Add(mi);
         }
 
         private void MenuItem_Copy(object sender, RoutedEventArgs e)
@@ -299,6 +312,50 @@ namespace GraphicalDebugging
             if (image != null && image.Source != null)
             {
                 Clipboard.SetImage((BitmapImage)image.Source);
+            }
+        }
+
+        private void imageGrid_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (e.LeftButton == System.Windows.Input.MouseButtonState.Pressed)
+            {
+                m_mouseDown = true;
+                System.Windows.Point point = e.GetPosition(image);
+                m_pointDown[0] = point.X;
+                m_pointDown[1] = point.Y;
+                imageGrid.CaptureMouse();
+            }
+        }
+
+        private void imageGrid_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (m_mouseDown)
+            {
+                System.Windows.Point point = e.GetPosition(image);
+                if (m_pointDown[0] != point.X || m_pointDown[1] != point.Y)
+                {
+                    double xMin = Math.Max(Math.Min(m_pointDown[0], point.X), 0);
+                    double yMin = Math.Max(Math.Min(m_pointDown[1], point.Y), 0);
+                    double xMax = Math.Min(Math.Max(m_pointDown[0], point.X), image.ActualWidth);
+                    double yMax = Math.Min(Math.Max(m_pointDown[1], point.Y), image.ActualHeight);
+
+                    Canvas.SetLeft(m_selectionRect, xMin);
+                    Canvas.SetTop(m_selectionRect, yMin);
+                    m_selectionRect.Width = xMax - xMin;
+                    m_selectionRect.Height = yMax - yMin;
+
+                    m_selectionRect.Visibility = Visibility.Visible;
+                }
+            }
+        }
+
+        private void imageGrid_MouseUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (m_mouseDown)
+            {
+                imageGrid.ReleaseMouseCapture();
+                m_mouseDown = false;
+                m_selectionRect.Visibility = Visibility.Hidden;
             }
         }
     }
