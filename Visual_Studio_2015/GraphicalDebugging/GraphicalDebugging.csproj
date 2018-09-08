@@ -61,6 +61,7 @@
   <ItemGroup>
     <Compile Include="Colors.cs" />
     <Compile Include="ExpressionDrawer.cs" />
+    <Compile Include="ExpressionLoader.cs" />
     <Compile Include="Geometry.cs" />
     <Compile Include="GeometryWatch.cs" />
     <Compile Include="GeometryWatchCommand.cs" />
