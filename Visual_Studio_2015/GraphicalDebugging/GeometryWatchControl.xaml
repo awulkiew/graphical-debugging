@@ -15,7 +15,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="0.5*" />
         </Grid.RowDefinitions>
-        <Grid x:Name="imageGrid" Background="Transparent" MouseDown="imageGrid_MouseDown" MouseMove="imageGrid_MouseMove" MouseUp="imageGrid_MouseUp" >
+        <Grid x:Name="imageGrid" Background="Transparent" Cursor="Cross" MouseDown="imageGrid_MouseDown" MouseMove="imageGrid_MouseMove" MouseUp="imageGrid_MouseUp" MouseLeave="imageGrid_MouseLeave" >
             <Image x:Name="image" Stretch="Fill" Height="Auto" Width="Auto" />
             <Canvas x:Name="imageCanvas" Height="Auto" Width="Auto" />
         </Grid>

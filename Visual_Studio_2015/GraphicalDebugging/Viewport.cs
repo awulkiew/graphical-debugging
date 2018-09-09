@@ -634,16 +634,17 @@ namespace GraphicalDebugging
             float min_y = cs.ConvertY(box.Min[1]);
             float max_x = cs.ConvertX(box.Max[0]);
             float max_y = cs.ConvertY(box.Max[1]);
-
+            
             Pen penAabb = new Pen(colors.AabbColor, 1);
+            /*
             graphics.DrawLine(penAabb, min_x - 1, min_y, min_x + 5, min_y);
             graphics.DrawLine(penAabb, min_x, min_y - 5, min_x, min_y + 1);
             graphics.DrawLine(penAabb, max_x - 5, max_y, max_x + 1, max_y);
             graphics.DrawLine(penAabb, max_x, max_y - 1, max_x, max_y + 5);
-
+            */
             // Aabb's coordinates
             float maxHeight = 20.0f;// Math.Min(Math.Max(graphics.VisibleClipBounds.Height - min_y, 0.0f), 20.0f);
-            if (maxHeight > 1)
+            /*if (maxHeight > 1)
             {
                 string min_x_str = box.Min[0].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
                 string min_y_str = box.Min[1].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
@@ -667,9 +668,85 @@ namespace GraphicalDebugging
                 SolidBrush brushText = new SolidBrush(colors.TextColor);
                 graphics.DrawString(minStr, font, brushText, drawRectMin, drawFormat);
                 graphics.DrawString(maxStr, font, brushText, drawRectMax, drawFormat);
+            }*/
+
+            // Scales
+            {
+                // In CS coordinates
+                double mi_x = cs.InverseConvertX(0);
+                double mi_y = cs.InverseConvertY(graphics.VisibleClipBounds.Height);
+                double ma_x = cs.InverseConvertX(graphics.VisibleClipBounds.Width);
+                double ma_y = cs.InverseConvertY(0);
+                // Find closest power of 10 greater than abs min coordinates
+                double pmi_x = AbsOuterPow10(mi_x);
+                double pmi_y = AbsOuterPow10(mi_y);
+                // Find closest power of 10 lesser than the width and height
+                double pd_x = AbsInnerPow10(ma_x - mi_x);
+                double pd_y = AbsInnerPow10(ma_y - mi_y);
+                // Lesser closest power 10 is the step used for both axes
+                double p = Math.Min(pd_x, pd_y);
+                // Find starting x and y values being the first lesser whole
+                // values of the same magnitude, per axis
+                double x = mi_x < 0 ? -pmi_x : 0;
+                for (; x < mi_x; x += p)
+                    ;
+                x -= p;
+                double y = mi_y < 0 ? -pmi_y : 0;
+                for (; y < mi_y; y += p)
+                    ;
+                y -= p;                
+                // Setup font and brush for text and lines
+                Font font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), maxHeight / 2.0f);
+                StringFormat drawFormat = new StringFormat();
+                drawFormat.Alignment = StringAlignment.Center;
+                SolidBrush brushText = new SolidBrush(colors.TextColor);
+                // Create the string output pattern, e.g. 0.00 for previously calculated step
+                double n = Math.Floor(Math.Log10(p));
+                string strFormat = "0";
+                if (n > 1)
+                    for (int i = 2; i <= n; ++i)
+                        strFormat += '0';
+                else if (n < 0)
+                {
+                    strFormat += '.';
+                    for (int i = -1; i >= n; --i)
+                        strFormat += '0';
+                }
+                // Draw horizontal scale
+                for (; x < ma_x; x += p)
+                {
+                    float wx = cs.ConvertX(x);
+                    graphics.DrawLine(penAabb, wx, graphics.VisibleClipBounds.Height, wx, graphics.VisibleClipBounds.Height - 5);
+                    string xStr = x.ToString(strFormat, System.Globalization.CultureInfo.InvariantCulture);
+                    SizeF xStrSize = graphics.MeasureString(xStr, font);
+                    float xStrLeft = wx - xStrSize.Width / 2;
+                    float xStrTop = graphics.VisibleClipBounds.Height - 5 - xStrSize.Height;
+                    graphics.DrawString(xStr, font, brushText, xStrLeft, xStrTop);
+                }
+                // Draw vertical scale
+                for (; y < ma_y; y += p)
+                {
+                    float wy = cs.ConvertY(y);
+                    graphics.DrawLine(penAabb, graphics.VisibleClipBounds.Width, wy, graphics.VisibleClipBounds.Width - 5, wy);
+                    string yStr = y.ToString(strFormat, System.Globalization.CultureInfo.InvariantCulture);
+                    SizeF yStrSize = graphics.MeasureString(yStr, font);
+                    float yStrLeft = graphics.VisibleClipBounds.Width - 5 - yStrSize.Width;
+                    float yStrTop = wy - yStrSize.Height / 2;
+                    graphics.DrawString(yStr, font, brushText, yStrLeft, yStrTop);
+                }
             }
 
             return true;
+        }
+
+        private static double AbsOuterPow10(double x)
+        {
+            return Math.Pow(10, Math.Ceiling(Math.Log10(Math.Abs(x))));
+        }
+
+        private static double AbsInnerPow10(double x)
+        {
+            return Math.Pow(10, Math.Floor(Math.Log10(Math.Abs(x))));
         }
 
         private static PointF MulF(PointF p, float v) { return new PointF(p.X * v, p.Y * v); }
@@ -739,9 +816,18 @@ namespace GraphicalDebugging
         private static float viewFix = (1.0f - viewScale) / 2.0f;
 
         public LocalCS(Geometry.Box src_box, Graphics dst_graphics)
+            : this(src_box, dst_graphics.VisibleClipBounds.Width, dst_graphics.VisibleClipBounds.Height)
+        { }
+
+        public LocalCS(Geometry.Box src_box, float viewWidth, float viewHeight)
         {
-            float w = dst_graphics.VisibleClipBounds.Width;
-            float h = dst_graphics.VisibleClipBounds.Height;
+            Reset(src_box, viewWidth, viewHeight);
+        }
+
+        public void Reset(Geometry.Box src_box, float viewWidth, float viewHeight)
+        {
+            float w = viewWidth;
+            float h = viewHeight;
             dst_orig_w = w;
             dst_orig_h = h;
             dst_x0 = w / 2;

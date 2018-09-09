@@ -42,9 +42,14 @@ namespace GraphicalDebugging
         Bitmap m_emptyBitmap;
 
         System.Windows.Shapes.Rectangle m_selectionRect = new System.Windows.Shapes.Rectangle();
+        System.Windows.Shapes.Line m_mouseVLine = new System.Windows.Shapes.Line();
+        System.Windows.Shapes.Line m_mouseHLine = new System.Windows.Shapes.Line();        
+        TextBlock m_mouseTxt = new TextBlock();
         Geometry.Point m_pointDown = new Geometry.Point(0, 0);
         bool m_mouseDown = false;
         ZoomBox m_zoomBox = new ZoomBox();
+        Geometry.Box m_currentBox = null;
+        LocalCS m_currentLocalCS = null;
 
         ExpressionDrawer m_expressionDrawer = new ExpressionDrawer();
 
@@ -77,10 +82,27 @@ namespace GraphicalDebugging
             m_selectionRect.Width = 0;
             m_selectionRect.Height = 0;
             m_selectionRect.Visibility = Visibility.Hidden;
-            System.Windows.Media.Color col = System.Windows.SystemColors.HighlightColor;
-            col.A = 92;
-            m_selectionRect.Fill = new System.Windows.Media.SolidColorBrush(col);
+            System.Windows.Media.Color colR = System.Windows.SystemColors.HighlightColor;
+            colR.A = 92;
+            m_selectionRect.Fill = new System.Windows.Media.SolidColorBrush(colR);
+            System.Windows.Media.Color colL = Util.ConvertColor(m_colors.AabbColor);
+            colL.A = 128;
+            m_mouseVLine.Stroke = new System.Windows.Media.SolidColorBrush(colL);
+            //m_mouseVLine.StrokeThickness = 1;
+            m_mouseVLine.Visibility = Visibility.Hidden;
+            m_mouseHLine.Stroke = new System.Windows.Media.SolidColorBrush(colL);
+            //m_mouseHLine.StrokeThickness = 1;
+            m_mouseHLine.Visibility = Visibility.Hidden;
+            System.Windows.Media.Color colT = Util.ConvertColor(m_colors.TextColor);
+            colL.A = 128;
+            m_mouseTxt.Foreground = new System.Windows.Media.SolidColorBrush(colT);
+            //m_mouseTxt.FontFamily = new System.Windows.Media.FontFamily("sans-serif");
+            //m_mouseTxt.FontSize = 12;
+            m_mouseTxt.Visibility = Visibility.Hidden;
             imageCanvas.Children.Add(m_selectionRect);
+            imageCanvas.Children.Add(m_mouseHLine);
+            imageCanvas.Children.Add(m_mouseVLine);
+            imageCanvas.Children.Add(m_mouseTxt);
 
             Geometries = new ObservableCollection<GeometryItem>();
             dataGrid.ItemsSource = Geometries;
@@ -93,6 +115,16 @@ namespace GraphicalDebugging
             m_colors.Update();
             Graphics graphics = Graphics.FromImage(m_emptyBitmap);
             graphics.Clear(m_colors.ClearColor);
+
+            System.Windows.Media.Color colL = Util.ConvertColor(m_colors.AabbColor);
+            colL.A = 128;
+            m_mouseHLine.Stroke = new System.Windows.Media.SolidColorBrush(colL);
+            m_mouseVLine.Stroke = new System.Windows.Media.SolidColorBrush(colL);
+
+            System.Windows.Media.Color colT = Util.ConvertColor(m_colors.TextColor);
+            colL.A = 128;
+            m_mouseTxt.Foreground = new System.Windows.Media.SolidColorBrush(colT);
+
             UpdateItems();
         }
 
@@ -228,6 +260,8 @@ namespace GraphicalDebugging
 
         private void UpdateItems(int modified_index = -1)
         {
+            m_currentBox = null;
+
             bool imageEmpty = true;
             if (m_debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
             {
@@ -286,7 +320,7 @@ namespace GraphicalDebugging
                         graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                         graphics.Clear(m_colors.ClearColor);
 
-                        m_expressionDrawer.DrawGeometries(graphics, m_debugger, names, settings, m_colors, m_zoomBox);
+                        m_currentBox = m_expressionDrawer.DrawGeometries(graphics, m_debugger, names, settings, m_colors, m_zoomBox);
 
                         image.Source = Util.BitmapToBitmapImage(bmp);
                         imageEmpty = false;
@@ -306,8 +340,9 @@ namespace GraphicalDebugging
             if (imageEmpty)
                 mi.IsEnabled = false;
             imageGrid.ContextMenu.Items.Add(mi);
+            imageGrid.ContextMenu.Items.Add(new Separator());
             MenuItem mi2 = new MenuItem();
-            mi2.Header = "Original View";
+            mi2.Header = "Reset View";
             mi2.Click += MenuItem_ResetZoom;
             imageGrid.ContextMenu.Items.Add(mi2);
         }
@@ -342,9 +377,36 @@ namespace GraphicalDebugging
 
         private void imageGrid_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
         {
+            System.Windows.Point point = e.GetPosition(imageGrid);
+
+            m_mouseVLine.X1 = point.X;
+            m_mouseVLine.Y1 = 0;
+            m_mouseVLine.X2 = point.X;
+            m_mouseVLine.Y2 = image.ActualHeight;
+            m_mouseVLine.Visibility = Visibility.Visible;
+            m_mouseHLine.X1 = 0;
+            m_mouseHLine.Y1 = point.Y;
+            m_mouseHLine.X2 = image.ActualWidth;
+            m_mouseHLine.Y2 = point.Y;
+            m_mouseHLine.Visibility = Visibility.Visible;
+            if (m_currentBox != null && m_currentBox.IsValid())
+            {
+                if (m_currentLocalCS == null)
+                    m_currentLocalCS = new LocalCS(m_currentBox, (float)image.ActualWidth, (float)image.ActualHeight);
+                else
+                    m_currentLocalCS.Reset(m_currentBox, (float)image.ActualWidth, (float)image.ActualHeight);
+                m_mouseTxt.Text = "(" + m_currentLocalCS.InverseConvertX(point.X).ToString(System.Globalization.CultureInfo.InvariantCulture)
+                                + " " + m_currentLocalCS.InverseConvertY(point.Y).ToString(System.Globalization.CultureInfo.InvariantCulture)
+                                + ")";
+                Canvas.SetLeft(m_mouseTxt, point.X + 2);
+                Canvas.SetTop(m_mouseTxt, point.Y + 2);
+                m_mouseTxt.Visibility = Visibility.Visible;
+            }
+            else
+                m_mouseTxt.Visibility = Visibility.Hidden;
+
             if (m_mouseDown)
             {
-                System.Windows.Point point = e.GetPosition(image);
                 if (m_pointDown[0] != point.X || m_pointDown[1] != point.Y)
                 {
                     double ox = m_pointDown[0];
@@ -437,6 +499,13 @@ namespace GraphicalDebugging
                     }
                 }
             }
+        }
+
+        private void imageGrid_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            m_mouseVLine.Visibility = Visibility.Hidden;
+            m_mouseHLine.Visibility = Visibility.Hidden;
+            m_mouseTxt.Visibility = Visibility.Hidden;
         }
     }
 }

@@ -819,7 +819,7 @@ namespace GraphicalDebugging
         }
 
         // For GeometryWatch
-        public bool DrawGeometries(Graphics graphics, Debugger debugger, string[] names, Settings[] settings, Colors colors, ZoomBox zoomBox)
+        public Geometry.Box DrawGeometries(Graphics graphics, Debugger debugger, string[] names, Settings[] settings, Colors colors, ZoomBox zoomBox)
         {
             try
             {
@@ -903,7 +903,7 @@ namespace GraphicalDebugging
                         }
                     }
 
-                    return true;
+                    return box;
                 }
             }
             catch (Exception e)
@@ -911,7 +911,7 @@ namespace GraphicalDebugging
                 Drawer.DrawMessage(graphics, e.Message, Color.Red);
             }
 
-            return false;
+            return null;
         }
     }
 }
