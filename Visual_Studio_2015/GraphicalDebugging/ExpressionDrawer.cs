@@ -880,6 +880,9 @@ namespace GraphicalDebugging
                         // window coordinates of the box
                         LocalCS cs = new LocalCS(box, graphics);
                         box = cs.BoxFromZoomBox(zoomBox);
+
+                        // TODO: With current approach changing the original box (resize, enlarge, etc.)
+                        // may produce wierd results because zoomBox is relative to the original box.
                     }
 
                     // Aabb

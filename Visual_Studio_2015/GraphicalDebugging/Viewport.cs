@@ -681,54 +681,41 @@ namespace GraphicalDebugging
                 double pmi_x = AbsOuterPow10(mi_x);
                 double pmi_y = AbsOuterPow10(mi_y);
                 // Find closest power of 10 lesser than the width and height
-                double pd_x = AbsInnerPow10(ma_x - mi_x);
-                double pd_y = AbsInnerPow10(ma_y - mi_y);
-                // Lesser closest power 10 is the step used for both axes
-                double p = Math.Min(pd_x, pd_y);
+                double pd_x = AbsOuterPow10((ma_x - mi_x) / 20);
+                double pd_y = AbsOuterPow10((ma_y - mi_y) / 20);
                 // Find starting x and y values being the first lesser whole
                 // values of the same magnitude, per axis
                 double x = mi_x < 0 ? -pmi_x : 0;
-                for (; x < mi_x; x += p)
+                for (; x < mi_x; x += pd_x)
                     ;
-                x -= p;
+                x -= pd_x;
                 double y = mi_y < 0 ? -pmi_y : 0;
-                for (; y < mi_y; y += p)
+                for (; y < mi_y; y += pd_y)
                     ;
-                y -= p;                
+                y -= pd_y;                
                 // Setup font and brush for text and lines
                 Font font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), maxHeight / 2.0f);
-                StringFormat drawFormat = new StringFormat();
-                drawFormat.Alignment = StringAlignment.Center;
                 SolidBrush brushText = new SolidBrush(colors.TextColor);
                 // Create the string output pattern, e.g. 0.00 for previously calculated step
-                double n = Math.Floor(Math.Log10(p));
-                string strFormat = "0";
-                if (n > 1)
-                    for (int i = 2; i <= n; ++i)
-                        strFormat += '0';
-                else if (n < 0)
-                {
-                    strFormat += '.';
-                    for (int i = -1; i >= n; --i)
-                        strFormat += '0';
-                }
+                string xStrFormat = Pow10StringFormat(pd_x);
+                string yStrFormat = Pow10StringFormat(pd_y);
                 // Draw horizontal scale
-                for (; x < ma_x; x += p)
+                for (; x < ma_x; x += pd_x)
                 {
                     float wx = cs.ConvertX(x);
                     graphics.DrawLine(penAabb, wx, graphics.VisibleClipBounds.Height, wx, graphics.VisibleClipBounds.Height - 5);
-                    string xStr = x.ToString(strFormat, System.Globalization.CultureInfo.InvariantCulture);
+                    string xStr = x.ToString(xStrFormat, System.Globalization.CultureInfo.InvariantCulture);
                     SizeF xStrSize = graphics.MeasureString(xStr, font);
                     float xStrLeft = wx - xStrSize.Width / 2;
                     float xStrTop = graphics.VisibleClipBounds.Height - 5 - xStrSize.Height;
                     graphics.DrawString(xStr, font, brushText, xStrLeft, xStrTop);
                 }
                 // Draw vertical scale
-                for (; y < ma_y; y += p)
+                for (; y < ma_y; y += pd_y)
                 {
                     float wy = cs.ConvertY(y);
                     graphics.DrawLine(penAabb, graphics.VisibleClipBounds.Width, wy, graphics.VisibleClipBounds.Width - 5, wy);
-                    string yStr = y.ToString(strFormat, System.Globalization.CultureInfo.InvariantCulture);
+                    string yStr = y.ToString(yStrFormat, System.Globalization.CultureInfo.InvariantCulture);
                     SizeF yStrSize = graphics.MeasureString(yStr, font);
                     float yStrLeft = graphics.VisibleClipBounds.Width - 5 - yStrSize.Width;
                     float yStrTop = wy - yStrSize.Height / 2;
@@ -737,6 +724,24 @@ namespace GraphicalDebugging
             }
 
             return true;
+        }
+
+        private static string Pow10StringFormat(double p)
+        {
+            double n = Math.Floor(Math.Log10(p));
+            string result = "0";
+            if (n > 1)
+            {
+                for (int i = 2; i <= n; ++i)
+                    result += '0';
+            }
+            else if (n < 0)
+            {
+                result += '.';
+                for (int i = -1; i >= n; --i)
+                    result += '0';
+            }
+            return result;
         }
 
         private static double AbsOuterPow10(double x)
