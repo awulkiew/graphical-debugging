@@ -44,6 +44,7 @@ namespace GraphicalDebugging
         System.Windows.Shapes.Rectangle m_selectionRect = new System.Windows.Shapes.Rectangle();
         Geometry.Point m_pointDown = new Geometry.Point(0, 0);
         bool m_mouseDown = false;
+        ZoomBox m_zoomBox = new ZoomBox();
 
         ExpressionDrawer m_expressionDrawer = new ExpressionDrawer();
 
@@ -285,7 +286,7 @@ namespace GraphicalDebugging
                         graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                         graphics.Clear(m_colors.ClearColor);
 
-                        m_expressionDrawer.DrawGeometries(graphics, m_debugger, names, settings, m_colors);
+                        m_expressionDrawer.DrawGeometries(graphics, m_debugger, names, settings, m_colors, m_zoomBox);
 
                         image.Source = Util.BitmapToBitmapImage(bmp);
                         imageEmpty = false;
@@ -305,6 +306,10 @@ namespace GraphicalDebugging
             if (imageEmpty)
                 mi.IsEnabled = false;
             imageGrid.ContextMenu.Items.Add(mi);
+            MenuItem mi2 = new MenuItem();
+            mi2.Header = "Original View";
+            mi2.Click += MenuItem_ResetZoom;
+            imageGrid.ContextMenu.Items.Add(mi2);
         }
 
         private void MenuItem_Copy(object sender, RoutedEventArgs e)
@@ -313,6 +318,14 @@ namespace GraphicalDebugging
             {
                 Clipboard.SetImage((BitmapImage)image.Source);
             }
+        }
+
+        private void MenuItem_ResetZoom(object sender, RoutedEventArgs e)
+        {
+            bool update = m_zoomBox.IsZoomed();
+            m_zoomBox.Reset();
+            if (update)
+                UpdateItems();
         }
 
         private void imageGrid_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -334,17 +347,68 @@ namespace GraphicalDebugging
                 System.Windows.Point point = e.GetPosition(image);
                 if (m_pointDown[0] != point.X || m_pointDown[1] != point.Y)
                 {
-                    double xMin = Math.Max(Math.Min(m_pointDown[0], point.X), 0);
-                    double yMin = Math.Max(Math.Min(m_pointDown[1], point.Y), 0);
-                    double xMax = Math.Min(Math.Max(m_pointDown[0], point.X), image.ActualWidth);
-                    double yMax = Math.Min(Math.Max(m_pointDown[1], point.Y), image.ActualHeight);
+                    double ox = m_pointDown[0];
+                    double oy = m_pointDown[1];
+                    double x = Math.Min(Math.Max(point.X, 0), image.ActualWidth);
+                    double y = Math.Min(Math.Max(point.Y, 0), image.ActualHeight);
+                    double w = Math.Abs(x - ox);
+                    double h = Math.Abs(y - oy);
+                    
+                    double prop = h / w;
+                    double iProp = image.ActualHeight / image.ActualWidth;
+                    if (prop < iProp)
+                        h = iProp * w;
+                    else if (prop > iProp)
+                        w = h / iProp;
 
-                    Canvas.SetLeft(m_selectionRect, xMin);
-                    Canvas.SetTop(m_selectionRect, yMin);
-                    m_selectionRect.Width = xMax - xMin;
-                    m_selectionRect.Height = yMax - yMin;
+                    double l = ox;
+                    double t = oy;
 
-                    m_selectionRect.Visibility = Visibility.Visible;
+                    if (ox <= x)
+                    {
+                        if (ox + w > image.ActualWidth)
+                        {
+                            w = image.ActualWidth - ox;
+                            h = iProp * w;
+                        }
+                    }
+                    else
+                    {
+                        if (ox - w < 0)
+                        {
+                            w = ox;
+                            h = iProp * w;
+                        }
+                        l = ox - w;
+                    }
+
+                    if (oy <= y)
+                    {
+                        if (oy + h > image.ActualHeight)
+                        {
+                            h = image.ActualHeight - oy;
+                            w = h / iProp;
+                        }
+                    }
+                    else
+                    {
+                        if (oy - h < 0)
+                        {
+                            h = oy;
+                            w = h / iProp;
+                        }
+                        t = oy - h;
+                    }
+
+                    if (w > 0 && h > 0)
+                    {
+                        Canvas.SetLeft(m_selectionRect, l);
+                        Canvas.SetTop(m_selectionRect, t);
+                        m_selectionRect.Width = w;
+                        m_selectionRect.Height = h;
+
+                        m_selectionRect.Visibility = Visibility.Visible;
+                    }
                 }
             }
         }
@@ -355,7 +419,23 @@ namespace GraphicalDebugging
             {
                 imageGrid.ReleaseMouseCapture();
                 m_mouseDown = false;
-                m_selectionRect.Visibility = Visibility.Hidden;
+
+                // Calculate zoom box only if the region changed
+                if (m_selectionRect.Visibility == Visibility.Visible)
+                {
+                    m_selectionRect.Visibility = Visibility.Hidden;
+
+                    double leftR = Canvas.GetLeft(m_selectionRect);
+                    double topR = Canvas.GetTop(m_selectionRect);
+                    double wR = m_selectionRect.Width;
+                    double hR = m_selectionRect.Height;
+
+                    if (wR > 0 && hR > 0)
+                    {
+                        m_zoomBox.Zoom(leftR, topR, wR, hR, image.ActualWidth, image.ActualHeight);
+                        UpdateItems();
+                    }
+                }
             }
         }
     }

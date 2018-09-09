@@ -687,16 +687,67 @@ namespace GraphicalDebugging
         }
     }
 
+    // Zoom box representation in relative window coordinates
+    // Coordinate system origin in bottom left corner
+    class ZoomBox : Geometry.Box
+    {
+        public ZoomBox()
+            : base(new Geometry.Point(0, 0), new Geometry.Point(1, 1))
+        { }
+
+        // Takes native window coordinates, origin in top left corner
+        public void Zoom(double left, double top, double width, double height,
+                         double imageWidth, double imageHeight)
+        {
+            double xMin = left;
+            double yMin = imageHeight - top - height;
+            double xMax = left + width;
+            double yMax = imageHeight - top;
+
+            double xMinRel = xMin / imageWidth;
+            double yMinRel = yMin / imageHeight;
+            double xMaxRel = xMax / imageWidth;
+            double yMaxRel = yMax / imageHeight;
+
+            double x = Min[0];
+            double y = Min[1];
+            double w = Dim(0);
+            double h = Dim(1);
+
+            Min[0] = x + xMinRel * w;
+            Min[1] = y + yMinRel * h;
+            Max[0] = x + xMaxRel * w;
+            Max[1] = y + yMaxRel * h;
+        }
+
+        public bool IsZoomed()
+        {
+            return Min[0] != 0 || Min[1] != 0
+                || Max[0] != 1 || Max[1] != 1;
+        }
+
+        public void Reset()
+        {
+            Min[0] = 0; Min[1] = 0;
+            Max[0] = 1; Max[1] = 1;
+        }
+    }
+
     class LocalCS
     {
+        private static float viewScale = 0.9f;
+        private static float viewFix = (1.0f - viewScale) / 2.0f;
+
         public LocalCS(Geometry.Box src_box, Graphics dst_graphics)
         {
             float w = dst_graphics.VisibleClipBounds.Width;
             float h = dst_graphics.VisibleClipBounds.Height;
+            dst_orig_w = w;
+            dst_orig_h = h;
             dst_x0 = w / 2;
             dst_y0 = h / 2;
-            float dst_w = w * 0.9f;
-            float dst_h = h * 0.9f;
+            float dst_w = w * viewScale;
+            float dst_h = h * viewScale;
 
             double src_w = src_box.Dim(0);
             double src_h = src_box.Dim(1);
@@ -709,13 +760,13 @@ namespace GraphicalDebugging
             if (src_w == 0 && src_h == 0)
                 scale = 1; // point
             else if (src_w == 0)
-                scale = (h * 0.9f) / src_h;
+                scale = dst_h / src_h;
             else if (src_h == 0)
-                scale = (w * 0.9f) / src_w;
+                scale = dst_w / src_w;
             else
             {
-                double scale_w = (w * 0.9f) / src_w;
-                double scale_h = (h * 0.9f) / src_h;
+                double scale_w = dst_w / src_w;
+                double scale_h = dst_h / src_h;
                 scale = Math.Min(scale_w, scale_h);
             }
         }
@@ -728,6 +779,16 @@ namespace GraphicalDebugging
         public float ConvertY(double src)
         {
             return dst_y0 - (float)((src - src_y0) * scale);
+        }
+
+        public double InverseConvertX(double dst)
+        {
+            return src_x0 + (dst - dst_x0) / scale;
+        }
+
+        public double InverseConvertY(double dst)
+        {
+            return src_y0 - (dst - dst_y0) / scale;
         }
 
         public float ConvertDimension(double src)
@@ -761,6 +822,27 @@ namespace GraphicalDebugging
             return dst_points;
         }
 
+        public Geometry.Box BoxFromZoomBox(ZoomBox zoomBox)
+        {
+            // fragment of the window in window coordinates
+            double w = dst_orig_w;
+            double h = dst_orig_h;
+            double zw = zoomBox.Dim(0);
+            double zh = zoomBox.Dim(1);
+            double zmin_x = (zoomBox.Min[0] + zw * viewFix) * w;
+            double zmin_y = h - (zoomBox.Min[1] + zh * viewFix) * h;
+            double zmax_x = (zoomBox.Max[0] - zw * viewFix) * w;
+            double zmax_y = h - (zoomBox.Max[1] - zw * viewFix) * h;
+            // convert to box coordinates
+            double min_x = InverseConvertX(zmin_x);
+            double min_y = InverseConvertY(zmin_y);
+            double max_x = InverseConvertX(zmax_x);
+            double max_y = InverseConvertY(zmax_y);
+            return new Geometry.Box(new Geometry.Point(min_x, min_y),
+                                    new Geometry.Point(max_x, max_y));
+        }
+
+        float dst_orig_w, dst_orig_h;
         float dst_x0, dst_y0;
         double src_x0, src_y0;
         double scale;

@@ -819,7 +819,7 @@ namespace GraphicalDebugging
         }
 
         // For GeometryWatch
-        public bool DrawGeometries(Graphics graphics, Debugger debugger, string[] names, Settings[] settings, Colors colors)
+        public bool DrawGeometries(Graphics graphics, Debugger debugger, string[] names, Settings[] settings, Colors colors, ZoomBox zoomBox)
         {
             try
             {
@@ -873,6 +873,14 @@ namespace GraphicalDebugging
                     }
 
                     Geometry.Traits traits = new Geometry.Traits(dimensions.Max(), csystems.First(), units.First());
+
+                    // Fragment of the box
+                    if (zoomBox.IsZoomed())
+                    {
+                        // window coordinates of the box
+                        LocalCS cs = new LocalCS(box, graphics);
+                        box = cs.BoxFromZoomBox(zoomBox);
+                    }
 
                     // Aabb
                     Drawer.DrawAabb(graphics, box, traits, colors);
