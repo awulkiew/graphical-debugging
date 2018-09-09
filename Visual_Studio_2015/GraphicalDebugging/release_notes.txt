@@ -1,6 +1,11 @@
 version 0.11
 
 additions:
+- support for new version of boost::container::static_vector
+- zooming by mouse area selection in GeometryWatch (reset in context menu)
+- improved readability in GeometryWatch by adding XY scales, mouse cross lines and showing coordinates under cursor
+
+bugs:
 - prevent list row deletion if cell is being edited
 
 version 0.10
