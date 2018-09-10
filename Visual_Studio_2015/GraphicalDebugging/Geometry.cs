@@ -321,6 +321,16 @@ namespace GraphicalDebugging
             return Aabb(linestring, traits.Unit);
         }
 
+        public static bool IntersectsX(Box box, double x)
+        {
+            return box.Min[0] <= x && x <= box.Max[0];
+        }
+
+        public static bool IntersectsY(Box box, double y)
+        {
+            return box.Min[1] <= y && y <= box.Max[1];
+        }
+
         private static bool IntersectsAntimeridian(Point p1, Point p2, Unit unit)
         {
             if (unit == Unit.None)

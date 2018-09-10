@@ -563,6 +563,7 @@ namespace GraphicalDebugging
                 return false;
 
             LocalCS cs = new LocalCS(box, graphics);
+            //Geometry.Box viewBox = cs.ViewBox();
 
             // Axes
             float h = graphics.VisibleClipBounds.Height;
@@ -571,11 +572,17 @@ namespace GraphicalDebugging
             if (traits.Unit == Geometry.Unit.None)
             {
                 // Y axis
-                float x0 = cs.ConvertX(0.0);
-                graphics.DrawLine(prime_pen, x0, 0, x0, h);
+                //if (Geometry.IntersectsX(viewBox, 0.0))
+                {
+                    float x0 = cs.ConvertX(0.0);
+                    graphics.DrawLine(prime_pen, x0, 0, x0, h);
+                }
                 // X axis
-                float y0 = cs.ConvertY(0.0);
-                graphics.DrawLine(prime_pen, 0, y0, w, y0);
+                //if (Geometry.IntersectsY(viewBox, 0.0))
+                {
+                    float y0 = cs.ConvertY(0.0);
+                    graphics.DrawLine(prime_pen, 0, y0, w, y0);
+                }
             }
             else
             {
@@ -892,22 +899,22 @@ namespace GraphicalDebugging
             return new PointF(ConvertX(p[0]), ConvertY(p[1]));
         }
 
-        public PointF[] Convert(Geometry.Ring ring)
+        public PointF[] Convert(Geometry.IRandomAccessRange<Geometry.Point> points)
         {
-            if (ring.Count <= 0)
+            if (points.Count <= 0)
                 return null;
 
-            int dst_count = ring.Count + (ring[0] == ring[ring.Count - 1] ? 0 : 1);
+            int dst_count = points.Count + (points[0] == points[points.Count - 1] ? 0 : 1);
 
             PointF[] dst_points = new PointF[dst_count];
             int i = 0;
-            for (; i < ring.Count; ++i)
+            for (; i < points.Count; ++i)
             {
-                dst_points[i] = Convert(ring[i]);
+                dst_points[i] = Convert(points[i]);
             }
             if (i < dst_count)
             {
-                dst_points[i] = Convert(ring[0]);
+                dst_points[i] = Convert(points[0]);
             }
 
             return dst_points;
@@ -931,6 +938,13 @@ namespace GraphicalDebugging
             double max_y = InverseConvertY(zmax_y);
             return new Geometry.Box(new Geometry.Point(min_x, min_y),
                                     new Geometry.Point(max_x, max_y));
+        }
+
+        public Geometry.Box ViewBox()
+        {
+            return new Geometry.Box(
+                        new Geometry.Point(InverseConvertX(0), InverseConvertY(dst_orig_h)),
+                        new Geometry.Point(InverseConvertX(dst_orig_w), InverseConvertY(0)));
         }
 
         float dst_orig_w, dst_orig_h;
