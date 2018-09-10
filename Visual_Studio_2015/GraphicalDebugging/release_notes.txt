@@ -2,7 +2,7 @@ version 0.11
 
 additions:
 - support for new version of boost::container::static_vector
-- zooming by mouse area selection in GeometryWatch (reset in context menu)
+- zooming/cropping by mouse area selection in GeometryWatch (reset in context menu)
 - improved readability in GeometryWatch by adding XY scales, mouse cross lines and showing coordinates under cursor
 
 bugfixes:
