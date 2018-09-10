@@ -83,7 +83,7 @@ Supported:
 
 Geometries in spherical_equatorial and geographic coordinate systems are displayed in a convenient, compact way.
 
-![GraphicalWatch](images/graphical_watch_sph.png)
+![GraphicalWatchSph](images/graphical_watch_sph.png)
 
 where
 
@@ -109,11 +109,9 @@ Supported:
 
 ![GeometryWatch](images/geometry_watch.png)
 
-![GeometryWatch](images/geometry_watch2.png)
-
 Geometries in spherical_equatorial and geographic coordinate systems are displayed in a way allowing to see what coordinates were used to define a geometry. Note that various libraries may require coordinates in a certain range. This extension tries to display any coordinates as good as possible.
 
-![GraphicalWatch](images/geometry_watch_sph.png)
+![GeometryWatchSph](images/geometry_watch_sph.png)
 
 where
 
@@ -123,6 +121,14 @@ where
                                  {{0, 10},{-15, 20},{-50, 50},{0, 60}}}};
     multi_point_sd_t mpt_sd{{0, 0},{90, 10},{170, 20},{-170, 30}};
 
+###### Zoomig/cropping
+
+GeometryWatch has zooming/cropping feature.
+
+![GeometryWatchZoom](images/geometry_watch_zoom.png)
+
+![GeometryWatchZoomed](images/geometry_watch_zoomed.png)
+	
 ##### Themes
 
 The extension supports Visual Studio themes. The visualization of variables may be drawn in two versions, dark or light depending on the brightness of the theme background color.
