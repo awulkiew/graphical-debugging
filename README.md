@@ -121,7 +121,7 @@ where
                                  {{0, 10},{-15, 20},{-50, 50},{0, 60}}}};
     multi_point_sd_t mpt_sd{{0, 0},{90, 10},{170, 20},{-170, 30}};
 
-###### Zoomig/cropping
+###### Zooming/cropping
 
 GeometryWatch has zooming/cropping feature.
 
