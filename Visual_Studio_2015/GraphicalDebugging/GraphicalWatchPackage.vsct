@@ -42,18 +42,25 @@
               <CommandFlag>DefaultInvisible</CommandFlag>
               <CommandFlag>DynamicVisibility</CommandFlag>
           If you do not want an image next to your command, remove the Icon node /> -->
-      <Button guid="guidGraphicalWatchPackageCmdSet" id="GraphicalWatchCommandId" priority="0x0100" type="Button">
+      <Button guid="guidGraphicalWatchPackageCmdSet" id="cmdidGeometriesWatchCommand" priority="0x0100" type="Button">
+        <Parent guid="guidSHLMainMenu" id="IDG_VS_WNDO_OTRWNDWS1" />
+        <Icon guid="guidGeometryIcon" id="geometryIcon" />
+        <Strings>
+          <ButtonText>GeometryWatch</ButtonText>
+        </Strings>
+      </Button>
+      <Button guid="guidGraphicalWatchPackageCmdSet" id="cmdidGraphicalWatchCommand" priority="0x0100" type="Button">
         <Parent guid="guidSHLMainMenu" id="IDG_VS_WNDO_OTRWNDWS1" />
         <Icon guid="guidGraphicalIcon" id="graphicalIcon" />
         <Strings>
           <ButtonText>GraphicalWatch</ButtonText>
         </Strings>
       </Button>
-      <Button guid="guidGraphicalWatchPackageCmdSet" id="cmdidGeometriesWatchCommand" priority="0x0100" type="Button">
+      <Button guid="guidGraphicalWatchPackageCmdSet" id="cmdidPlotWatchCommand" priority="0x0100" type="Button">
         <Parent guid="guidSHLMainMenu" id="IDG_VS_WNDO_OTRWNDWS1" />
-        <Icon guid="guidGeometryIcon" id="geometryIcon" />
+        <Icon guid="guidPlotIcon" id="plotIcon" />
         <Strings>
-          <ButtonText>GeometryWatch</ButtonText>
+          <ButtonText>PlotWatch</ButtonText>
         </Strings>
       </Button>
     </Buttons>
@@ -67,8 +74,10 @@
             must be the actual index (1-based) of the bitmap inside the bitmap strip. -->
       <Bitmap guid="guidImages" href="Resources\GraphicalWatchCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
       <Bitmap guid="guidImages1" href="Resources\GeometriesWatchCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
+      <Bitmap guid="guidImages2" href="Resources\PlotWatchCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
       <Bitmap guid="guidGraphicalIcon" href="Resources\graphical.ico" usedList="graphicalIcon" />
       <Bitmap guid="guidGeometryIcon" href="Resources\geometry.ico" usedList="geometryIcon" />
+      <Bitmap guid="guidPlotIcon" href="Resources\plot.ico" usedList="plotIcon" />
     </Bitmaps>
   </Commands>
 
@@ -78,8 +87,19 @@
 
     <!-- This is the guid used to group the menu commands together -->
     <GuidSymbol name="guidGraphicalWatchPackageCmdSet" value="{9550913a-2953-4f4a-9eb0-96a0bf7d3d87}">
-      <IDSymbol name="GraphicalWatchCommandId" value="0x0100" />
-      <IDSymbol value="257" name="cmdidGeometriesWatchCommand" />
+      <IDSymbol value="256" name="cmdidGeometriesWatchCommand" />
+      <IDSymbol value="257" name="cmdidGraphicalWatchCommand" />
+      <IDSymbol value="258" name="cmdidPlotWatchCommand" />
+    </GuidSymbol>
+
+    <GuidSymbol name="guidGeometryIcon" value="{26D25FB6-35C3-4B5F-9DB6-24E90B83D1CD}">
+      <IDSymbol name="geometryIcon" value="1" />
+    </GuidSymbol>
+    <GuidSymbol name="guidGraphicalIcon" value="{7f2b0178-a581-424f-933f-f6da41774269}">
+      <IDSymbol name="graphicalIcon" value="1" />
+    </GuidSymbol>
+    <GuidSymbol name="guidPlotIcon" value="{1272F06D-9679-4844-BCB0-28DD5581E86E}">
+      <IDSymbol name="plotIcon" value="1" />
     </GuidSymbol>
 
     <GuidSymbol name="guidImages" value="{90e41377-5d33-48a6-a794-9fcb441c5c3a}">
@@ -100,11 +120,14 @@
       <IDSymbol name="bmpPicStrikethrough" value="6" />
     </GuidSymbol>
 
-    <GuidSymbol name="guidGraphicalIcon" value="{7f2b0178-a581-424f-933f-f6da41774269}" >
-        <IDSymbol name="graphicalIcon" value="1" />
+    <GuidSymbol value="{8f9e6ffb-0fe8-40ea-b7f7-e5bfbbfde56a}" name="guidImages2">
+      <IDSymbol name="bmpPic1" value="1" />
+      <IDSymbol name="bmpPic2" value="2" />
+      <IDSymbol name="bmpPicSearch" value="3" />
+      <IDSymbol name="bmpPicX" value="4" />
+      <IDSymbol name="bmpPicArrows" value="5" />
+      <IDSymbol name="bmpPicStrikethrough" value="6" />
     </GuidSymbol>
-    <GuidSymbol name="guidGeometryIcon" value="{26D25FB6-35C3-4B5F-9DB6-24E90B83D1CD}" >
-        <IDSymbol name="geometryIcon" value="1" />
-    </GuidSymbol>      
+    
   </Symbols>
 </CommandTable>

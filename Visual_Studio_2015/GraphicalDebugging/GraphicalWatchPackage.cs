@@ -42,6 +42,7 @@ namespace GraphicalDebugging
     [Guid(GraphicalWatchPackage.PackageGuidString)]
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "pkgdef, VS and vsixmanifest are valid VS terms")]
     [ProvideToolWindow(typeof(GeometryWatch))]
+    [ProvideToolWindow(typeof(PlotWatch))]
     public sealed class GraphicalWatchPackage : Package
     {
         /// <summary>
@@ -69,8 +70,9 @@ namespace GraphicalDebugging
         protected override void Initialize()
         {
             base.Initialize();
-            GraphicalWatchCommand.Initialize(this);
             GeometryWatchCommand.Initialize(this);
+            GraphicalWatchCommand.Initialize(this);
+            PlotWatchCommand.Initialize(this);
         }
 
         #endregion

@@ -75,6 +75,11 @@
       <DependentUpon>GraphicalWatchControl.xaml</DependentUpon>
     </Compile>
     <Compile Include="GraphicalWatchPackage.cs" />
+    <Compile Include="PlotWatch.cs" />
+    <Compile Include="PlotWatchCommand.cs" />
+    <Compile Include="PlotWatchControl.xaml.cs">
+      <DependentUpon>PlotWatchControl.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Util.cs" />
     <Compile Include="VariableItem.cs" />
@@ -105,6 +110,8 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
+    <Content Include="Resources\plot.ico" />
+    <Content Include="Resources\PlotWatchCommand.png" />
     <VSCTCompile Include="GraphicalWatchPackage.vsct">
       <ResourceName>Menus.ctmenu</ResourceName>
     </VSCTCompile>
@@ -140,6 +147,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="GraphicalWatchControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="PlotWatchControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

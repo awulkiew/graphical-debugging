@@ -1,6 +1,6 @@
 ﻿//------------------------------------------------------------------------------
-// <copyright file="GraphicalWatchCommand.cs">
-//     Copyright (c) Adam Wulkiewicz.
+// <copyright file="PlotWatchCommand.cs" company="Company">
+//     Copyright (c) Company.  All rights reserved.
 // </copyright>
 //------------------------------------------------------------------------------
 
@@ -15,12 +15,12 @@ namespace GraphicalDebugging
     /// <summary>
     /// Command handler
     /// </summary>
-    internal sealed class GraphicalWatchCommand
+    internal sealed class PlotWatchCommand
     {
         /// <summary>
         /// Command ID.
         /// </summary>
-        public const int CommandId = 257;
+        public const int CommandId = 258;
 
         /// <summary>
         /// Command menu group (command set GUID).
@@ -33,11 +33,11 @@ namespace GraphicalDebugging
         private readonly Package package;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="GraphicalWatchCommand"/> class.
+        /// Initializes a new instance of the <see cref="PlotWatchCommand"/> class.
         /// Adds our command handlers for menu (commands must exist in the command table file)
         /// </summary>
         /// <param name="package">Owner package, not null.</param>
-        private GraphicalWatchCommand(Package package)
+        private PlotWatchCommand(Package package)
         {
             if (package == null)
             {
@@ -58,7 +58,7 @@ namespace GraphicalDebugging
         /// <summary>
         /// Gets the instance of the command.
         /// </summary>
-        public static GraphicalWatchCommand Instance
+        public static PlotWatchCommand Instance
         {
             get;
             private set;
@@ -81,7 +81,7 @@ namespace GraphicalDebugging
         /// <param name="package">Owner package, not null.</param>
         public static void Initialize(Package package)
         {
-            Instance = new GraphicalWatchCommand(package);
+            Instance = new PlotWatchCommand(package);
         }
 
         /// <summary>
@@ -94,7 +94,7 @@ namespace GraphicalDebugging
             // Get the instance number 0 of this tool window. This window is single instance so this instance
             // is actually the only one.
             // The last flag is set to true so that if the tool window does not exists it will be created.
-            ToolWindowPane window = this.package.FindToolWindow(typeof(GraphicalWatch), 0, true);
+            ToolWindowPane window = this.package.FindToolWindow(typeof(PlotWatch), 0, true);
             if ((null == window) || (null == window.Frame))
             {
                 throw new NotSupportedException("Cannot create tool window");
