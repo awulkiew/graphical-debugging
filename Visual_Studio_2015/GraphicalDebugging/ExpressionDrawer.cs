@@ -600,6 +600,8 @@ namespace GraphicalDebugging
 
             public Geometry.Box Aabb(Geometry.Traits traits, bool calculateEnvelope)
             {
+                // NOTE: traits == null
+
                 Geometry.Box box = new Geometry.Box();
                 Geometry.AssignInverse(box);
 
@@ -751,7 +753,7 @@ namespace GraphicalDebugging
             
             private List<Turn> turns;
         }
-        
+
         // -------------------------------------------------
         // High level loading
         // -------------------------------------------------
@@ -767,24 +769,53 @@ namespace GraphicalDebugging
             public Geometry.Traits Traits { get; set; }
         }
 
-        private DrawablePair LoadGeometry(Debugger debugger, string name)
+        class LoadDrawable
         {
-            Geometry.Traits traits = null;
-            IDrawable drawable = null;
-            expressionLoader.Load(debugger, name, out traits, out drawable);
-            if (traits == null)
-                drawable = null;
+            public LoadDrawable(ExpressionLoader el) { expressionLoader = el; }
 
-            return new DrawablePair(drawable, traits);
+            virtual public DrawablePair Load(Debugger debugger, string name)
+            {
+                Geometry.Traits traits = null;
+                IDrawable drawable = null;
+                expressionLoader.Load(debugger, name, out traits, out drawable);
+
+                return new DrawablePair(drawable, traits);
+            }
+
+            protected ExpressionLoader expressionLoader;
         }
 
-        private DrawablePair LoadDrawable(Debugger debugger, string name)
+        class LoadGeometry : LoadDrawable
         {
-            Geometry.Traits traits = null;
-            IDrawable drawable = null;
-            expressionLoader.Load(debugger, name, out traits, out drawable);
+            public LoadGeometry(ExpressionLoader el) : base(el) { }
 
-            return new DrawablePair(drawable, traits);
+            static ExpressionLoader.GeometryKindConstraint geometriesOnly = new ExpressionLoader.GeometryKindConstraint();
+
+            public override DrawablePair Load(Debugger debugger, string name)
+            {
+                Geometry.Traits traits = null;
+                IDrawable drawable = null;
+                expressionLoader.Load(debugger, name, geometriesOnly, out traits, out drawable);
+                if (traits == null)
+                    drawable = null;
+
+                return new DrawablePair(drawable, traits);
+            }
+        }
+
+        class LoadPlot : LoadDrawable
+        {
+            public LoadPlot(ExpressionLoader el) : base(el) { }
+
+            static ExpressionLoader.ContainerKindConstraint containersOnly = new ExpressionLoader.ContainerKindConstraint();
+
+            public override DrawablePair Load(Debugger debugger, string name)
+            {
+                Geometry.Traits traits = null;
+                IDrawable drawable = null;
+                expressionLoader.Load(debugger, name, containersOnly, out traits, out drawable);
+                return new DrawablePair(drawable, traits);
+            }
         }
 
         // -------------------------------------------------
@@ -796,7 +827,8 @@ namespace GraphicalDebugging
         {
             try
             {
-                DrawablePair d = LoadDrawable(debugger, name);
+                LoadDrawable loadDrawable = new LoadDrawable(expressionLoader);
+                DrawablePair d = loadDrawable.Load(debugger, name);
                 if (d.Drawable != null)
                 {
                     if (d.Traits != null && d.Traits.CoordinateSystem == Geometry.CoordinateSystem.SphericalPolar)
@@ -818,8 +850,9 @@ namespace GraphicalDebugging
             return false;
         }
 
-        // For GeometryWatch
-        public Geometry.Box DrawGeometries(Graphics graphics, Debugger debugger, string[] names, Settings[] settings, Colors colors, ZoomBox zoomBox)
+        // For GeometryWatch and PlotWatch
+        Geometry.Box Draw(Graphics graphics, Debugger debugger, LoadDrawable loadDrawable,
+                          string[] names, Settings[] settings, Colors colors, ZoomBox zoomBox)
         {
             try
             {
@@ -840,14 +873,17 @@ namespace GraphicalDebugging
                 {
                     if (names[i] != null && names[i] != "")
                     {
-                        drawables[i] = LoadGeometry(debugger, names[i]);
+                        drawables[i] = loadDrawable.Load(debugger, names[i]);
 
                         if (drawables[i].Drawable != null)
                         {
                             Geometry.Traits traits = drawables[i].Traits;
-                            dimensions.Add(traits.Dimension);
-                            csystems.Add(traits.CoordinateSystem);
-                            units.Add(traits.Unit);
+                            if (traits != null)
+                            {
+                                dimensions.Add(traits.Dimension);
+                                csystems.Add(traits.CoordinateSystem);
+                                units.Add(traits.Unit);
+                            }
 
                             Geometry.Box aabb = drawables[i].Drawable.Aabb(traits, false);
                             Geometry.Expand(box, aabb);
@@ -863,7 +899,7 @@ namespace GraphicalDebugging
                     {
                         throw new Exception("Multiple coordinate systems detected.");
                     }
-                    if (csystems.First() == Geometry.CoordinateSystem.SphericalPolar)
+                    if (csystems.Count > 0 && csystems.First() == Geometry.CoordinateSystem.SphericalPolar)
                     {
                         throw new Exception("This coordinate system is not yet supported.");
                     }
@@ -872,7 +908,9 @@ namespace GraphicalDebugging
                         throw new Exception("Multiple units detected.");
                     }
 
-                    Geometry.Traits traits = new Geometry.Traits(dimensions.Max(), csystems.First(), units.First());
+                    Geometry.Traits traits = csystems.Count > 0
+                                           ? new Geometry.Traits(dimensions.Max(), csystems.First(), units.First())
+                                           : null;
 
                     // Fragment of the box
                     if (zoomBox.IsZoomed())
@@ -886,8 +924,10 @@ namespace GraphicalDebugging
                     }
 
                     // Aabb
-                    Drawer.DrawAabb(graphics, box, traits, colors);
+                    Geometry.Unit unit = traits != null ? traits.Unit : Geometry.Unit.None;
+                    Drawer.DrawAabb(graphics, box, unit, colors);
 
+                    if (traits != null)
                     {
                         // CS info
                         SolidBrush brush = new SolidBrush(colors.TextColor);
@@ -908,6 +948,36 @@ namespace GraphicalDebugging
 
                     return box;
                 }
+            }
+            catch (Exception e)
+            {
+                Drawer.DrawMessage(graphics, e.Message, Color.Red);
+            }
+
+            return null;
+        }
+
+        public Geometry.Box DrawGeometries(Graphics graphics, Debugger debugger, string[] names, Settings[] settings, Colors colors, ZoomBox zoomBox)
+        {
+            try
+            {
+                LoadGeometry loadDrawable = new LoadGeometry(expressionLoader);
+                return Draw(graphics, debugger, loadDrawable, names, settings, colors, zoomBox);
+            }
+            catch (Exception e)
+            {
+                Drawer.DrawMessage(graphics, e.Message, Color.Red);
+            }
+
+            return null;
+        }
+
+        public Geometry.Box DrawPlots(Graphics graphics, Debugger debugger, string[] names, Settings[] settings, Colors colors, ZoomBox zoomBox)
+        {
+            try
+            {
+                LoadPlot loadDrawable = new LoadPlot(expressionLoader);
+                return Draw(graphics, debugger, loadDrawable, names, settings, colors, zoomBox);
             }
             catch (Exception e)
             {

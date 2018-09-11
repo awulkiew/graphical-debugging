@@ -557,7 +557,7 @@ namespace GraphicalDebugging
             graphics.DrawString(message, font, brush, rect, drawFormat);
         }
 
-        public static bool DrawAabb(Graphics graphics, Geometry.Box box, Geometry.Traits traits, Colors colors)
+        public static bool DrawAabb(Graphics graphics, Geometry.Box box, Geometry.Unit unit, Colors colors)
         {
             if (!box.IsValid())
                 return false;
@@ -569,7 +569,7 @@ namespace GraphicalDebugging
             float h = graphics.VisibleClipBounds.Height;
             float w = graphics.VisibleClipBounds.Width;
             Pen prime_pen = new Pen(colors.AxisColor, 1);
-            if (traits.Unit == Geometry.Unit.None)
+            if (unit == Geometry.Unit.None)
             {
                 // Y axis
                 //if (Geometry.IntersectsX(viewBox, 0.0))
@@ -589,8 +589,8 @@ namespace GraphicalDebugging
                 Pen anti_pen = new Pen(colors.AxisColor, 1);
                 anti_pen.DashStyle = DashStyle.Custom;
                 anti_pen.DashPattern = new float[] { 5, 5 };
-                double pi = Geometry.HalfAngle(traits.Unit);
-                double anti_mer = Geometry.NearestAntimeridian(box.Min[0], -1, traits.Unit);
+                double pi = Geometry.HalfAngle(unit);
+                double anti_mer = Geometry.NearestAntimeridian(box.Min[0], -1, unit);
                 double prime_mer = anti_mer + pi;
                 double next_anti_mer = anti_mer + 2 * pi;
                 double next_prime_mer = prime_mer + 2 * pi;

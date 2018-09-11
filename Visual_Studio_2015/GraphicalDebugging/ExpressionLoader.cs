@@ -51,7 +51,33 @@ namespace GraphicalDebugging
             loaders.Add(new BGTurnContainer("std::deque"));
         }
 
+        public class KindConstraint
+        {
+            virtual public bool Check(Kind kind) { return true; }
+        }
+
+        public class GeometryKindConstraint : KindConstraint
+        {
+            public override bool Check(Kind kind) { return kind != Kind.Container; }
+        }
+
+        public class ContainerKindConstraint : KindConstraint
+        {
+            public override bool Check(Kind kind) { return kind == Kind.Container; }
+        }
+
+        private static KindConstraint allowAllKinds = new KindConstraint();
+
         public void Load(Debugger debugger, string name,
+                         out Geometry.Traits traits,
+                         out ExpressionDrawer.IDrawable result)
+        {
+
+            Load(debugger, name, allowAllKinds, out traits, out result);
+        }
+
+        public void Load(Debugger debugger, string name,
+                         KindConstraint kindConstraint,
                          out Geometry.Traits traits,
                          out ExpressionDrawer.IDrawable result)
         {
@@ -64,6 +90,9 @@ namespace GraphicalDebugging
 
             Loader loader = loaders.FindByType(expr.Type);
             if (loader == null)
+                return;
+
+            if (!kindConstraint.Check(loader.Kind()))
                 return;
 
             loader.Load(loaders, debugger, expr.Name, expr.Type, out traits, out result);
