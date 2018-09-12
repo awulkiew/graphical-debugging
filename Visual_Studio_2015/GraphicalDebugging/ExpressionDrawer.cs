@@ -33,20 +33,33 @@ namespace GraphicalDebugging
 
         public class Settings
         {
+            public enum PlotType { Bar, Point, Line };
+
             public Settings()
-                : this(Color.Black)
             { }
 
-            public Settings(Color color, bool showDir = false, bool showLabels = false)
+            public Settings(Color color)
+            {
+                this.color = color;
+            }
+
+            public Settings(Color color, bool showDir, bool showLabels)
             {
                 this.color = color;
                 this.showDir = showDir;
                 this.showLabels = showLabels;
             }
 
-            public Color color;
-            public bool showDir;
-            public bool showLabels;
+            public Settings(Color color, PlotType plotType)
+            {
+                this.color = color;
+                this.plotType = plotType;
+            }
+
+            public Color color = Color.Black;
+            public bool showDir = false;
+            public bool showLabels = false;
+            public PlotType plotType = PlotType.Bar;
         }
 
         // -------------------------------------------------
@@ -576,6 +589,16 @@ namespace GraphicalDebugging
 
             public void Draw(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
             {
+                if (settings.plotType == Settings.PlotType.Point)
+                    DrawPoints(box, graphics, settings, traits);
+                else if (settings.plotType == Settings.PlotType.Line)
+                    DrawLines(box, graphics, settings, traits);
+                else
+                    DrawBars(box, graphics, settings, traits);
+            }
+
+            public void DrawBars(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
+            {
                 // NOTE: traits == null
                 bool fill = true;
 
@@ -591,7 +614,7 @@ namespace GraphicalDebugging
                 if (drawLines)
                 {
                     float penWidth = dx < 2 ? 1 : 2;
-                    Pen pen = new Pen(Color.FromArgb(255, settings.color), penWidth);
+                    Pen pen = new Pen(settings.color, penWidth);
                     foreach (double v in values)
                     {
                         float x = cs.ConvertX(i);
@@ -621,6 +644,85 @@ namespace GraphicalDebugging
                             drawer.DrawLine(x - xl, t, x + xl, t);
                         }
                         i += 1;
+                    }
+                }
+            }
+
+            public void DrawPoints(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
+            {
+                // NOTE: traits == null
+                bool fill = true;
+
+                LocalCS cs = new LocalCS(box, graphics, fill);
+
+                float x0 = cs.ConvertX(0);
+                float x1 = cs.ConvertX(1);
+                float dx = Math.Abs(x1 - x0);
+                bool drawPts = dx < 4;
+
+                double i = 0;
+                if (drawPts)
+                {
+                    Pen pen = new Pen(settings.color, 2);
+                    foreach (double v in values)
+                    {
+                        float x = cs.ConvertX(i);
+                        float y = cs.ConvertY(v);
+                        graphics.DrawLine(pen, x, y - 0.5f, x, y + 0.5f);
+                        i += 1;
+                    }
+                }
+                else
+                {
+                    Drawer drawer = new Drawer(graphics, settings.color);
+                    foreach (double v in values)
+                    {
+                        float x = cs.ConvertX(i);
+                        float y = cs.ConvertY(v);
+                        drawer.DrawPoint(x, y);
+                        i += 1;
+                    }
+                }
+            }
+
+            public void DrawLines(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
+            {
+                // NOTE: traits == null
+                bool fill = true;
+
+                LocalCS cs = new LocalCS(box, graphics, fill);
+
+                float x0 = cs.ConvertX(0);
+                float x1 = cs.ConvertX(1);
+                float dx = Math.Abs(x1 - x0);
+                float penWidth = dx < 2 ? 1 : 2;
+
+                Pen pen = new Pen(settings.color, penWidth);
+
+                if (values.Count < 1)
+                {
+                    return;
+                }
+                else if (values.Count == 1)
+                {
+                    float x = cs.ConvertX(0);
+                    float y = cs.ConvertY(values[0]);
+                    graphics.DrawLine(pen, x, y - 0.5f, x, y + 0.5f);
+                }
+                else
+                {
+                    double d = 0;
+                    float xp = cs.ConvertX(d);
+                    float yp = cs.ConvertY(values[0]);
+                    d += 1;
+                    for (int i = 1; i < values.Count; ++i)
+                    {
+                        float x = cs.ConvertX(d);
+                        float y = cs.ConvertY(values[i]);
+                        graphics.DrawLine(pen, xp, yp, x, y);
+                        d += 1;
+                        xp = x;
+                        yp = y;
                     }
                 }
             }
