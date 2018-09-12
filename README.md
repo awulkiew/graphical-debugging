@@ -7,8 +7,9 @@ This extension allows to display graphical representation of variables during de
 Currently it supports Boost.Geometry and Boost.Polygon models, Boost.Variant and STL/Boost containers of values. It contains:
 
 * Debugging visualizers for Boost.Array, Boost.Container, Boost.Geometry, Boost.MPL, Boost.Polygon, Boost.Tuple and Boost.Variant
-* GraphicalWatch tool window displaying graphical representation of variables, e.g. Boost.Geometry models or vectors of values
-* GeometryWatch tool window displaying geometries in a common coordinate system, e.g. Boost.Geometry or Boost.Polygon polygons
+* Geometry Watch tool window displaying geometries in a common coordinate system, e.g. Boost.Geometry or Boost.Polygon polygons
+* Graphical Watch tool window displaying graphical representation of variables, e.g. Boost.Geometry models or vectors of values
+* Plot Watch tool window displaying plot representation of variables, e.g. vector of doubles
 
 Feel free to report bugs, propose features and create pull requests. Any help is appreciated.
 
@@ -37,8 +38,9 @@ This extension works with Visual Studio 2015 and 2017.
 1. place a breakpoint somewhere in the code
 2. start debugging
 3. after a breakpoint hit enable the tool window from the menu
-   * **View**->**Other Windows**->**GraphicalWatch**
-   * **View**->**Other Windows**->**GeometryWatch**
+   * **View**->**Other Windows**->**Geometry Watch**
+   * **View**->**Other Windows**->**Graphical Watch**
+   * **View**->**Other Windows**->**Plot Watch**
 4. write the name of a variable in an edit box on the list
 
 #### Details
@@ -61,7 +63,35 @@ Supported:
 
 ![Watch](images/natvis_watch.png)
 
-##### GraphicalWatch
+##### Geometry Watch
+
+Watch window displaying graphical representation of variables in a single image. This allows to compare the variables easily.
+
+Supported:
+
+* 2D cartesian geometries
+  * Boost.Geometry: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
+  * Boost.Polygon: point_data, segment_data, rectangle_data, polygon_data, polygon_with_holes_data
+* Non-cartesian geometries (spherical_equatorial and geographic)
+  * Boost.Geometry: point, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
+* Variants of geometries
+  * Boost.Variant
+
+![Geometry Watch](images/geometry_watch.png)
+
+Geometries in spherical_equatorial and geographic coordinate systems are displayed in a way allowing to see what coordinates were used to define a geometry. Note that various libraries may require coordinates in a certain range. This extension tries to display any coordinates as good as possible.
+
+![Geometry Watch Spherical](images/geometry_watch_sph.png)
+
+where
+
+    polygon_sd_t poly_sd{{{-100, 0},{100, 0},{100, 50},{-100, 50},{-100, 0}},
+                         {{-150, 10},{-150, 20},{150, 20},{150, 10},{-150, 10}}};
+    multi_polygon_sd_t mpoly_sd{{{{0, 0},{90, 10},{170, 20},{-170, 30},{-150, 60}},
+                                 {{0, 10},{-15, 20},{-50, 50},{0, 60}}}};
+    multi_point_sd_t mpt_sd{{0, 0},{90, 10},{170, 20},{-170, 30}};
+
+##### Graphical Watch
 
 Watch window displaying graphical representations of variables in a list. Each variable is placed and visualized in a separate row.
 
@@ -79,11 +109,11 @@ Supported:
 * Variants of geometries
   * Boost.Variant
 
-![GraphicalWatch](images/graphical_watch.png)
+![Graphical Watch](images/graphical_watch.png)
 
 Geometries in spherical_equatorial and geographic coordinate systems are displayed in a convenient, compact way.
 
-![GraphicalWatchSph](images/graphical_watch_sph.png)
+![Graphical Watch Spherical](images/graphical_watch_sph.png)
 
 where
 
@@ -93,41 +123,24 @@ where
                                  {{0, 10},{-15, 20},{-50, 50},{0, 60}}}};
     multi_point_sd_t mpt_sd{{0, 0},{90, 10},{170, 20},{-170, 30}};
 
-##### GeometryWatch
+##### Plot Watch
 
-Watch window displaying graphical representation of variables in a single image. This allows to compare the variables easily.
+Watch window displaying plot representation of variables in a single image.
 
-Supported:
+Supported containers of values convertible to double:
+  * STL: array, vector, deque, list
+  * Boost.Array: array
+  * Boost.Container: vector, static_vector
 
-* 2D cartesian geometries
-  * Boost.Geometry: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
-  * Boost.Polygon: point_data, segment_data, rectangle_data, polygon_data, polygon_with_holes_data
-* Non-cartesian geometries (spherical_equatorial and geographic)
-  * Boost.Geometry: point, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
-* Variants of geometries
-  * Boost.Variant
+![Plot Watch](images/plot_watch.png)
+	
+##### Zooming/cropping
 
-![GeometryWatch](images/geometry_watch.png)
+Geometry Watch and Plot Watch has zooming/cropping feature.
 
-Geometries in spherical_equatorial and geographic coordinate systems are displayed in a way allowing to see what coordinates were used to define a geometry. Note that various libraries may require coordinates in a certain range. This extension tries to display any coordinates as good as possible.
+![Geometry Watch Zoom](images/geometry_watch_zoom.png)
 
-![GeometryWatchSph](images/geometry_watch_sph.png)
-
-where
-
-    polygon_sd_t poly_sd{{{-100, 0},{100, 0},{100, 50},{-100, 50},{-100, 0}},
-                         {{-150, 10},{-150, 20},{150, 20},{150, 10},{-150, 10}}};
-    multi_polygon_sd_t mpoly_sd{{{{0, 0},{90, 10},{170, 20},{-170, 30},{-150, 60}},
-                                 {{0, 10},{-15, 20},{-50, 50},{0, 60}}}};
-    multi_point_sd_t mpt_sd{{0, 0},{90, 10},{170, 20},{-170, 30}};
-
-###### Zooming/cropping
-
-GeometryWatch has zooming/cropping feature.
-
-![GeometryWatchZoom](images/geometry_watch_zoom.png)
-
-![GeometryWatchZoomed](images/geometry_watch_zoomed.png)
+![Geometry Watch Zoomed](images/geometry_watch_zoomed.png)
 	
 ##### Themes
 
