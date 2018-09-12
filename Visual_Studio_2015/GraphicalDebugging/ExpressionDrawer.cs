@@ -587,9 +587,7 @@ namespace GraphicalDebugging
                 float dx = Math.Abs(x1 - x0);
                 bool drawLines = dx < 4;
 
-                double width = box.Dim(0);
-                double step = width / values.Count;
-                double i = step * 0.5;
+                double i = 0;
                 if (drawLines)
                 {
                     float penWidth = dx < 2 ? 1 : 2;
@@ -599,7 +597,7 @@ namespace GraphicalDebugging
                         float x = cs.ConvertX(i);
                         float y = cs.ConvertY(v);
                         graphics.DrawLine(pen, x, y0, x, y);
-                        i += step;
+                        i += 1;
                     }
                 }
                 else
@@ -611,8 +609,8 @@ namespace GraphicalDebugging
                         float y = cs.ConvertY(v);
                         float t = Math.Min(y0, y);
                         float h = Math.Abs(y - y0);
-                        float xl = dx / 2.5f;
-                        float xw = dx * 2 / 2.5f;
+                        float xl = dx / 3.0f;
+                        float xw = dx * 2.0f / 3.0f;
                         if (h >= 2)
                         {
                             drawer.DrawRectangle(x - xl, t, xw, h);
@@ -622,7 +620,7 @@ namespace GraphicalDebugging
                         {
                             drawer.DrawLine(x - xl, t, x + xl, t);
                         }
-                        i += step;
+                        i += 1;
                     }
                 }
             }
