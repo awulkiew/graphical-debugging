@@ -277,9 +277,15 @@ namespace GraphicalDebugging
             if (m_debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
             {
                 PlotWatchOptionPage optionPage = Util.GetDialogPage<PlotWatchOptionPage>();
-                PlotWatchPlotType plotType = optionPage != null
-                                           ? optionPage.PlotType
-                                           : PlotWatchPlotType.Bar;
+                bool enableBars = true;
+                bool enableLines = false;
+                bool enablePoints = false;
+                if (optionPage != null && (optionPage.EnableBars || optionPage.EnableLines || optionPage.EnablePoints))
+                {
+                    enableBars = optionPage.EnableBars;
+                    enableLines = optionPage.EnableLines;
+                    enablePoints = optionPage.EnablePoints;
+                }
                 
                 string[] names = new string[Plots.Count];
                 ExpressionDrawer.Settings[] settings = new ExpressionDrawer.Settings[Plots.Count];
@@ -312,7 +318,7 @@ namespace GraphicalDebugging
                                 color = Util.ConvertColor(m_colors[colorId]);
                             }
 
-                            settings[index] = new ExpressionDrawer.Settings(Util.ConvertColor(color), plotType);
+                            settings[index] = new ExpressionDrawer.Settings(Util.ConvertColor(color), enableBars, enableLines, enablePoints);
 
                             tryDrawing = true;
                         }

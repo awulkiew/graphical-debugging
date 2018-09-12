@@ -48,16 +48,20 @@ namespace GraphicalDebugging
                 this.showLabels = showLabels;
             }
 
-            public Settings(Color color, PlotWatchPlotType plotType)
+            public Settings(Color color, bool enableBars, bool enableLines, bool enablePoints)
             {
                 this.color = color;
-                this.plotType = plotType;
+                this.enableBars = enableBars;
+                this.enableLines = enableLines;
+                this.enablePoints = enablePoints;
             }
 
             public Color color = Color.Black;
             public bool showDir = false;
             public bool showLabels = false;
-            public PlotWatchPlotType plotType = PlotWatchPlotType.Bar;
+            public bool enableBars = false;
+            public bool enableLines = false;
+            public bool enablePoints = false;
         }
 
         // -------------------------------------------------
@@ -587,12 +591,14 @@ namespace GraphicalDebugging
 
             public void Draw(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
             {
-                if (settings.plotType == PlotWatchPlotType.Point)
-                    DrawPoints(box, graphics, settings, traits);
-                else if (settings.plotType == PlotWatchPlotType.Line)
-                    DrawLines(box, graphics, settings, traits);
-                else
+                if (settings.enableBars)
                     DrawBars(box, graphics, settings, traits);
+
+                if (settings.enableLines)
+                    DrawLines(box, graphics, settings, traits);
+
+                if (settings.enablePoints)
+                    DrawPoints(box, graphics, settings, traits);
             }
 
             public void DrawBars(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
@@ -694,18 +700,17 @@ namespace GraphicalDebugging
                 float x1 = cs.ConvertX(1);
                 float dx = Math.Abs(x1 - x0);
                 float penWidth = dx < 2 ? 1 : 2;
-
-                Pen pen = new Pen(settings.color, penWidth);
-
+                
                 if (values.Count < 1)
-                {
                     return;
-                }
-                else if (values.Count == 1)
+
+                Drawer drawer = new Drawer(graphics, settings.color);
+
+                if (values.Count == 1)
                 {
                     float x = cs.ConvertX(0);
                     float y = cs.ConvertY(values[0]);
-                    graphics.DrawLine(pen, x, y - 0.5f, x, y + 0.5f);
+                    drawer.DrawLine(x, y - 0.5f, x, y + 0.5f);
                 }
                 else
                 {
@@ -717,7 +722,7 @@ namespace GraphicalDebugging
                     {
                         float x = cs.ConvertX(d);
                         float y = cs.ConvertY(values[i]);
-                        graphics.DrawLine(pen, xp, yp, x, y);
+                        drawer.DrawLine(xp, yp, x, y);
                         d += 1;
                         xp = x;
                         yp = y;
