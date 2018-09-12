@@ -581,19 +581,49 @@ namespace GraphicalDebugging
 
                 LocalCS cs = new LocalCS(box, graphics, fill);
 
-                Pen pen = new Pen(Color.FromArgb(112, settings.color), 1);
-
                 float y0 = cs.ConvertY(0);
+                float x0 = cs.ConvertX(0);
+                float x1 = cs.ConvertX(1);
+                float dx = Math.Abs(x1 - x0);
+                bool drawLines = dx < 4;
 
                 double width = box.Dim(0);
                 double step = width / values.Count;
                 double i = step * 0.5;
-                foreach (double v in values)
+                if (drawLines)
                 {
-                    float x = cs.ConvertX(i);
-                    float y = cs.ConvertY(v);
-                    graphics.DrawLine(pen, x, y0, x, y);
-                    i += step;
+                    float penWidth = dx < 2 ? 1 : 2;
+                    Pen pen = new Pen(Color.FromArgb(255, settings.color), penWidth);
+                    foreach (double v in values)
+                    {
+                        float x = cs.ConvertX(i);
+                        float y = cs.ConvertY(v);
+                        graphics.DrawLine(pen, x, y0, x, y);
+                        i += step;
+                    }
+                }
+                else
+                {
+                    Drawer drawer = new Drawer(graphics, settings.color);
+                    foreach (double v in values)
+                    {
+                        float x = cs.ConvertX(i);
+                        float y = cs.ConvertY(v);
+                        float t = Math.Min(y0, y);
+                        float h = Math.Abs(y - y0);
+                        float xl = dx / 2.5f;
+                        float xw = dx * 2 / 2.5f;
+                        if (h >= 2)
+                        {
+                            drawer.DrawRectangle(x - xl, t, xw, h);
+                            drawer.FillRectangle(x - xl, t, xw, h);
+                        }
+                        else
+                        {
+                            drawer.DrawLine(x - xl, t, x + xl, t);
+                        }
+                        i += step;
+                    }
                 }
             }
 
@@ -610,9 +640,7 @@ namespace GraphicalDebugging
                     Geometry.Expand(box, new Point(0.0, 0.0));
 
                 for (int i = 0; i < values.Count; ++i)
-                {
                     Geometry.Expand(box, new Point(i, values[i]));
-                }
 
                 return box;
             }
