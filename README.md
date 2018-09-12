@@ -134,7 +134,7 @@ Supported containers of values convertible to double:
 
 ![Plot Watch](images/plot_watch.png)
 
-To change the type of plot go to Tools->Options...->Graphical Debugging->Plot Watch
+To change the type of plot go to **Tools**->**Options**->**Graphical Debugging**->**Plot Watch**
 
 ![Plot Watch Line Point](images/plot_watch_line_point.png)
 	
