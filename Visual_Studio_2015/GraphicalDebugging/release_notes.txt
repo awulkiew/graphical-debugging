@@ -1,15 +1,25 @@
+version 0.14
+
+additions:
+- options for Geometry Watch and Graphical Watch
+- Plot Watch allows to combine plot types
+- context menu for images in Graphical Watch
+
+bugfixes:
+- fixed transparency of lines for line plot
+
 version 0.13
 
 additions:
-- Three plot types for Plot Watch settable in Tools->Options
+- three plot types for Plot Watch settable in Tools->Options
 
 version 0.12
 
 additions:
 - PlotWatch tool drawing containers of 1d values as bar charts.
-- drawing of axes in GraphicalView
+- drawing of axes in Graphical Watch
 
-bugfixes
+bugfixes:
 - fixed displaying 0 value on scales
 - not all values stored in a container were drawn in GraphicalView
 
