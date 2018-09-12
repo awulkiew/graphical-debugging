@@ -950,8 +950,22 @@ namespace GraphicalDebugging
                     {
                         throw new Exception("This coordinate system is not yet supported.");
                     }
-                    
-                    Settings settings = new Settings(d.Drawable.DefaultColor(colors));
+
+                    // TODO:
+                    // This is not consistent with the other Draw() getting settings from the caller
+                    // Besides ExpressionDrawer should not deal with any Watch or Options
+                    GraphicalWatchOptionPage optionPage = Util.GetDialogPage<GraphicalWatchOptionPage>();
+                    bool enableBars = true;
+                    bool enableLines = false;
+                    bool enablePoints = false;
+                    if (optionPage != null && (optionPage.EnableBars || optionPage.EnableLines || optionPage.EnablePoints))
+                    {
+                        enableBars = optionPage.EnableBars;
+                        enableLines = optionPage.EnableLines;
+                        enablePoints = optionPage.EnablePoints;
+                    }
+
+                    Settings settings = new Settings(d.Drawable.DefaultColor(colors), enableBars, enableLines, enablePoints);
                     Geometry.Box aabb = d.Drawable.Aabb(d.Traits, true);
                     Geometry.Unit unit = (d.Traits != null) ? d.Traits.Unit : Geometry.Unit.None;
                     bool fill = (d.Traits == null);

@@ -74,6 +74,9 @@
     <Compile Include="GraphicalWatchControl.xaml.cs">
       <DependentUpon>GraphicalWatchControl.xaml</DependentUpon>
     </Compile>
+    <Compile Include="GraphicalWatchOptionPage.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="GraphicalWatchPackage.cs" />
     <Compile Include="PlotWatch.cs" />
     <Compile Include="PlotWatchCommand.cs" />
