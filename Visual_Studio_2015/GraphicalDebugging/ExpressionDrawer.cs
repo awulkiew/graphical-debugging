@@ -33,8 +33,6 @@ namespace GraphicalDebugging
 
         public class Settings
         {
-            public enum PlotType { Bar, Point, Line };
-
             public Settings()
             { }
 
@@ -50,7 +48,7 @@ namespace GraphicalDebugging
                 this.showLabels = showLabels;
             }
 
-            public Settings(Color color, PlotType plotType)
+            public Settings(Color color, PlotWatchPlotType plotType)
             {
                 this.color = color;
                 this.plotType = plotType;
@@ -59,7 +57,7 @@ namespace GraphicalDebugging
             public Color color = Color.Black;
             public bool showDir = false;
             public bool showLabels = false;
-            public PlotType plotType = PlotType.Bar;
+            public PlotWatchPlotType plotType = PlotWatchPlotType.Bar;
         }
 
         // -------------------------------------------------
@@ -589,9 +587,9 @@ namespace GraphicalDebugging
 
             public void Draw(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
             {
-                if (settings.plotType == Settings.PlotType.Point)
+                if (settings.plotType == PlotWatchPlotType.Point)
                     DrawPoints(box, graphics, settings, traits);
-                else if (settings.plotType == Settings.PlotType.Line)
+                else if (settings.plotType == PlotWatchPlotType.Line)
                     DrawLines(box, graphics, settings, traits);
                 else
                     DrawBars(box, graphics, settings, traits);

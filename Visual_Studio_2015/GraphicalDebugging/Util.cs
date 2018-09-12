@@ -4,6 +4,11 @@
 // </copyright>
 //------------------------------------------------------------------------------
 
+using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
+
+using System;
+
 using System.Collections.Generic;
 
 using System.Drawing;
@@ -142,6 +147,40 @@ namespace GraphicalDebugging
             }
 
             return result;
+        }
+
+        private class MainPackage
+        {
+            private static Guid packageGuid = new Guid(GraphicalWatchPackage.PackageGuidString);
+
+            public MainPackage()
+            {
+                IVsPackage ipackage = null;
+                int res = ((IVsShell)ServiceProvider.GlobalProvider.GetService(typeof(IVsShell))).IsPackageLoaded(packageGuid, out ipackage);
+                if (res == 0 && ipackage != null)
+                    package = (GraphicalWatchPackage)ipackage;
+            }
+
+            public GraphicalWatchPackage Get() { return package; }
+
+            private GraphicalWatchPackage package = null;
+        }
+
+        private static MainPackage mainPackage = new MainPackage();
+
+        public static GraphicalWatchPackage GetPackage()
+        {
+            return mainPackage.Get();
+        }
+
+        public static T GetDialogPage<T>()
+            where T : DialogPage
+        {
+            GraphicalWatchPackage package = GetPackage();
+            if (package == null)
+                return default(T);
+
+            return (T)package.GetDialogPage(typeof(T));
         }
     }
 }

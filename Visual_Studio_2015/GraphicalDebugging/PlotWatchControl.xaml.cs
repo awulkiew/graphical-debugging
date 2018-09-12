@@ -276,6 +276,11 @@ namespace GraphicalDebugging
             bool imageEmpty = true;
             if (m_debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
             {
+                PlotWatchOptionPage optionPage = Util.GetDialogPage<PlotWatchOptionPage>();
+                PlotWatchPlotType plotType = optionPage != null
+                                           ? optionPage.PlotType
+                                           : PlotWatchPlotType.Bar;
+                
                 string[] names = new string[Plots.Count];
                 ExpressionDrawer.Settings[] settings = new ExpressionDrawer.Settings[Plots.Count];
                 bool tryDrawing = false;
@@ -307,7 +312,7 @@ namespace GraphicalDebugging
                                 color = Util.ConvertColor(m_colors[colorId]);
                             }
 
-                            settings[index] = new ExpressionDrawer.Settings(Util.ConvertColor(color), true, true);
+                            settings[index] = new ExpressionDrawer.Settings(Util.ConvertColor(color), plotType);
 
                             tryDrawing = true;
                         }
@@ -355,6 +360,8 @@ namespace GraphicalDebugging
             MenuItem mi2 = new MenuItem();
             mi2.Header = "Reset View";
             mi2.Click += MenuItem_ResetZoom;
+            if (imageEmpty)
+                mi2.IsEnabled = false;
             imageGrid.ContextMenu.Items.Add(mi2);
         }
 
@@ -368,10 +375,9 @@ namespace GraphicalDebugging
 
         private void MenuItem_ResetZoom(object sender, RoutedEventArgs e)
         {
-            bool update = m_zoomBox.IsZoomed();
+            // Trust the user, always update
             m_zoomBox.Reset();
-            if (update)
-                UpdateItems();
+            UpdateItems();
         }
 
         private void imageGrid_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)

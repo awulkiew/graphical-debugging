@@ -43,6 +43,7 @@ namespace GraphicalDebugging
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "pkgdef, VS and vsixmanifest are valid VS terms")]
     [ProvideToolWindow(typeof(GeometryWatch))]
     [ProvideToolWindow(typeof(PlotWatch))]
+    [ProvideOptionPage(typeof(PlotWatchOptionPage), "Graphical Debugging", "Plot Watch", 0, 0, true)]
     public sealed class GraphicalWatchPackage : Package
     {
         /// <summary>
