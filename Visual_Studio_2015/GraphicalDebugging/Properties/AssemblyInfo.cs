@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("GraphicalDebugging")]
+[assembly: AssemblyTitle("Graphical Debugging")]
 [assembly: AssemblyDescription("Visual Studio 2015-2017 Graphical Debugging Tools")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("GraphicalDebugging")]
+[assembly: AssemblyProduct("Graphical Debugging")]
 [assembly: AssemblyCopyright("Adam Wulkiewicz")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
