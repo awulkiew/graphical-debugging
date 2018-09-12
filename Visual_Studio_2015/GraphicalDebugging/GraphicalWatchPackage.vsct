@@ -46,21 +46,21 @@
         <Parent guid="guidSHLMainMenu" id="IDG_VS_WNDO_OTRWNDWS1" />
         <Icon guid="guidGeometryIcon" id="geometryIcon" />
         <Strings>
-          <ButtonText>GeometryWatch</ButtonText>
+          <ButtonText>Geometry Watch</ButtonText>
         </Strings>
       </Button>
       <Button guid="guidGraphicalWatchPackageCmdSet" id="cmdidGraphicalWatchCommand" priority="0x0100" type="Button">
         <Parent guid="guidSHLMainMenu" id="IDG_VS_WNDO_OTRWNDWS1" />
         <Icon guid="guidGraphicalIcon" id="graphicalIcon" />
         <Strings>
-          <ButtonText>GraphicalWatch</ButtonText>
+          <ButtonText>Graphical Watch</ButtonText>
         </Strings>
       </Button>
       <Button guid="guidGraphicalWatchPackageCmdSet" id="cmdidPlotWatchCommand" priority="0x0100" type="Button">
         <Parent guid="guidSHLMainMenu" id="IDG_VS_WNDO_OTRWNDWS1" />
         <Icon guid="guidPlotIcon" id="plotIcon" />
         <Strings>
-          <ButtonText>PlotWatch</ButtonText>
+          <ButtonText>Plot Watch</ButtonText>
         </Strings>
       </Button>
     </Buttons>
