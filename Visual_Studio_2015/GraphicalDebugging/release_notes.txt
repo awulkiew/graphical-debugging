@@ -1,3 +1,8 @@
+version 0.13
+
+additions:
+- Three plot types for Plot Watch settable in Tools->Options
+
 version 0.12
 
 additions:
