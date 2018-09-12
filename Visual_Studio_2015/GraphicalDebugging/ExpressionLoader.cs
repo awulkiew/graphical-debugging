@@ -1,4 +1,9 @@
-﻿
+﻿//------------------------------------------------------------------------------
+// <copyright file="ExpressionLoader.cs">
+//     Copyright (c) Adam Wulkiewicz.
+// </copyright>
+//------------------------------------------------------------------------------
+
 using EnvDTE;
 using EnvDTE80;
 using Microsoft.VisualStudio.Shell;
