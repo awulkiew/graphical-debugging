@@ -43,6 +43,7 @@ namespace GraphicalDebugging
     [ProvideToolWindow(typeof(GeometryWatch))]
     [ProvideToolWindow(typeof(GraphicalWatch))]
     [ProvideToolWindow(typeof(PlotWatch))]
+    [ProvideOptionPage(typeof(GeometryWatchOptionPage), "Graphical Debugging", "Geometry Watch", 0, 0, true)]
     [ProvideOptionPage(typeof(GraphicalWatchOptionPage), "Graphical Debugging", "Graphical Watch", 0, 0, true)]
     [ProvideOptionPage(typeof(PlotWatchOptionPage), "Graphical Debugging", "Plot Watch", 0, 0, true)]
     public sealed class GraphicalWatchPackage : Package
