@@ -5,7 +5,8 @@ additions:
 - drawing of axes in GraphicalView
 
 bugfixes
-- drawing of all values stored in container in GraphicalView
+- fixed displaying 0 value on scales
+- not all values stored in a container were drawn in GraphicalView
 
 version 0.11
 
