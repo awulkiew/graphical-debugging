@@ -1,3 +1,12 @@
+version 0.12
+
+additions:
+- PlotWatch tool drawing containers of 1d values as bar charts.
+- drawing of axes in GraphicalView
+
+bugfixes
+- drawing of all values stored in container in GraphicalView
+
 version 0.11
 
 additions:
