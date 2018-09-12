@@ -125,7 +125,7 @@ where
 
 ##### Plot Watch
 
-Watch window displaying plot representation of variables in a single image.
+Watch window displaying plot representation of variables in a single image. Type of plot can be set in **Options**.
 
 Supported containers of values convertible to double:
   * STL: array, vector, deque, list
@@ -134,10 +134,6 @@ Supported containers of values convertible to double:
 
 ![Plot Watch](images/plot_watch.png)
 
-To change the type of plot go to **Tools**->**Options**->**Graphical Debugging**->**Plot Watch**
-
-![Plot Watch Line Point](images/plot_watch_line_point.png)
-	
 ##### Zooming/cropping
 
 Geometry Watch and Plot Watch has zooming/cropping feature.
@@ -145,7 +141,13 @@ Geometry Watch and Plot Watch has zooming/cropping feature.
 ![Geometry Watch Zoom](images/geometry_watch_zoom.png)
 
 ![Geometry Watch Zoomed](images/geometry_watch_zoomed.png)
-	
+
+##### Options
+
+Options for each Watch can be found under **Tools**->**Options**->**Graphical Debugging**
+
+![Plot Watch Various](images/plot_watch_various.png)
+
 ##### Themes
 
 The extension supports Visual Studio themes. The visualization of variables may be drawn in two versions, dark or light depending on the brightness of the theme background color.
