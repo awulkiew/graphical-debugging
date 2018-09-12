@@ -79,7 +79,15 @@
                 <DataGridTemplateColumn Header="Image" Width="100">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <Image Name="GridImage" Source="{Binding BmpImg}" Width="100" Height="100"/>
+                            <Image Name="GridImage" Source="{Binding BmpImg}" Width="100" Height="100">
+                                <Image.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Copy" Click="imageItem_Copy"/>
+                                        <Separator />
+                                        <MenuItem Header="Reset View" Click="imageItem_Reset"/>
+                                    </ContextMenu>
+                                </Image.ContextMenu>
+                            </Image>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>

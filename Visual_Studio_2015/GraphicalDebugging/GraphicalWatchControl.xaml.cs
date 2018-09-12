@@ -211,5 +211,24 @@ namespace GraphicalDebugging
             // set new row
             ResetAt(new VariableItem(variable.Name, bmp, type), index);
         }
+
+        private void imageItem_Copy(object sender, RoutedEventArgs e)
+        {
+            VariableItem v = (VariableItem)((MenuItem)sender).DataContext;
+            if (v.BmpImg != null)
+            {
+                Clipboard.SetImage(v.BmpImg);
+            }
+        }
+
+        private void imageItem_Reset(object sender, RoutedEventArgs e)
+        {
+            VariableItem v = (VariableItem)((MenuItem)sender).DataContext;
+            if (v.BmpImg != null)
+            {
+                int i = dataGrid.Items.IndexOf(v);
+                UpdateItem(i);
+            }
+        }
     }
 }
