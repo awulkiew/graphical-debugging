@@ -115,8 +115,8 @@ namespace GraphicalDebugging
 
                 double width = Dim(0);
                 double height = Dim(1);
-                float rw = cs.ConvertDimension(Math.Abs(width));
-                float rh = cs.ConvertDimension(Math.Abs(height));
+                float rw = cs.ConvertDimensionX(Math.Abs(width));
+                float rh = cs.ConvertDimensionY(Math.Abs(height));
 
                 if (traits.Unit == Geometry.Unit.None)
                 {
@@ -186,28 +186,30 @@ namespace GraphicalDebugging
                 LocalCS cs = new LocalCS(box, graphics);
                 Drawer drawer = new Drawer(graphics, settings.color);
                 
-                float r = cs.ConvertDimension(Radius);
+                float rx = cs.ConvertDimensionX(Radius);
+                float ry = cs.ConvertDimensionY(Radius);
 
-                if (r < 0)
+                if (rx < 0 || ry < 0)
                     return;
 
                 if (traits.Unit == Geometry.Unit.None)
                 {
                     PointF c = cs.Convert(Center);
-                    if (r == 0)
+                    if (rx == 0 || ry == 0)
                         drawer.DrawPoint(c.X, c.Y);
                     else
                     {
-                        float x = c.X - r;
-                        float y = c.Y - r;
-                        float d = r * 2;
-                        drawer.DrawEllipse(x, y, d, d);
-                        drawer.FillEllipse(x, y, d, d);
+                        float x = c.X - rx;
+                        float y = c.Y - ry;
+                        float w = rx * 2;
+                        float h = ry * 2;
+                        drawer.DrawEllipse(x, y, w, h);
+                        drawer.FillEllipse(x, y, w, h);
                     }
                 }
                 else // Radian, Degree
                 {
-                    if (r == 0)
+                    if (rx == 0 || ry == 0)
                         drawer.DrawPeriodicPoint(cs, Center, box, traits.Unit);
                     else
                     {
@@ -574,15 +576,14 @@ namespace GraphicalDebugging
 
             public void Draw(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
             {
-                LocalCS cs = new LocalCS(box, graphics);
+                // NOTE: traits == null
+                bool fill = true;
 
-                Pen axis_pen = new Pen(settings.color, 2);
+                LocalCS cs = new LocalCS(box, graphics, fill);
+
                 Pen pen = new Pen(Color.FromArgb(112, settings.color), 1);
 
-                float ax0 = cs.ConvertX(box.Min[0]);
-                float ax1 = cs.ConvertX(box.Max[0]);
-                float ay = cs.ConvertY(0);
-                graphics.DrawLine(axis_pen, ax0, ay, ax1, ay);
+                float y0 = cs.ConvertY(0);
 
                 double width = box.Dim(0);
                 double step = width / values.Count;
@@ -591,7 +592,7 @@ namespace GraphicalDebugging
                 {
                     float x = cs.ConvertX(i);
                     float y = cs.ConvertY(v);
-                    graphics.DrawLine(pen, x, ay, x, y);
+                    graphics.DrawLine(pen, x, y0, x, y);
                     i += step;
                 }
             }
@@ -611,23 +612,6 @@ namespace GraphicalDebugging
                 for (int i = 0; i < values.Count; ++i)
                 {
                     Geometry.Expand(box, new Point(i, values[i]));
-                    ++i;
-                }
-
-                // make square, scaling Y
-                if (values.Count > 0)
-                {
-                    double height = box.Dim(1);
-                    double threshold = float.Epsilon;
-                    if (height > threshold)
-                    {
-                        box.Max[0] = box.Min[0] + height;
-                    }
-                    else
-                    {
-                        box.Max[0] = box.Min[0] + threshold;
-                        box.Max[1] = box.Min[1] + threshold;
-                    }
                 }
 
                 return box;
@@ -838,6 +822,9 @@ namespace GraphicalDebugging
                     
                     Settings settings = new Settings(d.Drawable.DefaultColor(colors));
                     Geometry.Box aabb = d.Drawable.Aabb(d.Traits, true);
+                    Geometry.Unit unit = (d.Traits != null) ? d.Traits.Unit : Geometry.Unit.None;
+                    bool fill = (d.Traits == null);
+                    Drawer.DrawAxes(graphics, aabb, unit, colors, fill);
                     d.Drawable.Draw(aabb, graphics, settings, d.Traits);
                     return true;
                 }
@@ -908,15 +895,17 @@ namespace GraphicalDebugging
                         throw new Exception("Multiple units detected.");
                     }
 
-                    Geometry.Traits traits = csystems.Count > 0
+                    Geometry.Traits traits = (dimensions.Count > 0 && csystems.Count > 0 && units.Count > 0)
                                            ? new Geometry.Traits(dimensions.Max(), csystems.First(), units.First())
                                            : null;
+
+                    bool fill = (traits == null);
 
                     // Fragment of the box
                     if (zoomBox.IsZoomed())
                     {
                         // window coordinates of the box
-                        LocalCS cs = new LocalCS(box, graphics);
+                        LocalCS cs = new LocalCS(box, graphics, fill);
                         box = cs.BoxFromZoomBox(zoomBox);
 
                         // TODO: With current approach changing the original box (resize, enlarge, etc.)
@@ -925,7 +914,8 @@ namespace GraphicalDebugging
 
                     // Aabb
                     Geometry.Unit unit = traits != null ? traits.Unit : Geometry.Unit.None;
-                    Drawer.DrawAabb(graphics, box, unit, colors);
+                    Drawer.DrawAxes(graphics, box, unit, colors, fill);
+                    Drawer.DrawScales(graphics, box, colors, fill);
 
                     if (traits != null)
                     {

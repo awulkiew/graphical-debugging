@@ -15,7 +15,7 @@ namespace GraphicalDebugging
 {
     class Util
     {
-        private Util() {}
+        private Util() { }
 
         public class Pair<F, S>
         {

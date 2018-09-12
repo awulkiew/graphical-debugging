@@ -265,7 +265,7 @@ namespace GraphicalDebugging
                     return;
 
                 double pi = Geometry.HalfAngle(unit);
-                periodf = cs.ConvertDimension(2 * pi);
+                periodf = cs.ConvertDimensionX(2 * pi);
 
                 xs_orig = new float[points.Count];
                 points_rel = new PointF[points.Count];
@@ -337,7 +337,7 @@ namespace GraphicalDebugging
             public PeriodicDrawableBox(LocalCS cs, Geometry.IRandomAccessRange<Geometry.Point> points, Geometry.Box box, Geometry.Unit unit)
             {
                 double pi = Geometry.HalfAngle(unit);
-                periodf = cs.ConvertDimension(2 * pi);
+                periodf = cs.ConvertDimensionX(2 * pi);
 
                 xs_orig = new float[points.Count];
                 points_rel = new PointF[points.Count];
@@ -380,10 +380,10 @@ namespace GraphicalDebugging
             public PeriodicDrawableNSphere(LocalCS cs, Geometry.NSphere nsphere, Geometry.Box box, Geometry.Unit unit)
             {
                 double pi = Geometry.HalfAngle(unit);
-                periodf = cs.ConvertDimension(2 * pi);
+                periodf = cs.ConvertDimensionX(2 * pi);
 
                 c_rel = cs.Convert(nsphere.Center);
-                r = cs.ConvertDimension(nsphere.Radius);
+                r = cs.ConvertDimensionX(nsphere.Radius);
 
                 minf = c_rel.X - r;
                 maxf = c_rel.X + r;
@@ -557,12 +557,12 @@ namespace GraphicalDebugging
             graphics.DrawString(message, font, brush, rect, drawFormat);
         }
 
-        public static bool DrawAabb(Graphics graphics, Geometry.Box box, Geometry.Unit unit, Colors colors)
+        public static bool DrawAxes(Graphics graphics, Geometry.Box box, Geometry.Unit unit, Colors colors, bool fill)
         {
             if (!box.IsValid())
                 return false;
 
-            LocalCS cs = new LocalCS(box, graphics);
+            LocalCS cs = new LocalCS(box, graphics, fill);
             //Geometry.Box viewBox = cs.ViewBox();
 
             // Axes
@@ -636,47 +636,25 @@ namespace GraphicalDebugging
                 }
             }
 
+            return true;
+        }
+
+        public static bool DrawScales(Graphics graphics, Geometry.Box box, Colors colors, bool fill)
+        {
+            if (!box.IsValid())
+                return false;
+
+            LocalCS cs = new LocalCS(box, graphics, fill);
+            
             // Aabb            
             float min_x = cs.ConvertX(box.Min[0]);
             float min_y = cs.ConvertY(box.Min[1]);
             float max_x = cs.ConvertX(box.Max[0]);
             float max_y = cs.ConvertY(box.Max[1]);
-            
-            Pen penAabb = new Pen(colors.AabbColor, 1);
-            /*
-            graphics.DrawLine(penAabb, min_x - 1, min_y, min_x + 5, min_y);
-            graphics.DrawLine(penAabb, min_x, min_y - 5, min_x, min_y + 1);
-            graphics.DrawLine(penAabb, max_x - 5, max_y, max_x + 1, max_y);
-            graphics.DrawLine(penAabb, max_x, max_y - 1, max_x, max_y + 5);
-            */
-            // Aabb's coordinates
-            float maxHeight = 20.0f;// Math.Min(Math.Max(graphics.VisibleClipBounds.Height - min_y, 0.0f), 20.0f);
-            /*if (maxHeight > 1)
-            {
-                string min_x_str = box.Min[0].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
-                string min_y_str = box.Min[1].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
-                string max_x_str = box.Max[0].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
-                string max_y_str = box.Max[1].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
-                Font font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), maxHeight / 2.0f);
-                StringFormat drawFormat = new StringFormat();
-                drawFormat.Alignment = StringAlignment.Center;
-                string minStr = "(" + min_x_str + " " + min_y_str + ")";
-                string maxStr = "(" + max_x_str + " " + max_y_str + ")";
-                SizeF minSize = graphics.MeasureString(minStr, font);
-                SizeF maxSize = graphics.MeasureString(maxStr, font);
-                RectangleF drawRectMin = new RectangleF(Math.Max(min_x - minSize.Width, 0.0f),
-                                                        Math.Min(min_y + 2, graphics.VisibleClipBounds.Height - maxSize.Height),
-                                                        minSize.Width,
-                                                        minSize.Height);
-                RectangleF drawRectMax = new RectangleF(Math.Min(max_x, graphics.VisibleClipBounds.Width - maxSize.Width),
-                                                        Math.Max(max_y - maxHeight, 0.0f),
-                                                        maxSize.Width,
-                                                        maxSize.Height);
-                SolidBrush brushText = new SolidBrush(colors.TextColor);
-                graphics.DrawString(minStr, font, brushText, drawRectMin, drawFormat);
-                graphics.DrawString(maxStr, font, brushText, drawRectMax, drawFormat);
-            }*/
 
+            Pen penAabb = new Pen(colors.AabbColor, 1);
+            float maxHeight = 20.0f;
+            
             // Scales
             {
                 // In CS coordinates
@@ -699,7 +677,7 @@ namespace GraphicalDebugging
                 double y = mi_y < 0 ? -pmi_y : 0;
                 for (; y < mi_y; y += pd_y)
                     ;
-                y -= pd_y;                
+                y -= pd_y;
                 // Setup font and brush for text and lines
                 Font font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), maxHeight / 2.0f);
                 SolidBrush brushText = new SolidBrush(colors.TextColor);
@@ -732,6 +710,58 @@ namespace GraphicalDebugging
 
             return true;
         }
+        /*
+        public static bool DrawAabb(Graphics graphics, Geometry.Box box, Geometry.Unit unit, Colors colors, bool fill)
+        {
+            if (!box.IsValid())
+                return false;
+
+            LocalCS cs = new LocalCS(box, graphics, fill);
+            //Geometry.Box viewBox = cs.ViewBox();
+
+            // Aabb            
+            float min_x = cs.ConvertX(box.Min[0]);
+            float min_y = cs.ConvertY(box.Min[1]);
+            float max_x = cs.ConvertX(box.Max[0]);
+            float max_y = cs.ConvertY(box.Max[1]);
+            
+            Pen penAabb = new Pen(colors.AabbColor, 1);
+            graphics.DrawLine(penAabb, min_x - 1, min_y, min_x + 5, min_y);
+            graphics.DrawLine(penAabb, min_x, min_y - 5, min_x, min_y + 1);
+            graphics.DrawLine(penAabb, max_x - 5, max_y, max_x + 1, max_y);
+            graphics.DrawLine(penAabb, max_x, max_y - 1, max_x, max_y + 5);
+
+            // Aabb's coordinates
+            float maxHeight = 20.0f;// Math.Min(Math.Max(graphics.VisibleClipBounds.Height - min_y, 0.0f), 20.0f);
+            if (maxHeight > 1)
+            {
+                string min_x_str = box.Min[0].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+                string min_y_str = box.Min[1].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+                string max_x_str = box.Max[0].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+                string max_y_str = box.Max[1].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+                Font font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), maxHeight / 2.0f);
+                StringFormat drawFormat = new StringFormat();
+                drawFormat.Alignment = StringAlignment.Center;
+                string minStr = "(" + min_x_str + " " + min_y_str + ")";
+                string maxStr = "(" + max_x_str + " " + max_y_str + ")";
+                SizeF minSize = graphics.MeasureString(minStr, font);
+                SizeF maxSize = graphics.MeasureString(maxStr, font);
+                RectangleF drawRectMin = new RectangleF(Math.Max(min_x - minSize.Width, 0.0f),
+                                                        Math.Min(min_y + 2, graphics.VisibleClipBounds.Height - maxSize.Height),
+                                                        minSize.Width,
+                                                        minSize.Height);
+                RectangleF drawRectMax = new RectangleF(Math.Min(max_x, graphics.VisibleClipBounds.Width - maxSize.Width),
+                                                        Math.Max(max_y - maxHeight, 0.0f),
+                                                        maxSize.Width,
+                                                        maxSize.Height);
+                SolidBrush brushText = new SolidBrush(colors.TextColor);
+                graphics.DrawString(minStr, font, brushText, drawRectMin, drawFormat);
+                graphics.DrawString(maxStr, font, brushText, drawRectMax, drawFormat);
+            }
+
+            return true;
+        }
+        */
 
         private static string Pow10StringFormat(double p)
         {
@@ -831,12 +861,26 @@ namespace GraphicalDebugging
             : this(src_box, dst_graphics.VisibleClipBounds.Width, dst_graphics.VisibleClipBounds.Height)
         { }
 
+        public LocalCS(Geometry.Box src_box, Graphics dst_graphics, bool fill)
+            : this(src_box, dst_graphics.VisibleClipBounds.Width, dst_graphics.VisibleClipBounds.Height, fill)
+        { }
+
         public LocalCS(Geometry.Box src_box, float viewWidth, float viewHeight)
         {
-            Reset(src_box, viewWidth, viewHeight);
+            Reset(src_box, viewWidth, viewHeight, false);
+        }
+
+        public LocalCS(Geometry.Box src_box, float viewWidth, float viewHeight, bool fill)
+        {
+            Reset(src_box, viewWidth, viewHeight, fill);
         }
 
         public void Reset(Geometry.Box src_box, float viewWidth, float viewHeight)
+        {
+            Reset(src_box, viewWidth, viewHeight, false);
+        }
+
+        public void Reset(Geometry.Box src_box, float viewWidth, float viewHeight, bool fill)
         {
             float w = viewWidth;
             float h = viewHeight;
@@ -855,43 +899,59 @@ namespace GraphicalDebugging
             src_x0 = src_box.Min[0] + src_w / 2;
             src_y0 = src_box.Min[1] + src_h / 2;
 
+            // point or 1 value
             if (src_w == 0 && src_h == 0)
-                scale = 1; // point
+            {
+                scale_x = 1;
+                scale_y = 1;
+            }
+            // vertical segment or N 1-value plots
             else if (src_w == 0)
-                scale = dst_h / src_h;
+            {
+                scale_x = scale_y = dst_h / src_h;
+            }
+            // horizontal segment or equal values
             else if (src_h == 0)
-                scale = dst_w / src_w;
+            {
+                scale_x = scale_y = dst_w / src_w;
+            }
             else
             {
-                double scale_w = dst_w / src_w;
-                double scale_h = dst_h / src_h;
-                scale = Math.Min(scale_w, scale_h);
+                scale_x = dst_w / src_w;
+                scale_y = dst_h / src_h;
+                if (!fill)
+                    scale_x = scale_y = Math.Min(scale_x, scale_y);
             }
         }
 
         public float ConvertX(double src)
         {
-            return dst_x0 + (float)((src - src_x0) * scale);
+            return dst_x0 + (float)((src - src_x0) * scale_x);
         }
 
         public float ConvertY(double src)
         {
-            return dst_y0 - (float)((src - src_y0) * scale);
+            return dst_y0 - (float)((src - src_y0) * scale_y);
         }
 
         public double InverseConvertX(double dst)
         {
-            return src_x0 + (dst - dst_x0) / scale;
+            return src_x0 + (dst - dst_x0) / scale_x;
         }
 
         public double InverseConvertY(double dst)
         {
-            return src_y0 - (dst - dst_y0) / scale;
+            return src_y0 - (dst - dst_y0) / scale_y;
         }
 
-        public float ConvertDimension(double src)
+        public float ConvertDimensionX(double src)
         {
-            return (float)(src * scale);
+            return (float)(src * scale_x);
+        }
+
+        public float ConvertDimensionY(double src)
+        {
+            return (float)(src * scale_y);
         }
 
         public PointF Convert(Geometry.Point p)
@@ -950,6 +1010,6 @@ namespace GraphicalDebugging
         float dst_orig_w, dst_orig_h;
         float dst_x0, dst_y0;
         double src_x0, src_y0;
-        double scale;
+        double scale_x, scale_y;
     }
 }

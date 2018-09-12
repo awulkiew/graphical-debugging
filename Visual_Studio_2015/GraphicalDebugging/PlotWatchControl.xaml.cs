@@ -402,10 +402,12 @@ namespace GraphicalDebugging
             m_mouseHLine.Visibility = Visibility.Visible;
             if (m_currentBox != null && m_currentBox.IsValid())
             {
+                // TODO: pass correct fill parameter later when point plot is implemented
+                bool fill = true;
                 if (m_currentLocalCS == null)
-                    m_currentLocalCS = new LocalCS(m_currentBox, (float)image.ActualWidth, (float)image.ActualHeight);
+                    m_currentLocalCS = new LocalCS(m_currentBox, (float)image.ActualWidth, (float)image.ActualHeight, fill);
                 else
-                    m_currentLocalCS.Reset(m_currentBox, (float)image.ActualWidth, (float)image.ActualHeight);
+                    m_currentLocalCS.Reset(m_currentBox, (float)image.ActualWidth, (float)image.ActualHeight, fill);
                 m_mouseTxt.Text = "(" + m_currentLocalCS.InverseConvertX(point.X).ToString(System.Globalization.CultureInfo.InvariantCulture)
                                 + " " + m_currentLocalCS.InverseConvertY(point.Y).ToString(System.Globalization.CultureInfo.InvariantCulture)
                                 + ")";

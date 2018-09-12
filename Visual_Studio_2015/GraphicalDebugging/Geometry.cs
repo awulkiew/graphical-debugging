@@ -61,8 +61,7 @@ namespace GraphicalDebugging
 
         public class Point : ICloneable
         {
-            public Point() { }
-            //public Point(double x) { coords = new double[1] { x }; }
+            protected Point() { }
             public Point(double x, double y) { coords = new double[2] { x, y }; }
             public Point(double x, double y, double z) { coords = new double[3] { x, y, z }; }
 
@@ -74,7 +73,9 @@ namespace GraphicalDebugging
 
             public object Clone()
             {
-                return this.MemberwiseClone();
+                Point res = new Point();
+                res.coords = (double[])coords.Clone();
+                return res;
             }
 
             public override string ToString()
@@ -112,7 +113,7 @@ namespace GraphicalDebugging
 
             public object Clone()
             {
-                return this.MemberwiseClone();
+                return new Box((Point)Min.Clone(), (Point)Max.Clone());
             }
 
             public override string ToString()
