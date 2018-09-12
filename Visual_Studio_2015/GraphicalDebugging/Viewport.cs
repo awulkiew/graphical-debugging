@@ -689,7 +689,8 @@ namespace GraphicalDebugging
                 {
                     float wx = cs.ConvertX(x);
                     graphics.DrawLine(penAabb, wx, graphics.VisibleClipBounds.Height, wx, graphics.VisibleClipBounds.Height - 5);
-                    string xStr = x.ToString(xStrFormat, System.Globalization.CultureInfo.InvariantCulture);
+                    string strFormat = (x == 0) ? "0" : xStrFormat;
+                    string xStr = x.ToString(strFormat, System.Globalization.CultureInfo.InvariantCulture);
                     SizeF xStrSize = graphics.MeasureString(xStr, font);
                     float xStrLeft = wx - xStrSize.Width / 2;
                     float xStrTop = graphics.VisibleClipBounds.Height - 5 - xStrSize.Height;
@@ -700,7 +701,8 @@ namespace GraphicalDebugging
                 {
                     float wy = cs.ConvertY(y);
                     graphics.DrawLine(penAabb, graphics.VisibleClipBounds.Width, wy, graphics.VisibleClipBounds.Width - 5, wy);
-                    string yStr = y.ToString(yStrFormat, System.Globalization.CultureInfo.InvariantCulture);
+                    string strFormat = (y == 0) ? "0" : yStrFormat;
+                    string yStr = y.ToString(strFormat, System.Globalization.CultureInfo.InvariantCulture);
                     SizeF yStrSize = graphics.MeasureString(yStr, font);
                     float yStrLeft = graphics.VisibleClipBounds.Width - 5 - yStrSize.Width;
                     float yStrTop = wy - yStrSize.Height / 2;
