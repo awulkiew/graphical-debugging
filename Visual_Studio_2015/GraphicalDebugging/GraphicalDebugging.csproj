@@ -81,6 +81,7 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="GraphicalWatchPackage.cs" />
+    <Compile Include="MemoryReader.cs" />
     <Compile Include="PlotWatch.cs" />
     <Compile Include="PlotWatchCommand.cs" />
     <Compile Include="PlotWatchControl.xaml.cs">
@@ -181,6 +182,10 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="Microsoft.VisualStudio.CommandBars, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <EmbedInteropTypes>False</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="Microsoft.VisualStudio.Debugger.Engine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.VisualStudio.Debugger.Engine.14.0.23205\lib\net45\Microsoft.VisualStudio.Debugger.Engine.dll</HintPath>
+	  <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.VisualStudio.Imaging, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.VisualStudio.Imaging.14.0.23107\lib\net45\Microsoft.VisualStudio.Imaging.dll</HintPath>
