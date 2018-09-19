@@ -1105,6 +1105,28 @@ namespace GraphicalDebugging
             public override void Load(Loaders loaders, Debugger debugger, string name, string type, out Geometry.Traits traits, out ExpressionDrawer.ValuesContainer result)
             {
                 traits = null;
+                LoadGeneric(debugger, name, out result);
+            }
+
+            protected void LoadContiguous(Debugger debugger, string name, string ptrName, string valType, out ExpressionDrawer.ValuesContainer result)
+            {
+                result = null;
+                int size = this.LoadSize(debugger, name);
+                double[] values = new double[size];
+                if (MemoryReader.ReadNumericArray(debugger, ptrName, valType, values))
+                {
+                    List<double> list = new List<double>(size);
+                    for (int i = 0; i < values.Length; ++i)
+                        list.Add(values[i]);
+                    result = new ExpressionDrawer.ValuesContainer(list);
+                }
+
+                if (result == null)
+                    LoadGeneric(debugger, name, out result);
+            }
+
+            protected void LoadGeneric(Debugger debugger, string name, out ExpressionDrawer.ValuesContainer result)
+            {                
                 result = null;
                 int size = this.LoadSize(debugger, name);
                 List<double> values = new List<double>();
@@ -1124,6 +1146,12 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "std::array"; }
 
+            public override void Load(Loaders loaders, Debugger debugger, string name, string type, out Geometry.Traits traits, out ExpressionDrawer.ValuesContainer result)
+            {
+                traits = null;
+                LoadContiguous(debugger, name, name + "._Elems", null, out result);
+            }
+
             public override int LoadSize(Debugger debugger, string name)
             {
                 Expression expr = debugger.GetExpression(name);
@@ -1141,11 +1169,23 @@ namespace GraphicalDebugging
         class BoostArray : StdArray
         {
             public override string Id() { return "boost::array"; }
+
+            public override void Load(Loaders loaders, Debugger debugger, string name, string type, out Geometry.Traits traits, out ExpressionDrawer.ValuesContainer result)
+            {
+                traits = null;
+                LoadContiguous(debugger, name, name + ".elems", null, out result);
+            }
         }
 
         class BoostContainerVector : ValuesContainer
         {
             public override string Id() { return "boost::container::vector"; }
+
+            public override void Load(Loaders loaders, Debugger debugger, string name, string type, out Geometry.Traits traits, out ExpressionDrawer.ValuesContainer result)
+            {
+                traits = null;
+                LoadContiguous(debugger, name, name + ".m_holder.m_start", null, out result);
+            }
 
             public override int LoadSize(Debugger debugger, string name)
             {
@@ -1164,11 +1204,24 @@ namespace GraphicalDebugging
         class BoostContainerStaticVector : BoostContainerVector
         {
             public override string Id() { return "boost::container::static_vector"; }
+
+            public override void Load(Loaders loaders, Debugger debugger, string name, string type, out Geometry.Traits traits, out ExpressionDrawer.ValuesContainer result)
+            {
+                traits = null;
+
+                LoadContiguous(debugger, name, name + ".m_holder.storage.data", Util.Tparams(type)[0], out result);
+            }
         }
 
         class BGVarray : ValuesContainer
         {
             public override string Id() { return "boost::geometry::index::detail::varray"; }
+
+            public override void Load(Loaders loaders, Debugger debugger, string name, string type, out Geometry.Traits traits, out ExpressionDrawer.ValuesContainer result)
+            {
+                traits = null;
+                LoadContiguous(debugger, name, name + ".m_storage.data_.buf", Util.Tparams(type)[0], out result);
+            }
 
             public override int LoadSize(Debugger debugger, string name)
             {
@@ -1188,9 +1241,10 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "std::vector"; }
 
-            public override void Load(Loaders loaders, Debugger debugger, string name, string type, out Geometry.Traits traits, out ExpressionDrawer.IDrawable result)
+            public override void Load(Loaders loaders, Debugger debugger, string name, string type, out Geometry.Traits traits, out ExpressionDrawer.ValuesContainer result)
             {
-                base.Load(loaders, debugger, name, type, out traits, out result);
+                traits = null;
+                LoadContiguous(debugger, name, name + "._Mypair._Myval2._Myfirst", null, out result);
             }
 
             public override int LoadSize(Debugger debugger, string name)
