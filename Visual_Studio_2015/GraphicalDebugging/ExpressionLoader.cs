@@ -1110,15 +1110,26 @@ namespace GraphicalDebugging
 
             protected void LoadContiguous(Debugger debugger, string name, string ptrName, string valType, out ExpressionDrawer.ValuesContainer result)
             {
-                result = null;
-                int size = this.LoadSize(debugger, name);
-                double[] values = new double[size];
-                if (MemoryReader.ReadNumericArray(debugger, ptrName, valType, values))
+                // TODO: Move this option checking outside, get it once for all loaded drawables and pass here
+                GeneralOptionPage optionPage = Util.GetDialogPage<GeneralOptionPage>();
+                bool enableDirectMemoryAccess = true;
+                if (optionPage != null)
                 {
-                    List<double> list = new List<double>(size);
-                    for (int i = 0; i < values.Length; ++i)
-                        list.Add(values[i]);
-                    result = new ExpressionDrawer.ValuesContainer(list);
+                    enableDirectMemoryAccess = optionPage.EnableDirectMemoryAccess;
+                }
+
+                result = null;
+                if (enableDirectMemoryAccess)
+                {
+                    int size = this.LoadSize(debugger, name);
+                    double[] values = new double[size];
+                    if (MemoryReader.ReadNumericArray(debugger, ptrName, valType, values))
+                    {
+                        List<double> list = new List<double>(size);
+                        for (int i = 0; i < values.Length; ++i)
+                            list.Add(values[i]);
+                        result = new ExpressionDrawer.ValuesContainer(list);
+                    }
                 }
 
                 if (result == null)
