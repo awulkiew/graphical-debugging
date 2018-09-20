@@ -154,7 +154,7 @@ The extension attempts to obtain data through direct memory access if possible. 
   * `std::array<float>`
   * `std::vector<double>`
   * `boost::container::vector<int>`
-  * `boost::geometry::model::linestring< boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> >`
+  * `boost::geometry::model::linestring< boost::geometry::model::point<double,2,boost::geometry::cs::cartesian> >`
   * `boost::polygon::polygon_data<int>`
   * etc.
 
