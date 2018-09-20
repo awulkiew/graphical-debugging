@@ -1098,12 +1098,46 @@ namespace GraphicalDebugging
                 if (tparams.Count < 1)
                     return;
 
-                // space behind tparam is supported by Util.Tparams()
-                string pointType = "boost::polygon::point_data<" + tparams[0] + " >";
+                string tparam = tparams[0].EndsWith(">") ? tparams[0] + ' ' : tparams[0];
+                string pointType = "boost::polygon::point_data<" + tparam + ">";
 
-                result = new ExpressionDrawer.Ring();
+                string containerName = name + ".coords_";
+                int size = containerLoader.LoadSize(debugger, containerName);
 
-                int size = containerLoader.LoadSize(debugger, name + ".coords_");
+                // Try loading using direct memory access
+                if (accessMemory)
+                {
+                    string pointPtrName = containerLoader.ElementPtrName(containerName);
+                    if (pointPtrName != null)
+                    {
+                        string pointName = "*((" + pointType + "*)" + pointPtrName + ")";
+                        MemoryReader.Converter pointConverter = pointLoader.GetMemoryConverter(debugger, pointName, pointType);
+                        MemoryReader.Converter containerConverter = containerLoader.GetMemoryConverter(debugger, containerName, pointConverter, pointType);
+                        if (pointConverter != null && containerConverter != null)
+                        {
+                            double[] values = new double[containerConverter.ValueCount()];
+                            if (MemoryReader.Read(debugger, pointPtrName, values, containerConverter))
+                            {
+                                int dimension = pointConverter.Count();
+                                if (values.Length == size * dimension)
+                                {
+                                    result = new ExpressionDrawer.Ring();
+                                    for (int i = 0; i < size; ++i)
+                                    {
+                                        double x = dimension > 0 ? values[i * dimension] : 0;
+                                        double y = dimension > 1 ? values[i * dimension + 1] : 0;
+                                        ExpressionDrawer.Point p = new ExpressionDrawer.Point(x, y);
+                                        result.Add(p);
+                                    }
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Try loading using value strings parsing
+                result = new ExpressionDrawer.Ring();                
                 foreach (string n in containerLoader.GetElementsContainer(name + ".coords_", size))
                 {
                     ExpressionDrawer.Point p = pointLoader.LoadPoint(accessMemory, debugger, n, pointType);
@@ -1145,8 +1179,8 @@ namespace GraphicalDebugging
                 if (tparams.Count < 1)
                     return;
 
-                // space behind tparam is supported by Util.Tparams()
-                string polygonType = "boost::polygon::polygon_data<" + tparams[0] + " >";
+                string tparam = tparams[0].EndsWith(">") ? tparams[0] + ' ' : tparams[0];
+                string polygonType = "boost::polygon::polygon_data<" + tparam + ">";
 
                 ExpressionDrawer.Ring outer = null;
                 outerLoader.Load(loaders, accessMemory,
