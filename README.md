@@ -148,6 +148,20 @@ Options for each Watch can be found under **Tools**->**Options**->**Graphical De
 
 ![Plot Watch Various](images/plot_watch_various.png)
 
+##### Direct memory access
+
+The extension attempts to obtain data through direct memory access if possible. Supported are contiguous containers of fundamental numeric types and geometries with such coordinate types. E.g.:
+  * `std::vector<double>`
+  * `boost::container::vector<int>`
+  * `std::array<float>`
+  * `boost::geometry::model::linestring<boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> >`
+  * `boost::polygon::polygon_data<int>`
+  * etc.
+
+This behavior is enabled by default and can be disabled in options under **Tools**->**Options**->**Graphical Debugging**->**General**
+
+![Plot Watch Various](images/plot_watch_various.png)
+
 ##### Themes
 
 The extension supports Visual Studio themes. The visualization of variables may be drawn in two versions, dark or light depending on the brightness of the theme background color.
