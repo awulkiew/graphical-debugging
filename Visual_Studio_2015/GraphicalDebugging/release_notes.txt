@@ -1,3 +1,11 @@
+version 0.15
+
+additions:
+- faster debugging by direct memory access (can be disabled in options)
+
+bugfixes:
+- scaling of the coordinate system for points and other 0-size data
+
 version 0.14
 
 additions:
