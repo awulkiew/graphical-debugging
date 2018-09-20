@@ -15,71 +15,141 @@ namespace GraphicalDebugging
 {
     class MemoryReader
     {
-        public interface Buffer
+        public abstract class Converter
         {
-            int ByteSize();
-            void Set(byte[] bytes);
+            abstract public int Count();
+            abstract public int ValueCount();
+            abstract public int ByteOffset();
+            abstract public int ByteSize();
+            abstract public void Copy(byte[] bytes, int bytesOffset, double[] result, int resultOffset);
+            public void Copy(byte[] bytes, double[] result)
+            {
+                this.Copy(bytes, 0, result, 0);
+            }
         }
 
-        public interface ValuesBuffer : Buffer
-        {
-            void FillArray(double[] result);
-        }
-
-        public class NumericBuffer<T> : ValuesBuffer
+        public class NumericConverter<T> : Converter
             where T : struct
         {
             private static int sizeOfValue = Marshal.SizeOf(default(T));
 
-            public NumericBuffer(int size)
+            public NumericConverter(int count, int byteOffset = 0)
             {
-                values = new T[size];
+                if (byteOffset < 0)
+                    throw new ArgumentOutOfRangeException("byteOffset");
+
+                this.count = count;
+                this.byteOffset = byteOffset;
             }
 
-            public int ByteSize()
+            public override int Count()
             {
-                return values.Length * sizeOfValue;
+                return count;
             }
 
-            public void Set(byte[] bytes)
+            public override int ValueCount()
             {
-                System.Diagnostics.Debug.Assert(bytes.Length == values.Length * sizeOfValue);
-                System.Buffer.BlockCopy(bytes, 0, values, 0, bytes.Length);
+                return count;
             }
 
-            public void FillArray(double[] result)
+            public override int ByteSize()
             {
-                System.Diagnostics.Debug.Assert(values.Length == result.Length);
-                Array.Copy(values, result, values.Length);
+                return count * sizeOfValue;
             }
 
-            /*public List<double> ToList()
+            public override int ByteOffset()
             {
-                List<double> result = new List<double>(values.Length);
-                for (int i = 0; i < values.Length; ++i)
-                    result.Add((double)(object)values[i]);
-                return result;
-            }*/
+                return byteOffset;
+            }
 
-            private T[] values;
+            public override void Copy(byte[] bytes, int baseOffset, double[] result, int resultOffset)
+            {
+                int offset = baseOffset + byteOffset;
+                if (typeof(T) != typeof(double))
+                {
+                    T[] tmp = new T[count];
+                    Buffer.BlockCopy(bytes, offset, tmp, 0, ByteSize());
+                    Array.Copy(tmp, 0, result, resultOffset, count);
+                }
+                else
+                {
+                    Buffer.BlockCopy(bytes, offset, result, resultOffset * sizeOfValue, ByteSize());
+                }
+            }
+            
+            int count = 0;
+            int byteOffset = 0;
         }
 
-        public static ValuesBuffer GetValuesBuffer(Debugger debugger, string ptrName, string valType, int size)
+        public class WrappingConverter : Converter
+        {
+            // offset of wrapper == 0
+            // internal offset set in converter
+            public WrappingConverter(Converter converter, int count, int sizeOfWrapper)
+            {
+                if (sizeOfWrapper < 0
+                 || sizeOfWrapper < converter.ByteOffset() + converter.ByteSize())
+                    throw new ArgumentOutOfRangeException("sizeOfWrapper");
+
+                this.converter = converter;
+                this.count = count;
+                this.sizeOfWrapper = sizeOfWrapper;
+            }
+
+            public override int Count()
+            {
+                return count;
+            }
+
+            public override int ValueCount()
+            {
+                return count * converter.ValueCount();
+            }
+
+            public override int ByteSize()
+            {
+                return count * sizeOfWrapper;
+            }
+
+            public override int ByteOffset()
+            {
+                return 0;
+            }
+
+            public override void Copy(byte[] bytes, int bytesOffset, double[] result, int resultOffset)
+            {
+                // TODO: Copy in one block if possible
+                // second condition for safety
+                //if (sizeOfWrapper == converter.ByteSize() && converter.ByteOffset() == 0)
+
+                for (int i = 0; i < count; ++i)
+                {
+                    // internal offset set in converter
+                    converter.Copy(bytes, bytesOffset + i * sizeOfWrapper, result, resultOffset + i * converter.Count());
+                }
+            }
+
+            Converter converter;
+            int count = 0;
+            int sizeOfWrapper = 0;
+        }
+
+        public static Converter GetNumericConverter(Debugger debugger, string ptrName, string valType, int size, int byteOffset = 0)
         {
             if (valType == null)
                 valType = GetValueType(debugger, ptrName);
-            int valSize = GetValueSizeof(debugger, ptrName, valType);
+            int valSize = GetValueTypeSizeof(debugger, valType);
 
             if (valType == null || valSize == 0)
                 return null;
             
             if (valType == "double")
             {
-                return new NumericBuffer<double>(size);
+                return new NumericConverter<double>(size, byteOffset);
             }
             else if (valType == "float")
             {
-                return new NumericBuffer<float>(size);
+                return new NumericConverter<float>(size, byteOffset);
             }
             else if (valType == "int"
                   || valType == "long"
@@ -88,13 +158,13 @@ namespace GraphicalDebugging
                   || valType == "char")
             {
                 if (valSize == 4)
-                    return new NumericBuffer<int>(size);
+                    return new NumericConverter<int>(size, byteOffset);
                 else if (valSize == 8)
-                    return new NumericBuffer<long>(size);
+                    return new NumericConverter<long>(size, byteOffset);
                 else if (valSize == 2)
-                    return new NumericBuffer<short>(size);
+                    return new NumericConverter<short>(size, byteOffset);
                 else if (valSize == 1)
-                    return new NumericBuffer<sbyte>(size);
+                    return new NumericConverter<sbyte>(size, byteOffset);
             }
             else if (valType == "unsigned short"
                   || valType == "unsigned int"
@@ -103,28 +173,33 @@ namespace GraphicalDebugging
                   || valType == "unsigned char")
             {
                 if (valSize == 4 && sizeof(uint) == 4)
-                    return new NumericBuffer<uint>(size);
+                    return new NumericConverter<uint>(size, byteOffset);
                 else if (valSize == 8 && sizeof(ulong) == 8)
-                    return new NumericBuffer<ulong>(size);
+                    return new NumericConverter<ulong>(size, byteOffset);
                 else if (valSize == 2)
-                    return new NumericBuffer<ushort>(size);
+                    return new NumericConverter<ushort>(size, byteOffset);
                 else if (valSize == 1)
-                    return new NumericBuffer<byte>(size);
+                    return new NumericConverter<byte>(size, byteOffset);
             }
 
             return null;
         }
 
-        public static bool Read(Debugger debugger, string ptrName, Buffer buffer)
+        public static bool Read(Debugger debugger, string ptrName, double[] values, Converter converter)
         {
-            int byteSize = buffer.ByteSize();
+            if (converter.ValueCount() != values.Length)
+                throw new ArgumentOutOfRangeException("values.Length");
+
+            int byteSize = converter.ByteSize();
             if (byteSize < 1)
                 return true;
             byte[] bytes = new byte[byteSize];
             bool ok = ReadBytes(debugger, ptrName, bytes);
             if (!ok)
                 return false;
-            buffer.Set(bytes);
+
+            converter.Copy(bytes, values);
+
             return true;
         }
 
@@ -134,16 +209,37 @@ namespace GraphicalDebugging
             if (count < 1)
                 return true;
 
-            ValuesBuffer buffer = GetValuesBuffer(debugger, ptrName, valType, count);
-            if (buffer == null)
+            Converter converter = GetNumericConverter(debugger, ptrName, valType, count);
+            if (converter == null)
                 return false;
 
-            if (!Read(debugger, ptrName, buffer))
+            return Read(debugger, ptrName, values, converter);
+        }
+
+        public static bool ReadNumericArray(Debugger debugger, string ptrName, string valType, string innerPtrName, string innerValType, double[] values, int innerCount)
+        {
+            //System.Diagnostics.Debug.Assert(innerCount <= values.Length && values.Length % innerCount == 0);
+
+            if (innerCount < 1)
+                return true;
+
+            int outerCount = values.Length / innerCount;
+            if (outerCount < 1)
+                return true;
+
+            int addressOffset = (int)GetAddressDifference(debugger, ptrName, innerPtrName);
+            if (addressOffset < 0)
                 return false;
 
-            buffer.FillArray(values);
-            
-            return true;
+            Converter innerConverter = GetNumericConverter(debugger, innerPtrName, innerValType, innerCount, addressOffset);
+            if (innerConverter == null)
+                return false;
+
+            int outerValSize = GetValueSizeof(debugger, ptrName, valType);
+
+            Converter converter = new WrappingConverter(innerConverter, outerCount, outerValSize);
+
+            return Read(debugger, ptrName, values, converter);
         }
 
         public static bool ReadBytes(Debugger debugger, string ptrName, byte[] buffer)
@@ -160,9 +256,20 @@ namespace GraphicalDebugging
             // One possibility: debugger.CurrentProcess.Name == proc.Path
 
             ulong address = GetValueAddress(debugger, ptrName);
+            if (address == 0)
+                return false;
 
             int bytesRead = proc.ReadMemory(address, DkmReadMemoryFlags.None, buffer);
             return bytesRead == buffer.Length;
+        }
+
+        public static long GetAddressDifference(Debugger debugger, string ptrName1, string ptrName2)
+        {
+            ulong addr1 = GetValueAddress(debugger, ptrName1);
+            ulong addr2 = GetValueAddress(debugger, ptrName2);
+            return (addr2 >= addr1)
+                 ? (long)(addr2 - addr1)
+                 : -(long)(addr1 - addr2);
         }
 
         public static ulong GetValueAddress(Debugger debugger, string ptrName)
@@ -184,6 +291,14 @@ namespace GraphicalDebugging
             Expression valSizeExpr = valType != null
                                    ? debugger.GetExpression("sizeof(" + valType + ")")
                                    : debugger.GetExpression("sizeof(*(" + ptrName + "))");
+            return valSizeExpr.IsValidValue
+                 ? int.Parse(valSizeExpr.Value)
+                 : 0;
+        }
+
+        public static int GetValueTypeSizeof(Debugger debugger, string valType)
+        {
+            Expression valSizeExpr = debugger.GetExpression("sizeof(" + valType + ")");
             return valSizeExpr.IsValidValue
                  ? int.Parse(valSizeExpr.Value)
                  : 0;
