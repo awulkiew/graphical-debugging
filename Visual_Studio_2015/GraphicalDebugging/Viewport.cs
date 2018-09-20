@@ -904,18 +904,20 @@ namespace GraphicalDebugging
             // point or 1 value
             if (src_w == 0 && src_h == 0)
             {
-                scale_x = 1;
-                scale_y = 1;
+                scale_x = dst_w / 2;
+                scale_y = dst_h / 2;
             }
             // vertical segment or N 1-value plots
             else if (src_w == 0)
             {
-                scale_x = scale_y = dst_h / src_h;
+                scale_x = dst_w / 2;
+                scale_y = dst_h / src_h;
             }
             // horizontal segment or equal values
             else if (src_h == 0)
             {
-                scale_x = scale_y = dst_w / src_w;
+                scale_x = dst_w / src_w;
+                scale_y = dst_h / 2;
             }
             else
             {
