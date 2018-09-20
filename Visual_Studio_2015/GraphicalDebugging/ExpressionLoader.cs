@@ -1097,7 +1097,8 @@ namespace GraphicalDebugging
                 List<string> tparams = Util.Tparams(type);
                 if (tparams.Count < 1)
                     return;
-                // TODO: Space before > only if T has > at the end?
+
+                // space behind tparam is supported by Util.Tparams()
                 string pointType = "boost::polygon::point_data<" + tparams[0] + " >";
 
                 result = new ExpressionDrawer.Ring();
@@ -1144,7 +1145,7 @@ namespace GraphicalDebugging
                 if (tparams.Count < 1)
                     return;
 
-                // TODO: Space before > only if T has > at the end?
+                // space behind tparam is supported by Util.Tparams()
                 string polygonType = "boost::polygon::polygon_data<" + tparams[0] + " >";
 
                 ExpressionDrawer.Ring outer = null;

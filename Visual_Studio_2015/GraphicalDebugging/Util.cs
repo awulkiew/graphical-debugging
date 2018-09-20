@@ -138,6 +138,8 @@ namespace GraphicalDebugging
 
                 if (param_first != -1 && param_last != -1)
                 {
+                    if (type[param_last - 1] == ' ')
+                        --param_last;
                     result.Add(type.Substring(param_first, param_last - param_first));
                     param_first = -1;
                     param_last = -1;
