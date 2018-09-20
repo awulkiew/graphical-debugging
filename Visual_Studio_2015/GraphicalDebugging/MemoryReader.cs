@@ -216,7 +216,7 @@ namespace GraphicalDebugging
             return Read(debugger, ptrName, values, converter);
         }
 
-        public static bool ReadNumericArray(Debugger debugger, string ptrName, string valType, string innerPtrName, string innerValType, double[] values, int innerCount)
+        /*public static bool ReadNumericArray(Debugger debugger, string ptrName, string valType, string innerPtrName, string innerValType, double[] values, int innerCount)
         {
             //System.Diagnostics.Debug.Assert(innerCount <= values.Length && values.Length % innerCount == 0);
 
@@ -240,7 +240,7 @@ namespace GraphicalDebugging
             Converter converter = new WrappingConverter(innerConverter, outerCount, outerValSize);
 
             return Read(debugger, ptrName, values, converter);
-        }
+        }*/
 
         public static bool ReadBytes(Debugger debugger, string ptrName, byte[] buffer)
         {
@@ -267,6 +267,8 @@ namespace GraphicalDebugging
         {
             ulong addr1 = GetValueAddress(debugger, ptrName1);
             ulong addr2 = GetValueAddress(debugger, ptrName2);
+            if (addr1 == 0 || addr2 == 0)
+                return long.MinValue;
             return (addr2 >= addr1)
                  ? (long)(addr2 - addr1)
                  : -(long)(addr1 - addr2);

@@ -321,11 +321,11 @@ namespace GraphicalDebugging
                 if (accessMemory)
                 {
                     MemoryReader.Converter converter = GetMemoryConverter(debugger, name, type);
-                    if (converter.Count() != count)
-                        throw new ArgumentOutOfRangeException("count");
-
                     if (converter != null)
                     {
+                        if (converter.Count() != count)
+                            throw new ArgumentOutOfRangeException("count");
+
                         double[] values = new double[count];
                         if (MemoryReader.ReadNumericArray(debugger, ptrName, null, values))
                         {
@@ -466,7 +466,7 @@ namespace GraphicalDebugging
                 int dimension = ParseInt(tparams[1]);
                 int count = Math.Min(dimension, 2);
                 // Just in case, offset should be 0
-                long byteOffset = MemoryReader.GetAddressDifference(debugger, name, name + ".m_values");
+                long byteOffset = MemoryReader.GetAddressDifference(debugger, "&" + name, name + ".m_values");
                 return MemoryReader.GetNumericConverter(debugger, name + ".m_values", coordType, count, (int)byteOffset);
             }
 
@@ -531,7 +531,7 @@ namespace GraphicalDebugging
                     return null;
                 string coordType = tparams[0];
                 // Just in case, offset should be 0
-                long byteOffset = MemoryReader.GetAddressDifference(debugger, name, name + ".m_values");
+                long byteOffset = MemoryReader.GetAddressDifference(debugger, "&" + name, name + ".m_values");
                 return MemoryReader.GetNumericConverter(debugger, name + ".m_values", coordType, 2, (int)byteOffset);
             }
         }
@@ -1011,7 +1011,7 @@ namespace GraphicalDebugging
                     return null;
                 string coordType = tparams[0];
                 // Just in case, offset should be 0
-                long byteOffset = MemoryReader.GetAddressDifference(debugger, name, name + ".coords_");
+                long byteOffset = MemoryReader.GetAddressDifference(debugger, "&" + name, name + ".coords_");
                 return MemoryReader.GetNumericConverter(debugger, name + ".coords_", coordType, 2, (int)byteOffset);
             }
         }
@@ -1140,9 +1140,16 @@ namespace GraphicalDebugging
                 if (holesLoader == null)
                     return;
 
+                List<string> tparams = Util.Tparams(type);
+                if (tparams.Count < 1)
+                    return;
+
+                // TODO: Space before > only if T has > at the end?
+                string polygonType = "boost::polygon::polygon_data<" + tparams[0] + " >";
+
                 ExpressionDrawer.Ring outer = null;
                 outerLoader.Load(loaders, accessMemory,
-                                 debugger, name + ".self_", "boost::polygon::polygon_data<T>",
+                                 debugger, name + ".self_", polygonType,
                                  out traits, out outer);
                 if (outer == null)
                     return;
@@ -1155,7 +1162,7 @@ namespace GraphicalDebugging
                 {
                     ExpressionDrawer.Ring hole = null;
                     outerLoader.Load(loaders, accessMemory,
-                                     debugger, n, "boost::polygon::polygon_data<T>",
+                                     debugger, n, polygonType,
                                      out traits, out hole);
                     if (hole == null)
                         return;
