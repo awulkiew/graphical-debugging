@@ -41,27 +41,31 @@ namespace GraphicalDebugging
                 this.color = color;
             }
 
-            public Settings(Color color, bool showDir, bool showLabels)
+            public Settings(System.Windows.Media.Color color)
             {
-                this.color = color;
-                this.showDir = showDir;
-                this.showLabels = showLabels;
+                this.color = Util.ConvertColor(color);
             }
 
-            public Settings(Color color, bool enableBars, bool enableLines, bool enablePoints)
+            public Settings CopyColored(Color color)
             {
-                this.color = color;
-                this.enableBars = enableBars;
-                this.enableLines = enableLines;
-                this.enablePoints = enablePoints;
+                Settings result = MemberwiseClone() as Settings;
+                result.color = color;
+                return result;
             }
 
-            public Color color = Color.Black;
-            public bool showDir = false;
-            public bool showLabels = false;
-            public bool enableBars = false;
-            public bool enableLines = false;
-            public bool enablePoints = false;
+            public Settings CopyColored(System.Windows.Media.Color color)
+            {
+                return CopyColored(Util.ConvertColor(color));
+            }
+
+            public Color color = Color.Empty;
+            public bool showDir = true;
+            public bool showLabels = true;
+            public bool valuePlot_enableBars = true;
+            public bool valuePlot_enableLines = false;
+            public bool valuePlot_enablePoints = false;
+            public bool pointPlot_enableLines = false;
+            public bool pointPlot_enablePoints = true;
         }
 
         // -------------------------------------------------
@@ -591,17 +595,17 @@ namespace GraphicalDebugging
 
             public void Draw(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
             {
-                if (settings.enableBars)
+                if (settings.valuePlot_enableBars)
                     DrawBars(box, graphics, settings, traits);
 
-                if (settings.enableLines)
+                if (settings.valuePlot_enableLines)
                     DrawLines(box, graphics, settings, traits);
 
-                if (settings.enablePoints)
+                if (settings.valuePlot_enablePoints)
                     DrawPoints(box, graphics, settings, traits);
             }
 
-            public void DrawBars(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
+            void DrawBars(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
             {
                 // NOTE: traits == null
                 bool fill = true;
@@ -652,7 +656,7 @@ namespace GraphicalDebugging
                 }
             }
 
-            public void DrawPoints(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
+            void DrawPoints(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
             {
                 // NOTE: traits == null
                 bool fill = true;
@@ -689,7 +693,7 @@ namespace GraphicalDebugging
                 }
             }
 
-            public void DrawLines(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
+            void DrawLines(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
             {
                 // NOTE: traits == null
                 bool fill = true;
@@ -701,9 +705,6 @@ namespace GraphicalDebugging
                 float dx = Math.Abs(x1 - x0);
                 float penWidth = dx < 2 ? 1 : 2;
                 
-                if (values.Count < 1)
-                    return;
-
                 Drawer drawer = new Drawer(graphics, settings.color);
 
                 if (values.Count == 1)
@@ -712,7 +713,7 @@ namespace GraphicalDebugging
                     float y = cs.ConvertY(values[0]);
                     drawer.DrawLine(x, y - 0.5f, x, y + 0.5f);
                 }
-                else
+                else if (values.Count > 1)
                 {
                     double d = 0;
                     float xp = cs.ConvertX(d);
@@ -751,6 +752,100 @@ namespace GraphicalDebugging
             public Color DefaultColor(Colors colors) { return colors.DrawColor; }
             
             private List<double> values;
+        }
+
+        public class PointsContainer : IDrawable
+        {
+            public PointsContainer(MultiPoint points)
+            {
+                this.points = points;
+            }
+
+            public void Draw(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
+            {
+                double diffX = Math.Abs(box.Dim(0)) / Math.Max(points.Count, 1);
+
+                if (settings.pointPlot_enableLines)
+                    DrawLines(box, graphics, settings, traits, diffX);
+
+                if (settings.pointPlot_enablePoints)
+                    DrawPoints(box, graphics, settings, traits, diffX);
+            }
+
+            void DrawPoints(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits, double diffX)
+            {
+                // NOTE: traits == null
+                bool fill = true;
+
+                LocalCS cs = new LocalCS(box, graphics, fill);
+
+                float dx = cs.ConvertDimensionX(diffX);
+                bool drawPts = dx < 4;
+
+                if (drawPts)
+                {
+                    Pen pen = new Pen(settings.color, 2);
+                    for (int i = 0; i < points.Count; ++i)
+                    {
+                        float x = cs.ConvertX(points[i][0]);
+                        float y = cs.ConvertY(points[i][1]);
+                        graphics.DrawLine(pen, x, y - 0.5f, x, y + 0.5f);
+                    }
+                }
+                else
+                {
+                    Drawer drawer = new Drawer(graphics, settings.color);
+                    for (int i = 0; i < points.Count; ++i)
+                    {
+                        float x = cs.ConvertX(points[i][0]);
+                        float y = cs.ConvertY(points[i][1]);
+                        drawer.DrawPoint(x, y);
+                    }
+                }
+            }
+
+            void DrawLines(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits, double diffX)
+            {
+                // NOTE: traits == null
+                bool fill = true;
+
+                LocalCS cs = new LocalCS(box, graphics, fill);
+
+                float dx = cs.ConvertDimensionX(diffX);
+                float penWidth = dx < 2 ? 1 : 2;
+
+                Drawer drawer = new Drawer(graphics, settings.color);
+
+                if (points.Count == 1)
+                {
+                    float x = cs.ConvertX(points[0][0]);
+                    float y = cs.ConvertY(points[0][1]);
+                    drawer.DrawLine(x, y - 0.5f, x, y + 0.5f);
+                }
+                else if (points.Count > 1)
+                {
+                    float xp = cs.ConvertX(points[0][0]);
+                    float yp = cs.ConvertY(points[0][1]);
+                    for (int i = 1; i < points.Count; ++i)
+                    {
+                        float x = cs.ConvertX(points[i][0]);
+                        float y = cs.ConvertY(points[i][1]);
+                        drawer.DrawLine(xp, yp, x, y);
+                        xp = x;
+                        yp = y;
+                    }
+                }
+            }
+
+            public Geometry.Box Aabb(Geometry.Traits traits, bool calculateEnvelope)
+            {
+                // traits != null, CS is forced to cartesian
+                return points.Aabb(traits, calculateEnvelope);
+            }
+
+            public Color DefaultColor(Colors colors) { return colors.DrawColor; }
+
+            private MultiPoint points;
         }
 
         public class Turn : IDrawable
@@ -923,12 +1018,21 @@ namespace GraphicalDebugging
             public LoadPlot(ExpressionLoader el) : base(el) { }
 
             static ExpressionLoader.ContainerKindConstraint containersOnly = new ExpressionLoader.ContainerKindConstraint();
+            static ExpressionLoader.MultiPointKindConstraint multiPointsOnly = new ExpressionLoader.MultiPointKindConstraint();
 
             public override DrawablePair Load(Debugger debugger, string name)
             {
                 Geometry.Traits traits = null;
                 IDrawable drawable = null;
-                expressionLoader.Load(debugger, name, containersOnly, out traits, out drawable);
+                expressionLoader.Load(debugger, name, multiPointsOnly, out traits, out drawable);
+                if (drawable != null)
+                {
+                    if (traits != null)
+                        traits = new Geometry.Traits(traits.Dimension); // force cartesian
+                    drawable = new PointsContainer(drawable as MultiPoint);
+                }
+                else
+                    expressionLoader.Load(debugger, name, containersOnly, out traits, out drawable);
                 return new DrawablePair(drawable, traits);
             }
         }
@@ -938,7 +1042,7 @@ namespace GraphicalDebugging
         // -------------------------------------------------
 
         // For GraphicalWatch
-        public bool Draw(Graphics graphics, Debugger debugger, string name, Colors colors)
+        public bool Draw(Graphics graphics, Debugger debugger, string name, Settings settings, Colors colors)
         {
             try
             {
@@ -951,21 +1055,9 @@ namespace GraphicalDebugging
                         throw new Exception("This coordinate system is not yet supported.");
                     }
 
-                    // TODO:
-                    // This is not consistent with the other Draw() getting settings from the caller
-                    // Besides ExpressionDrawer should not deal with any Watch or Options
-                    GraphicalWatchOptionPage optionPage = Util.GetDialogPage<GraphicalWatchOptionPage>();
-                    bool enableBars = true;
-                    bool enableLines = false;
-                    bool enablePoints = false;
-                    if (optionPage != null && (optionPage.EnableBars || optionPage.EnableLines || optionPage.EnablePoints))
-                    {
-                        enableBars = optionPage.EnableBars;
-                        enableLines = optionPage.EnableLines;
-                        enablePoints = optionPage.EnablePoints;
-                    }
+                    if (settings.color == Color.Empty)
+                        settings.color = d.Drawable.DefaultColor(colors);
 
-                    Settings settings = new Settings(d.Drawable.DefaultColor(colors), enableBars, enableLines, enablePoints);
                     Geometry.Box aabb = d.Drawable.Aabb(d.Traits, true);
                     Geometry.Unit unit = (d.Traits != null) ? d.Traits.Unit : Geometry.Unit.None;
                     bool fill = (d.Traits == null);

@@ -189,22 +189,36 @@ namespace GraphicalDebugging
             Bitmap bmp = null;
             string type = null;
 
-            if (variable.Name != null && variable.Name != "")
+            if (m_debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
             {
-                var expression = m_debugger.GetExpression(variable.Name);
-                if (expression.IsValidValue)
+                // Empty color - use default
+                ExpressionDrawer.Settings settings = new ExpressionDrawer.Settings();
+                // Load settings from option page
+                GraphicalWatchOptionPage optionPage = Util.GetDialogPage<GraphicalWatchOptionPage>();
+                if (optionPage != null && (optionPage.EnableBars || optionPage.EnableLines || optionPage.EnablePoints))
                 {
-                    // create bitmap
-                    bmp = new Bitmap(100, 100);
+                    settings.valuePlot_enableBars = optionPage.EnableBars;
+                    settings.valuePlot_enableLines = optionPage.EnableLines;
+                    settings.valuePlot_enablePoints = optionPage.EnablePoints;
+                }
 
-                    Graphics graphics = Graphics.FromImage(bmp);
-                    graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                    graphics.Clear(m_colors.ClearColor);
+                if (variable.Name != null && variable.Name != "")
+                {
+                    var expression = m_debugger.GetExpression(variable.Name);
+                    if (expression.IsValidValue)
+                    {
+                        // create bitmap
+                        bmp = new Bitmap(100, 100);
 
-                    if (!m_expressionDrawer.Draw(graphics, m_debugger, variable.Name, m_colors))
-                        bmp = null;
+                        Graphics graphics = Graphics.FromImage(bmp);
+                        graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                        graphics.Clear(m_colors.ClearColor);
 
-                    type = expression.Type;
+                        if (!m_expressionDrawer.Draw(graphics, m_debugger, variable.Name, settings, m_colors))
+                            bmp = null;
+
+                        type = expression.Type;
+                    }
                 }
             }
 

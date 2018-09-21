@@ -11,35 +11,56 @@ namespace GraphicalDebugging
 {
     public class PlotWatchOptionPage : DialogPage
     {
-        private bool enableBars = true;
-        private bool enableLines = false;
-        private bool enablePoints = false;
+        private bool ValuePlot_enableBars = true;
+        private bool ValuePlot_enableLines = false;
+        private bool ValuePlot_enablePoints = false;
 
-        [Category("Graphical Debugging")]
+        private bool PointPlot_enableLines = false;
+        private bool PointPlot_enablePoints = true;
+
+        [Category("Value Plot")]
         [DisplayName("Enable Bars")]
         [Description("Enable/disable drawing bars representing values.")]
-        public bool EnableBars
+        public bool ValuePlot_EnableBars
         {
-            get { return enableBars; }
-            set { enableBars = value; }
+            get { return ValuePlot_enableBars; }
+            set { ValuePlot_enableBars = value; }
         }
 
-        [Category("Graphical Debugging")]
+        [Category("Value Plot")]
         [DisplayName("Enable Lines")]
-        [Description("Enable/disable drawing lines representing values.")]
-        public bool EnableLines
+        [Description("Enable/disable drawing lines between values.")]
+        public bool ValuePlot_EnableLines
         {
-            get { return enableLines; }
-            set { enableLines = value; }
+            get { return ValuePlot_enableLines; }
+            set { ValuePlot_enableLines = value; }
         }
 
-        [Category("Graphical Debugging")]
+        [Category("Value Plot")]
         [DisplayName("Enable Points")]
         [Description("Enable/disable drawing points representing values.")]
-        public bool EnablePoints
+        public bool ValuePlot_EnablePoints
         {
-            get { return enablePoints; }
-            set { enablePoints = value; }
+            get { return ValuePlot_enablePoints; }
+            set { ValuePlot_enablePoints = value; }
+        }
+
+        [Category("Point Plot")]
+        [DisplayName("Enable Lines")]
+        [Description("Enable/disable drawing lines between points.")]
+        public bool PointPlot_EnableLines
+        {
+            get { return PointPlot_enableLines; }
+            set { PointPlot_enableLines = value; }
+        }
+
+        [Category("Point Plot")]
+        [DisplayName("Enable Points")]
+        [Description("Enable/disable drawing points.")]
+        public bool PointPlot_EnablePoints
+        {
+            get { return PointPlot_enablePoints; }
+            set { PointPlot_enablePoints = value; }
         }
     }
 }

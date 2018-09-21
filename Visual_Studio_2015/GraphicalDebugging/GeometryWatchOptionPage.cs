@@ -14,7 +14,7 @@ namespace GraphicalDebugging
         private bool enableDirs = true;
         private bool enableLabels = true;
 
-        [Category("Graphical Debugging")]
+        [Category("Display")]
         [DisplayName("Enable Directions")]
         [Description("Enable/disable drawing directions of segments.")]
         public bool EnableDirections
@@ -23,7 +23,7 @@ namespace GraphicalDebugging
             set { enableDirs = value; }
         }
 
-        [Category("Graphical Debugging")]
+        [Category("Display")]
         [DisplayName("Enable Labels")]
         [Description("Enable/disable drawing labels if applicable (e.g. for Boost.Geometry intersection points).")]
         public bool EnableLabels

@@ -276,15 +276,21 @@ namespace GraphicalDebugging
             bool imageEmpty = true;
             if (m_debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
             {
+                ExpressionDrawer.Settings referenceSettings = new ExpressionDrawer.Settings();
                 PlotWatchOptionPage optionPage = Util.GetDialogPage<PlotWatchOptionPage>();
-                bool enableBars = true;
-                bool enableLines = false;
-                bool enablePoints = false;
-                if (optionPage != null && (optionPage.EnableBars || optionPage.EnableLines || optionPage.EnablePoints))
+                if (optionPage != null)
                 {
-                    enableBars = optionPage.EnableBars;
-                    enableLines = optionPage.EnableLines;
-                    enablePoints = optionPage.EnablePoints;
+                    if (optionPage.ValuePlot_EnableBars || optionPage.ValuePlot_EnableLines || optionPage.ValuePlot_EnablePoints)
+                    {
+                        referenceSettings.valuePlot_enableBars = optionPage.ValuePlot_EnableBars;
+                        referenceSettings.valuePlot_enableLines = optionPage.ValuePlot_EnableLines;
+                        referenceSettings.valuePlot_enablePoints = optionPage.ValuePlot_EnablePoints;
+                    }
+                    if (optionPage.PointPlot_EnableLines || optionPage.PointPlot_EnablePoints)
+                    {
+                        referenceSettings.pointPlot_enableLines = optionPage.PointPlot_EnableLines;
+                        referenceSettings.pointPlot_enablePoints = optionPage.PointPlot_EnablePoints;
+                    }
                 }
                 
                 string[] names = new string[Plots.Count];
@@ -318,7 +324,7 @@ namespace GraphicalDebugging
                                 color = Util.ConvertColor(m_colors[colorId]);
                             }
 
-                            settings[index] = new ExpressionDrawer.Settings(Util.ConvertColor(color), enableBars, enableLines, enablePoints);
+                            settings[index] = referenceSettings.CopyColored(color);
 
                             tryDrawing = true;
                         }

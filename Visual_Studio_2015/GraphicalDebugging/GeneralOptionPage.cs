@@ -13,7 +13,7 @@ namespace GraphicalDebugging
     {
         private bool enableDirectMemoryAccess = true;
 
-        [Category("Graphical Debugging")]
+        [Category("Data Access")]
         [DisplayName("Enable Direct Memory Access")]
         [Description("Enable/disable loading data directly from memory of debugged process.")]
         public bool EnableDirectMemoryAccess

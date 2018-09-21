@@ -15,7 +15,7 @@ namespace GraphicalDebugging
         private bool enableLines = false;
         private bool enablePoints = false;
 
-        [Category("Graphical Debugging")]
+        [Category("Value Plot")]
         [DisplayName("Enable Bars")]
         [Description("Enable/disable drawing bars representing values.")]
         public bool EnableBars
@@ -24,16 +24,16 @@ namespace GraphicalDebugging
             set { enableBars = value; }
         }
 
-        [Category("Graphical Debugging")]
+        [Category("Value Plot")]
         [DisplayName("Enable Lines")]
-        [Description("Enable/disable drawing lines representing values.")]
+        [Description("Enable/disable drawing lines between values.")]
         public bool EnableLines
         {
             get { return enableLines; }
             set { enableLines = value; }
         }
 
-        [Category("Graphical Debugging")]
+        [Category("Value Plot")]
         [DisplayName("Enable Points")]
         [Description("Enable/disable drawing points representing values.")]
         public bool EnablePoints

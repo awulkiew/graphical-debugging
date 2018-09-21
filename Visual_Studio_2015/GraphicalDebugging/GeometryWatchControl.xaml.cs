@@ -265,13 +265,12 @@ namespace GraphicalDebugging
             bool imageEmpty = true;
             if (m_debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
             {
+                ExpressionDrawer.Settings referenceSettings = new ExpressionDrawer.Settings();
                 GeometryWatchOptionPage optionPage = Util.GetDialogPage<GeometryWatchOptionPage>();
-                bool enableDirs = true;
-                bool enableLabels = true;
                 if (optionPage != null)
                 {
-                    enableDirs = optionPage.EnableDirections;
-                    enableLabels = optionPage.EnableLabels;
+                    referenceSettings.showDir = optionPage.EnableDirections;
+                    referenceSettings.showLabels = optionPage.EnableLabels;
                 }
 
                 string[] names = new string[Geometries.Count];
@@ -305,7 +304,7 @@ namespace GraphicalDebugging
                                 color = Util.ConvertColor(m_colors[colorId]);
                             }
 
-                            settings[index] = new ExpressionDrawer.Settings(Util.ConvertColor(color), enableDirs, enableLabels);
+                            settings[index] = referenceSettings.CopyColored(color);
 
                             tryDrawing = true;
                         }

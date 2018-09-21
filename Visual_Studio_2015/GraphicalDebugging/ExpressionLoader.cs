@@ -80,12 +80,9 @@ namespace GraphicalDebugging
             public override bool Check(Kind kind) { return kind == Kind.Container; }
         }
 
-        public class ContainerOrMultiPointKindConstraint : KindConstraint
+        public class MultiPointKindConstraint : KindConstraint
         {
-            public override bool Check(Kind kind)
-            {
-                return kind == Kind.Container || kind == Kind.MultiPoint;
-            }
+            public override bool Check(Kind kind) { return kind == Kind.MultiPoint; }
         }
 
         private static KindConstraint allowAllKinds = new KindConstraint();
