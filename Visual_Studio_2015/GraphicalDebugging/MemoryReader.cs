@@ -17,7 +17,6 @@ namespace GraphicalDebugging
     {
         public abstract class Converter
         {
-            abstract public int Count();
             abstract public int ValueCount();
             abstract public int ByteOffset();
             abstract public int ByteSize();
@@ -40,11 +39,6 @@ namespace GraphicalDebugging
 
                 this.count = count;
                 this.byteOffset = byteOffset;
-            }
-
-            public override int Count()
-            {
-                return count;
             }
 
             public override int ValueCount()
@@ -96,11 +90,6 @@ namespace GraphicalDebugging
                 this.sizeOfWrapper = sizeOfWrapper;
             }
 
-            public override int Count()
-            {
-                return count;
-            }
-
             public override int ValueCount()
             {
                 return count * converter.ValueCount();
@@ -125,13 +114,72 @@ namespace GraphicalDebugging
                 for (int i = 0; i < count; ++i)
                 {
                     // internal offset set in converter
-                    converter.Copy(bytes, bytesOffset + i * sizeOfWrapper, result, resultOffset + i * converter.Count());
+                    converter.Copy(bytes, bytesOffset + i * sizeOfWrapper, result, resultOffset + i * converter.ValueCount());
                 }
             }
 
             Converter converter;
             int count = 0;
             int sizeOfWrapper = 0;
+        }
+
+        public class WrappingManyConverter : Converter
+        {
+            public WrappingManyConverter(Converter[] valueConverters, int count, int sizeOfWrapper)
+            {
+                if (valueConverters == null || valueConverters.Length < 1)
+                    throw new ArgumentOutOfRangeException("valueConverters");
+
+                this.valueConverters = valueConverters;
+                this.count = count;
+                this.sizeOfWrapper = sizeOfWrapper;
+
+                this.internalValueCount = 0;
+                foreach (Converter converter in valueConverters)
+                {
+                    this.internalValueCount += converter.ValueCount();
+                }
+            }
+
+            public override int ValueCount()
+            {
+                return count * internalValueCount;
+            }
+
+            public override int ByteSize()
+            {
+                return count * sizeOfWrapper;
+            }
+
+            public override int ByteOffset()
+            {
+                return 0;
+            }
+
+            public override void Copy(byte[] bytes, int bytesOffset, double[] result, int resultOffset)
+            {
+                // TODO: Copy in one block if possible
+                // if offsets and sizes defined in valueConverters create contigeous block
+
+                for (int i = 0; i < count; ++i)
+                {
+                    //int bOffset = 0;
+                    int vOffset = 0;
+                    foreach (Converter converter in valueConverters)
+                    {
+                        // TODO: Inconsistent offsets, one stored inside and one outside converter
+                        converter.Copy(bytes, bytesOffset + i * sizeOfWrapper/* + bOffset*/, result, resultOffset + i * internalValueCount + vOffset);
+                        //bOffset += converter.ByteSize();
+                        vOffset += converter.ValueCount();
+                    }
+                }
+            }
+
+            Converter[] valueConverters = null;
+            int count = 0;
+            int sizeOfWrapper = 0;
+
+            int internalValueCount = 0;
         }
 
         public static Converter GetNumericConverter(Debugger debugger, string ptrName, string valType, int size, int byteOffset = 0)

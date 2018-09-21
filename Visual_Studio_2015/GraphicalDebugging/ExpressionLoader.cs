@@ -54,6 +54,7 @@ namespace GraphicalDebugging
             loaders.Add(new BGTurn("boost::geometry::detail::buffer::buffer_turn_info"));
             loaders.Add(new BGTurnContainer("std::vector"));
             loaders.Add(new BGTurnContainer("std::deque"));
+            loaders.Add(new StdPairPoint());
         }
 
         public class KindConstraint
@@ -323,7 +324,7 @@ namespace GraphicalDebugging
                     MemoryReader.Converter converter = GetMemoryConverter(debugger, name, type);
                     if (converter != null)
                     {
-                        if (converter.Count() != count)
+                        if (converter.ValueCount() != count)
                             throw new ArgumentOutOfRangeException("count");
 
                         double[] values = new double[count];
@@ -714,7 +715,7 @@ namespace GraphicalDebugging
                             double[] values = new double[containerConverter.ValueCount()];
                             if (MemoryReader.Read(debugger, pointPtrName, values, containerConverter))
                             {
-                                int dimension = pointConverter.Count();
+                                int dimension = pointConverter.ValueCount();
                                 if (values.Length == size * dimension)
                                 {
                                     result = new ResultType();
@@ -1118,7 +1119,7 @@ namespace GraphicalDebugging
                             double[] values = new double[containerConverter.ValueCount()];
                             if (MemoryReader.Read(debugger, pointPtrName, values, containerConverter))
                             {
-                                int dimension = pointConverter.Count();
+                                int dimension = pointConverter.ValueCount();
                                 if (values.Length == size * dimension)
                                 {
                                     result = new ExpressionDrawer.Ring();
@@ -1751,6 +1752,67 @@ namespace GraphicalDebugging
             }
 
             string id;
+        }
+
+        class StdPairPoint : PointLoader
+        {
+            public override string Id() { return "std::pair"; }
+
+            public override Geometry.Traits LoadTraits(string type)
+            {
+                return new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
+            }
+
+            public override ExpressionDrawer.Point LoadPoint(bool accessMemory, Debugger debugger, string name, string type)
+            {
+                if (accessMemory)
+                {
+                    MemoryReader.Converter converter = GetMemoryConverter(debugger, name, type);
+                    if (converter != null)
+                    {
+                        if (converter.ValueCount() != 2)
+                            throw new ArgumentOutOfRangeException("converter.ValueCount()");
+
+                        double[] values = new double[2];
+                        if (MemoryReader.Read(debugger, "&" + name, values, converter))
+                        {
+                            return new ExpressionDrawer.Point(values[0], values[1]);
+                        }
+                    }
+                }
+
+                bool okx = true, oky = true;
+                double x = 0, y = 0;
+                x = LoadAsDouble(debugger, name + ".first", out okx);
+                y = LoadAsDouble(debugger, name + ".second", out oky);
+                return IsOk(okx, oky)
+                     ? new ExpressionDrawer.Point(x, y)
+                     : null;
+            }
+
+            public override MemoryReader.Converter GetMemoryConverter(Debugger debugger, string name, string type)
+            {
+                List<string> tparams = Util.Tparams(type);
+                if (tparams.Count < 2)
+                    return null;
+                string firstType = tparams[0];
+                string secondType = tparams[1];
+                string ptrName = "&" + name;
+                string ptrFirst = "&" + name + ".first";
+                string ptrSecond = "&" + name + ".second";
+                // Just in case, offset should be 0
+                long firstOffset = MemoryReader.GetAddressDifference(debugger, ptrName, ptrFirst);
+                // Just in case, offset should be:
+                //   MemoryReader.GetValueSizeof(debugger, name + ".first", null);
+                long secondOffset = MemoryReader.GetAddressDifference(debugger, ptrName, ptrSecond);
+                MemoryReader.Converter[] converters = new MemoryReader.Converter[2];
+                converters[0] = MemoryReader.GetNumericConverter(debugger, ptrFirst, firstType, 1, (int)firstOffset);
+                converters[1] = MemoryReader.GetNumericConverter(debugger, ptrSecond, secondType, 1, (int)secondOffset);
+                if (converters[0] == null || converters[1] == null)
+                    return null;
+                int sizeOfPair = MemoryReader.GetValueTypeSizeof(debugger, type);
+                return new MemoryReader.WrappingManyConverter(converters, 1, sizeOfPair);
+            }
         }
 
         Loaders loaders = new Loaders();
