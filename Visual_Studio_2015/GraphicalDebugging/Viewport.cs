@@ -61,17 +61,19 @@ namespace GraphicalDebugging
             }
         }
 
-        public void DrawPoint(float x, float y, Pen pen)
+        private void DrawPoint(float x, float y, float d, Pen pen)
         {
-            float mx = x - 2.5f; // r=2.5f
-            float my = y - 2.5f;
-            float d = 5;
+            float r = d / 2.0f;
+            float mx = x - r;
+            float my = y - r;
             graphics.DrawEllipse(pen, mx, my, d, d);
             graphics.FillEllipse(brush, mx, my, d, d);
         }
-        public void DrawPoint(float x, float y) { DrawPoint(x, y, pen); }
-        public void DrawPoint(PointF p, Pen pen) { DrawPoint(p.X, p.Y, pen); }
-        public void DrawPoint(PointF p) { DrawPoint(p.X, p.Y, pen); }
+        private void DrawPoint(PointF p, Pen pen) { DrawPoint(p.X, p.Y, 5, pen); }
+
+        public void DrawPoint(float x, float y) { DrawPoint(x, y, 5, pen); }
+        public void DrawPoint(float x, float y, float size) { DrawPoint(x, y, size, pen); }
+        public void DrawPoint(PointF p) { DrawPoint(p.X, p.Y, 5, pen); }
 
         public static void DrawLine(Graphics graphics, Pen pen, float x1, float y1, float x2, float y2)
         {

@@ -666,30 +666,16 @@ namespace GraphicalDebugging
                 float x0 = cs.ConvertX(0);
                 float x1 = cs.ConvertX(1);
                 float dx = Math.Abs(x1 - x0);
-                bool drawPts = dx < 4;
+                float s = Math.Min(Math.Max(dx * 2.0f, 2.0f), 5.0f);
 
                 double i = 0;
-                if (drawPts)
+                Drawer drawer = new Drawer(graphics, settings.color);
+                foreach (double v in values)
                 {
-                    Pen pen = new Pen(settings.color, 2);
-                    foreach (double v in values)
-                    {
-                        float x = cs.ConvertX(i);
-                        float y = cs.ConvertY(v);
-                        graphics.DrawLine(pen, x, y - 0.5f, x, y + 0.5f);
-                        i += 1;
-                    }
-                }
-                else
-                {
-                    Drawer drawer = new Drawer(graphics, settings.color);
-                    foreach (double v in values)
-                    {
-                        float x = cs.ConvertX(i);
-                        float y = cs.ConvertY(v);
-                        drawer.DrawPoint(x, y);
-                        i += 1;
-                    }
+                    float x = cs.ConvertX(i);
+                    float y = cs.ConvertY(v);
+                    drawer.DrawPoint(x, y, s);
+                    i += 1;
                 }
             }
 
@@ -700,11 +686,11 @@ namespace GraphicalDebugging
 
                 LocalCS cs = new LocalCS(box, graphics, fill);
 
-                float x0 = cs.ConvertX(0);
-                float x1 = cs.ConvertX(1);
-                float dx = Math.Abs(x1 - x0);
-                float penWidth = dx < 2 ? 1 : 2;
-                
+                //float x0 = cs.ConvertX(0);
+                //float x1 = cs.ConvertX(1);
+                //float dx = Math.Abs(x1 - x0);
+                //float s = Math.Min(Math.Max(dx, 1.0f), 2.0f);
+
                 Drawer drawer = new Drawer(graphics, settings.color);
 
                 if (values.Count == 1)
@@ -763,7 +749,10 @@ namespace GraphicalDebugging
 
             public void Draw(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
             {
-                double diffX = Math.Abs(box.Dim(0)) / Math.Max(points.Count, 1);
+                // Esstimate the distance between samples, uniform distribution, 2 samples per X
+                Geometry.Box originalBox = this.Aabb(traits, false);
+                int count = Math.Max(points.Count, 1);
+                double diffX = Math.Abs(originalBox.Dim(0)) / count * 2.0;
 
                 if (settings.pointPlot_enableLines)
                     DrawLines(box, graphics, settings, traits, diffX);
@@ -780,27 +769,15 @@ namespace GraphicalDebugging
                 LocalCS cs = new LocalCS(box, graphics, fill);
 
                 float dx = cs.ConvertDimensionX(diffX);
-                bool drawPts = dx < 4;
+                float s = Math.Min(Math.Max(dx * 2.0f, 2.0f), 5.0f);
+                bool drawPts = dx < 1;
 
-                if (drawPts)
+                Drawer drawer = new Drawer(graphics, settings.color);
+                for (int i = 0; i < points.Count; ++i)
                 {
-                    Pen pen = new Pen(settings.color, 2);
-                    for (int i = 0; i < points.Count; ++i)
-                    {
-                        float x = cs.ConvertX(points[i][0]);
-                        float y = cs.ConvertY(points[i][1]);
-                        graphics.DrawLine(pen, x, y - 0.5f, x, y + 0.5f);
-                    }
-                }
-                else
-                {
-                    Drawer drawer = new Drawer(graphics, settings.color);
-                    for (int i = 0; i < points.Count; ++i)
-                    {
-                        float x = cs.ConvertX(points[i][0]);
-                        float y = cs.ConvertY(points[i][1]);
-                        drawer.DrawPoint(x, y);
-                    }
+                    float x = cs.ConvertX(points[i][0]);
+                    float y = cs.ConvertY(points[i][1]);
+                    drawer.DrawPoint(x, y, s);
                 }
             }
 
@@ -811,8 +788,8 @@ namespace GraphicalDebugging
 
                 LocalCS cs = new LocalCS(box, graphics, fill);
 
-                float dx = cs.ConvertDimensionX(diffX);
-                float penWidth = dx < 2 ? 1 : 2;
+                //float dx = cs.ConvertDimensionX(diffX);
+                //float s = Math.Min(Math.Max(dx, 1.0f), 2.0f);
 
                 Drawer drawer = new Drawer(graphics, settings.color);
 
@@ -839,8 +816,16 @@ namespace GraphicalDebugging
 
             public Geometry.Box Aabb(Geometry.Traits traits, bool calculateEnvelope)
             {
-                // traits != null, CS is forced to cartesian
-                return points.Aabb(traits, calculateEnvelope);
+                // NOTE: traits == null
+                // so don't return points.Aabb(traits, calculateEnvelope)
+
+                Geometry.Box box = new Geometry.Box();
+                Geometry.AssignInverse(box);
+
+                for (int i = 0; i < points.Count; ++i)
+                    Geometry.Expand(box, points[i]);
+
+                return box;
             }
 
             public Color DefaultColor(Colors colors) { return colors.DrawColor; }
@@ -1075,7 +1060,8 @@ namespace GraphicalDebugging
         }
 
         // For GeometryWatch and PlotWatch
-        Geometry.Box Draw(Graphics graphics, Debugger debugger, LoadDrawable loadDrawable,
+        Geometry.Box Draw(Graphics graphics, Debugger debugger,
+                          LoadDrawable loadDrawable, bool ignoreTraits,
                           string[] names, Settings[] settings, Colors colors, ZoomBox zoomBox)
         {
             try
@@ -1098,6 +1084,9 @@ namespace GraphicalDebugging
                     if (names[i] != null && names[i] != "")
                     {
                         drawables[i] = loadDrawable.Load(debugger, names[i]);
+
+                        if (ignoreTraits)
+                            drawables[i].Traits = null;
 
                         if (drawables[i].Drawable != null)
                         {
@@ -1189,7 +1178,7 @@ namespace GraphicalDebugging
             try
             {
                 LoadGeometry loadDrawable = new LoadGeometry(expressionLoader);
-                return Draw(graphics, debugger, loadDrawable, names, settings, colors, zoomBox);
+                return Draw(graphics, debugger, loadDrawable, false, names, settings, colors, zoomBox);
             }
             catch (Exception e)
             {
@@ -1204,7 +1193,7 @@ namespace GraphicalDebugging
             try
             {
                 LoadPlot loadDrawable = new LoadPlot(expressionLoader);
-                return Draw(graphics, debugger, loadDrawable, names, settings, colors, zoomBox);
+                return Draw(graphics, debugger, loadDrawable, true, names, settings, colors, zoomBox);
             }
             catch (Exception e)
             {
