@@ -311,6 +311,11 @@ namespace GraphicalDebugging
             return bytesRead == buffer.Length;
         }
 
+        public static bool IsInvalidAddressDifference(long diff)
+        {
+            return diff == long.MinValue;
+        }
+
         public static long GetAddressDifference(Debugger debugger, string ptrName1, string ptrName2)
         {
             ulong addr1 = GetValueAddress(debugger, ptrName1);
