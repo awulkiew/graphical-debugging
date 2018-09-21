@@ -80,6 +80,14 @@ namespace GraphicalDebugging
             public override bool Check(Kind kind) { return kind == Kind.Container; }
         }
 
+        public class ContainerOrMultiPointKindConstraint : KindConstraint
+        {
+            public override bool Check(Kind kind)
+            {
+                return kind == Kind.Container || kind == Kind.MultiPoint;
+            }
+        }
+
         private static KindConstraint allowAllKinds = new KindConstraint();
 
         public void Load(Debugger debugger, string name,
@@ -475,7 +483,7 @@ namespace GraphicalDebugging
                 int dimension = ParseInt(tparams[1]);
                 int count = Math.Min(dimension, 2);
                 // Just in case, offset should be 0
-                long byteOffset = MemoryReader.GetAddressDifference(debugger, "&" + name, name + ".m_values");
+                long byteOffset = MemoryReader.GetAddressDifference(debugger, "(&" + name + ")", name + ".m_values");
                 return MemoryReader.GetNumericConverter(debugger, name + ".m_values", coordType, count, (int)byteOffset);
             }
 
@@ -540,7 +548,7 @@ namespace GraphicalDebugging
                     return null;
                 string coordType = tparams[0];
                 // Just in case, offset should be 0
-                long byteOffset = MemoryReader.GetAddressDifference(debugger, "&" + name, name + ".m_values");
+                long byteOffset = MemoryReader.GetAddressDifference(debugger, "(&" + name + ")", name + ".m_values");
                 return MemoryReader.GetNumericConverter(debugger, name + ".m_values", coordType, 2, (int)byteOffset);
             }
         }
@@ -715,7 +723,7 @@ namespace GraphicalDebugging
                     string pointPtrName = containerLoader.ElementPtrName(name);
                     if (pointPtrName != null)
                     {
-                        string pointName = "*((" + pointType + "*)" + pointPtrName + ")";
+                        string pointName = "(*((" + pointType + "*)" + pointPtrName + "))";
                         MemoryReader.Converter pointConverter = pointLoader.GetMemoryConverter(debugger, pointName, pointType);
                         MemoryReader.Converter containerConverter = containerLoader.GetMemoryConverter(debugger, name, pointConverter, pointType);
                         if (pointConverter != null && containerConverter != null)
@@ -1020,7 +1028,7 @@ namespace GraphicalDebugging
                     return null;
                 string coordType = tparams[0];
                 // Just in case, offset should be 0
-                long byteOffset = MemoryReader.GetAddressDifference(debugger, "&" + name, name + ".coords_");
+                long byteOffset = MemoryReader.GetAddressDifference(debugger, "(&" + name + ")", name + ".coords_");
                 return MemoryReader.GetNumericConverter(debugger, name + ".coords_", coordType, 2, (int)byteOffset);
             }
         }
@@ -1119,7 +1127,7 @@ namespace GraphicalDebugging
                     string pointPtrName = containerLoader.ElementPtrName(containerName);
                     if (pointPtrName != null)
                     {
-                        string pointName = "*((" + pointType + "*)" + pointPtrName + ")";
+                        string pointName = "(*((" + pointType + "*)" + pointPtrName + "))";
                         MemoryReader.Converter pointConverter = pointLoader.GetMemoryConverter(debugger, pointName, pointType);
                         MemoryReader.Converter containerConverter = containerLoader.GetMemoryConverter(debugger, containerName, pointConverter, pointType);
                         if (pointConverter != null && containerConverter != null)
@@ -1782,7 +1790,7 @@ namespace GraphicalDebugging
                             throw new ArgumentOutOfRangeException("converter.ValueCount()");
 
                         double[] values = new double[2];
-                        if (MemoryReader.Read(debugger, "&" + name, values, converter))
+                        if (MemoryReader.Read(debugger, "(&" + name + ")", values, converter))
                         {
                             return new ExpressionDrawer.Point(values[0], values[1]);
                         }
@@ -1805,9 +1813,9 @@ namespace GraphicalDebugging
                     return null;
                 string firstType = tparams[0];
                 string secondType = tparams[1];
-                string ptrName = "&(" + name + ")";
-                string ptrFirst = "&(" + name + ").first";
-                string ptrSecond = "&(" + name + ").second";
+                string ptrName = "(&" + name + ")";
+                string ptrFirst = "(&" + name + ".first)";
+                string ptrSecond = "(&" + name + ".second)";
                 // Just in case, offset should be 0
                 long firstOffset = MemoryReader.GetAddressDifference(debugger, ptrName, ptrFirst);
                 // Just in case, offset should be:
