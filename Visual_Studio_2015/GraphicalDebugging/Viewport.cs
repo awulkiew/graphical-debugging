@@ -689,7 +689,7 @@ namespace GraphicalDebugging
                 int smallScaleX = SmallScaleSegments(wd_x, 10);
                 float wd_x_step = wd_x / smallScaleX;
                 float wd_x_limit = wd_x - wd_x_step / 2;
-                float wd_y = cs.ConvertDimensionX(pd_y);
+                float wd_y = cs.ConvertDimensionY(pd_y);
                 int smallScaleY = SmallScaleSegments(wd_y, 10);
                 float wd_y_step = wd_y / smallScaleY;
                 float wd_y_limit = wd_y - wd_y_step / 2;
@@ -724,7 +724,7 @@ namespace GraphicalDebugging
                     float yStrTop = wy - yStrSize.Height / 2;
                     graphics.DrawString(yStr, font, brushText, yStrLeft, yStrTop);
                     // small scale
-                    for (float wsy = wy + wd_y_step; wsy < wy + wd_y_limit; wsy += wd_y_step)
+                    for (float wsy = wy - wd_y_step; wsy > wy - wd_y_limit; wsy -= wd_y_step)
                         graphics.DrawLine(penAabb, wWidth, wsy, wWidth - 3, wsy);
                 }
             }
