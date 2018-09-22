@@ -13,14 +13,12 @@ using System.Threading.Tasks;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 
-using EnvDTE;
-using EnvDTE80;
-using Microsoft.VisualStudio.Shell;
-
 namespace GraphicalDebugging
 {
     class ExpressionDrawer
     {
+        private ExpressionDrawer() { }
+
         // -------------------------------------------------
         // Settings
         // -------------------------------------------------
@@ -914,34 +912,6 @@ namespace GraphicalDebugging
             private List<Turn> turns;
         }
 
-        private Color DefaultColor(IDrawable drawable, Colors colors)
-        {
-            if (drawable is Point)
-                return colors.PointColor;
-            else if (drawable is Box)
-                return colors.BoxColor;
-            else if (drawable is NSphere)
-                return colors.NSphereColor;
-            else if (drawable is Segment)
-                return colors.SegmentColor;
-            else if (drawable is Linestring)
-                return colors.LinestringColor;
-            else if (drawable is Ring)
-                return colors.RingColor;
-            else if (drawable is Polygon)
-                return colors.PolygonColor;
-            else if (drawable is MultiPoint)
-                return colors.MultiPointColor;
-            else if (drawable is MultiLinestring)
-                return colors.MultiLinestringColor;
-            else if (drawable is MultiPolygon)
-                return colors.MultiPolygonColor;
-            else if (drawable is Turn || drawable is TurnsContainer)
-                return colors.TurnColor;
-            else
-                return colors.DrawColor;
-        }
-
         // -------------------------------------------------
         // High level loading
         // -------------------------------------------------
@@ -1008,11 +978,39 @@ namespace GraphicalDebugging
         }
 
         // -------------------------------------------------
-        // public Draw
+        // Drawing
         // -------------------------------------------------
 
+        static Color DefaultColor(IDrawable drawable, Colors colors)
+        {
+            if (drawable is Point)
+                return colors.PointColor;
+            else if (drawable is Box)
+                return colors.BoxColor;
+            else if (drawable is NSphere)
+                return colors.NSphereColor;
+            else if (drawable is Segment)
+                return colors.SegmentColor;
+            else if (drawable is Linestring)
+                return colors.LinestringColor;
+            else if (drawable is Ring)
+                return colors.RingColor;
+            else if (drawable is Polygon)
+                return colors.PolygonColor;
+            else if (drawable is MultiPoint)
+                return colors.MultiPointColor;
+            else if (drawable is MultiLinestring)
+                return colors.MultiLinestringColor;
+            else if (drawable is MultiPolygon)
+                return colors.MultiPolygonColor;
+            else if (drawable is Turn || drawable is TurnsContainer)
+                return colors.TurnColor;
+            else
+                return colors.DrawColor;
+        }
+
         // For GraphicalWatch
-        public bool Draw(Graphics graphics, string name, Settings settings, Colors colors)
+        public static bool Draw(Graphics graphics, string name, Settings settings, Colors colors)
         {
             try
             {
@@ -1045,9 +1043,9 @@ namespace GraphicalDebugging
         }
 
         // For GeometryWatch and PlotWatch
-        Geometry.Box Draw(Graphics graphics,
-                          LoadDrawable loadDrawable, bool ignoreTraits,
-                          string[] names, Settings[] settings, Colors colors, ZoomBox zoomBox)
+        static Geometry.Box Draw(Graphics graphics,
+                                 LoadDrawable loadDrawable, bool ignoreTraits,
+                                 string[] names, Settings[] settings, Colors colors, ZoomBox zoomBox)
         {
             try
             {
@@ -1161,7 +1159,8 @@ namespace GraphicalDebugging
             return null;
         }
 
-        public Geometry.Box DrawGeometries(Graphics graphics, string[] names, Settings[] settings, Colors colors, ZoomBox zoomBox)
+        // For GeometryWatch
+        public static Geometry.Box DrawGeometries(Graphics graphics, string[] names, Settings[] settings, Colors colors, ZoomBox zoomBox)
         {
             try
             {
@@ -1176,7 +1175,8 @@ namespace GraphicalDebugging
             return null;
         }
 
-        public Geometry.Box DrawPlots(Graphics graphics, string[] names, Settings[] settings, Colors colors, ZoomBox zoomBox)
+        // For PlotWatch
+        public static Geometry.Box DrawPlots(Graphics graphics, string[] names, Settings[] settings, Colors colors, ZoomBox zoomBox)
         {
             try
             {

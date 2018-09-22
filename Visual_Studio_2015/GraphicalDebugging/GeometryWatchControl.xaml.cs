@@ -44,8 +44,6 @@ namespace GraphicalDebugging
         Geometry.Box m_currentBox = null;
         LocalCS m_currentLocalCS = null;
 
-        ExpressionDrawer m_expressionDrawer = new ExpressionDrawer();
-
         ObservableCollection<GeometryItem> Geometries { get; set; }
 
         /// <summary>
@@ -320,7 +318,7 @@ namespace GraphicalDebugging
                         graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                         graphics.Clear(m_colors.ClearColor);
 
-                        m_currentBox = m_expressionDrawer.DrawGeometries(graphics, names, settings, m_colors, m_zoomBox);
+                        m_currentBox = ExpressionDrawer.DrawGeometries(graphics, names, settings, m_colors, m_zoomBox);
 
                         image.Source = Util.BitmapToBitmapImage(bmp);
                         imageEmpty = false;
