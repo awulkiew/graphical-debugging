@@ -17,10 +17,22 @@ namespace GraphicalDebugging
 {
     class ExpressionLoader
     {
+        private DTE2 dte;
+        private Debugger debugger;
+        private DebuggerEvents debuggerEvents;
+        private Loaders loaders;
+
+        private static ExpressionLoader instance = new ExpressionLoader();
+
         public enum Kind { Point = 0, Segment, Box, NSphere, Linestring, Ring, Polygon, MultiPoint, MultiLinestring, MultiPolygon, Container, Variant, Turn, TurnsContainer };
         
         public ExpressionLoader()
         {
+            this.dte = (DTE2)ServiceProvider.GlobalProvider.GetService(typeof(DTE));
+            this.debugger = dte.Debugger;
+            this.debuggerEvents = this.dte.Events.DebuggerEvents;
+
+            loaders = new Loaders();
             loaders.Add(new BGPoint());
             loaders.Add(new BGPointXY());
             loaders.Add(new BGSegment());
@@ -65,6 +77,16 @@ namespace GraphicalDebugging
             loaders.Add(new PointContainer("std::list"));
         }
 
+        public static Debugger Debugger
+        {
+            get { return instance.debugger; }
+        }
+
+        public static DebuggerEvents DebuggerEvents
+        {
+            get { return instance.debuggerEvents; }
+        }
+
         public class KindConstraint
         {
             virtual public bool Check(Kind kind) { return true; }
@@ -87,27 +109,27 @@ namespace GraphicalDebugging
 
         private static KindConstraint allowAllKinds = new KindConstraint();
 
-        public void Load(Debugger debugger, string name,
-                         out Geometry.Traits traits,
-                         out ExpressionDrawer.IDrawable result)
+        public static void Load(string name,
+                                out Geometry.Traits traits,
+                                out ExpressionDrawer.IDrawable result)
         {
 
-            Load(debugger, name, allowAllKinds, out traits, out result);
+            Load(name, allowAllKinds, out traits, out result);
         }
 
-        public void Load(Debugger debugger, string name,
-                         KindConstraint kindConstraint,
-                         out Geometry.Traits traits,
-                         out ExpressionDrawer.IDrawable result)
+        public static void Load(string name,
+                                KindConstraint kindConstraint,
+                                out Geometry.Traits traits,
+                                out ExpressionDrawer.IDrawable result)
         {
             traits = null;
             result = null;
 
-            Expression expr = debugger.GetExpression(name);
+            Expression expr = instance.debugger.GetExpression(name);
             if (!expr.IsValidValue)
                 return;
 
-            Loader loader = loaders.FindByType(expr.Type);
+            Loader loader = instance.loaders.FindByType(expr.Type);
             if (loader == null)
                 return;
 
@@ -121,7 +143,7 @@ namespace GraphicalDebugging
                 accessMemory = optionPage.EnableDirectMemoryAccess;
             }
 
-            loader.Load(loaders, accessMemory, debugger, expr.Name, expr.Type, out traits, out result);
+            loader.Load(instance.loaders, accessMemory, instance.debugger, expr.Name, expr.Type, out traits, out result);
         }
 
         static int ParseInt(string s)
@@ -1839,7 +1861,5 @@ namespace GraphicalDebugging
 
             public override TypeConstraint Constraint() { return new TparamKindConstraint(0, ExpressionLoader.Kind.Point); }
         }
-
-        Loaders loaders = new Loaders();
     }
 }

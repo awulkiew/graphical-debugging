@@ -22,12 +22,6 @@ namespace GraphicalDebugging
     class ExpressionDrawer
     {
         // -------------------------------------------------
-        // Members
-        // -------------------------------------------------
-
-        ExpressionLoader expressionLoader = new ExpressionLoader();
-
-        // -------------------------------------------------
         // Settings
         // -------------------------------------------------
 
@@ -965,31 +959,25 @@ namespace GraphicalDebugging
 
         class LoadDrawable
         {
-            public LoadDrawable(ExpressionLoader el) { expressionLoader = el; }
-
-            virtual public DrawablePair Load(Debugger debugger, string name)
+            virtual public DrawablePair Load(string name)
             {
                 Geometry.Traits traits = null;
                 IDrawable drawable = null;
-                expressionLoader.Load(debugger, name, out traits, out drawable);
+                ExpressionLoader.Load(name, out traits, out drawable);
 
                 return new DrawablePair(drawable, traits);
             }
-
-            protected ExpressionLoader expressionLoader;
         }
 
         class LoadGeometry : LoadDrawable
         {
-            public LoadGeometry(ExpressionLoader el) : base(el) { }
-
             static ExpressionLoader.GeometryKindConstraint geometriesOnly = new ExpressionLoader.GeometryKindConstraint();
 
-            public override DrawablePair Load(Debugger debugger, string name)
+            public override DrawablePair Load(string name)
             {
                 Geometry.Traits traits = null;
                 IDrawable drawable = null;
-                expressionLoader.Load(debugger, name, geometriesOnly, out traits, out drawable);
+                ExpressionLoader.Load(name, geometriesOnly, out traits, out drawable);
                 if (traits == null)
                     drawable = null;
 
@@ -999,16 +987,14 @@ namespace GraphicalDebugging
 
         class LoadPlot : LoadDrawable
         {
-            public LoadPlot(ExpressionLoader el) : base(el) { }
-
             static ExpressionLoader.ContainerKindConstraint containersOnly = new ExpressionLoader.ContainerKindConstraint();
             static ExpressionLoader.MultiPointKindConstraint multiPointsOnly = new ExpressionLoader.MultiPointKindConstraint();
 
-            public override DrawablePair Load(Debugger debugger, string name)
+            public override DrawablePair Load(string name)
             {
                 Geometry.Traits traits = null;
                 IDrawable drawable = null;
-                expressionLoader.Load(debugger, name, multiPointsOnly, out traits, out drawable);
+                ExpressionLoader.Load(name, multiPointsOnly, out traits, out drawable);
                 if (drawable != null)
                 {
                     if (traits != null)
@@ -1016,7 +1002,7 @@ namespace GraphicalDebugging
                     drawable = new PointsContainer(drawable as MultiPoint);
                 }
                 else
-                    expressionLoader.Load(debugger, name, containersOnly, out traits, out drawable);
+                    ExpressionLoader.Load(name, containersOnly, out traits, out drawable);
                 return new DrawablePair(drawable, traits);
             }
         }
@@ -1026,12 +1012,12 @@ namespace GraphicalDebugging
         // -------------------------------------------------
 
         // For GraphicalWatch
-        public bool Draw(Graphics graphics, Debugger debugger, string name, Settings settings, Colors colors)
+        public bool Draw(Graphics graphics, string name, Settings settings, Colors colors)
         {
             try
             {
-                LoadDrawable loadDrawable = new LoadDrawable(expressionLoader);
-                DrawablePair d = loadDrawable.Load(debugger, name);
+                LoadDrawable loadDrawable = new LoadDrawable();
+                DrawablePair d = loadDrawable.Load(name);
                 if (d.Drawable != null)
                 {
                     if (d.Traits != null && d.Traits.CoordinateSystem == Geometry.CoordinateSystem.SphericalPolar)
@@ -1059,7 +1045,7 @@ namespace GraphicalDebugging
         }
 
         // For GeometryWatch and PlotWatch
-        Geometry.Box Draw(Graphics graphics, Debugger debugger,
+        Geometry.Box Draw(Graphics graphics,
                           LoadDrawable loadDrawable, bool ignoreTraits,
                           string[] names, Settings[] settings, Colors colors, ZoomBox zoomBox)
         {
@@ -1082,7 +1068,7 @@ namespace GraphicalDebugging
                 {
                     if (names[i] != null && names[i] != "")
                     {
-                        drawables[i] = loadDrawable.Load(debugger, names[i]);
+                        drawables[i] = loadDrawable.Load(names[i]);
 
                         if (ignoreTraits)
                             drawables[i].Traits = null;
@@ -1175,12 +1161,12 @@ namespace GraphicalDebugging
             return null;
         }
 
-        public Geometry.Box DrawGeometries(Graphics graphics, Debugger debugger, string[] names, Settings[] settings, Colors colors, ZoomBox zoomBox)
+        public Geometry.Box DrawGeometries(Graphics graphics, string[] names, Settings[] settings, Colors colors, ZoomBox zoomBox)
         {
             try
             {
-                LoadGeometry loadDrawable = new LoadGeometry(expressionLoader);
-                return Draw(graphics, debugger, loadDrawable, false, names, settings, colors, zoomBox);
+                LoadGeometry loadDrawable = new LoadGeometry();
+                return Draw(graphics, loadDrawable, false, names, settings, colors, zoomBox);
             }
             catch (Exception e)
             {
@@ -1190,12 +1176,12 @@ namespace GraphicalDebugging
             return null;
         }
 
-        public Geometry.Box DrawPlots(Graphics graphics, Debugger debugger, string[] names, Settings[] settings, Colors colors, ZoomBox zoomBox)
+        public Geometry.Box DrawPlots(Graphics graphics, string[] names, Settings[] settings, Colors colors, ZoomBox zoomBox)
         {
             try
             {
-                LoadPlot loadDrawable = new LoadPlot(expressionLoader);
-                return Draw(graphics, debugger, loadDrawable, true, names, settings, colors, zoomBox);
+                LoadPlot loadDrawable = new LoadPlot();
+                return Draw(graphics, loadDrawable, true, names, settings, colors, zoomBox);
             }
             catch (Exception e)
             {

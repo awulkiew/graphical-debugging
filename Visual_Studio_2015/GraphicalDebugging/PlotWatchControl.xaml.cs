@@ -17,10 +17,7 @@ namespace GraphicalDebugging
     using System.Windows.Media.Imaging;
 
     using EnvDTE;
-    using EnvDTE80;
     using Microsoft.VisualStudio.PlatformUI;
-    using Microsoft.VisualStudio.Shell;
-    using Microsoft.VisualStudio.Utilities;
 
     using System.Collections.Generic;
     using System.Collections.ObjectModel;
@@ -41,10 +38,6 @@ namespace GraphicalDebugging
     /// </summary>
     public partial class PlotWatchControl : UserControl
     {
-        private DTE2 m_dte;
-        private Debugger m_debugger;
-        private DebuggerEvents m_debuggerEvents;
-
         Util.IntsPool m_intsPool;
 
         private bool m_isDataGridEdited;
@@ -71,10 +64,7 @@ namespace GraphicalDebugging
         /// </summary>
         public PlotWatchControl()
         {
-            m_dte = (DTE2)ServiceProvider.GlobalProvider.GetService(typeof(DTE));
-            m_debugger = m_dte.Debugger;
-            m_debuggerEvents = m_dte.Events.DebuggerEvents;
-            m_debuggerEvents.OnEnterBreakMode += DebuggerEvents_OnEnterBreakMode;
+            ExpressionLoader.DebuggerEvents.OnEnterBreakMode += DebuggerEvents_OnEnterBreakMode;
 
             VSColorTheme.ThemeChanged += VSColorTheme_ThemeChanged;
 
@@ -274,7 +264,7 @@ namespace GraphicalDebugging
             m_currentBox = null;
 
             bool imageEmpty = true;
-            if (m_debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
+            if (ExpressionLoader.Debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
             {
                 ExpressionDrawer.Settings referenceSettings = new ExpressionDrawer.Settings();
                 PlotWatchOptionPage optionPage = Util.GetDialogPage<PlotWatchOptionPage>();
@@ -310,7 +300,9 @@ namespace GraphicalDebugging
 
                     if (geometry.Name != null && geometry.Name != "")
                     {
-                        var expression = updateRequred ? m_debugger.GetExpression(geometry.Name) : null;
+                        var expression = updateRequred
+                                       ? ExpressionLoader.Debugger.GetExpression(geometry.Name)
+                                       : null;
                         if (expression == null || expression.IsValidValue)
                         {
                             if (expression != null)
@@ -348,7 +340,7 @@ namespace GraphicalDebugging
                         graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                         graphics.Clear(m_colors.ClearColor);
 
-                        m_currentBox = m_expressionDrawer.DrawPlots(graphics, m_debugger, names, settings, m_colors, m_zoomBox);
+                        m_currentBox = m_expressionDrawer.DrawPlots(graphics, names, settings, m_colors, m_zoomBox);
 
                         image.Source = Util.BitmapToBitmapImage(bmp);
                         imageEmpty = false;

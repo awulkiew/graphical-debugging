@@ -14,10 +14,7 @@ namespace GraphicalDebugging
     using System.Drawing;
 
     using EnvDTE;
-    using EnvDTE80;
     using Microsoft.VisualStudio.PlatformUI;
-    using Microsoft.VisualStudio.Shell;
-    using Microsoft.VisualStudio.Utilities;
 
     using System.Collections.ObjectModel;
 
@@ -26,10 +23,6 @@ namespace GraphicalDebugging
     /// </summary>
     public partial class GraphicalWatchControl : UserControl
     {
-        private DTE2 m_dte;
-        private Debugger m_debugger;
-        private DebuggerEvents m_debuggerEvents;
-
         private bool m_isDataGridEdited;
 
         private Colors m_colors;
@@ -43,10 +36,7 @@ namespace GraphicalDebugging
         /// </summary>
         public GraphicalWatchControl()
         {
-            m_dte = (DTE2)ServiceProvider.GlobalProvider.GetService(typeof(DTE));
-            m_debugger = m_dte.Debugger;
-            m_debuggerEvents = m_dte.Events.DebuggerEvents;
-            m_debuggerEvents.OnEnterBreakMode += DebuggerEvents_OnEnterBreakMode;
+            ExpressionLoader.DebuggerEvents.OnEnterBreakMode += DebuggerEvents_OnEnterBreakMode;
 
             VSColorTheme.ThemeChanged += VSColorTheme_ThemeChanged;
 
@@ -132,7 +122,7 @@ namespace GraphicalDebugging
 
         private void DebuggerEvents_OnEnterBreakMode(dbgEventReason Reason, ref dbgExecutionAction ExecutionAction)
         {
-            if (m_debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
+            if (ExpressionLoader.Debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
             {
                 UpdateItems();
             }
@@ -189,7 +179,7 @@ namespace GraphicalDebugging
             Bitmap bmp = null;
             string type = null;
 
-            if (m_debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
+            if (ExpressionLoader.Debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
             {
                 // Empty color - use default
                 ExpressionDrawer.Settings settings = new ExpressionDrawer.Settings();
@@ -206,7 +196,7 @@ namespace GraphicalDebugging
 
                 if (variable.Name != null && variable.Name != "")
                 {
-                    var expression = m_debugger.GetExpression(variable.Name);
+                    var expression = ExpressionLoader.Debugger.GetExpression(variable.Name);
                     if (expression.IsValidValue)
                     {
                         // create bitmap
@@ -216,7 +206,7 @@ namespace GraphicalDebugging
                         graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                         graphics.Clear(m_colors.ClearColor);
 
-                        if (!m_expressionDrawer.Draw(graphics, m_debugger, variable.Name, settings, m_colors))
+                        if (!m_expressionDrawer.Draw(graphics, variable.Name, settings, m_colors))
                             bmp = null;
 
                         type = expression.Type;
