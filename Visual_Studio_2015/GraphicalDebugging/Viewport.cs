@@ -670,9 +670,15 @@ namespace GraphicalDebugging
                 double mi_y = cs.InverseConvertY(wHeight);
                 double ma_x = cs.InverseConvertX(wWidth);
                 double ma_y = cs.InverseConvertY(0);
+                double mima_x = ma_x - mi_x;
+                double mima_y = ma_y - mi_y;
+                // Esstimate numbers of strings for both axes
+                double esst_x = Math.Abs(mima_x) < 10 ? mima_x / 10 : mima_x;
+                float wStrNumX = wWidth / StringWidth(graphics, font, esst_x) / 1.25f;
+                float wStrNumH = wHeight / StringWidth(graphics, font, 1.0) / 2.0f;
                 // Find closest power of 10 lesser than the width and height
-                double pd_x = AbsOuterPow10((ma_x - mi_x) / 20);
-                double pd_y = AbsOuterPow10((ma_y - mi_y) / 20);
+                double pd_x = AbsOuterPow10(mima_x / wStrNumX);
+                double pd_y = AbsOuterPow10(mima_y / wStrNumH);
                 // Find starting x and y values being the first lesser whole
                 // values of the same magnitude, per axis
                 double x = ScaleStart(mi_x, pd_x);
@@ -683,8 +689,8 @@ namespace GraphicalDebugging
                 if (y > mi_y)
                     y -= pd_y;
                 // Create the string output pattern, e.g. 0.00 for previously calculated step
-                string xStrFormat = Pow10StringFormat(pd_x);
-                string yStrFormat = Pow10StringFormat(pd_y);
+                string xStrFormat = StringFormat(pd_x);
+                string yStrFormat = StringFormat(pd_y);
                 float wd_x = cs.ConvertDimensionX(pd_x);
                 int smallScaleX = SmallScaleSegments(wd_x, 10);
                 float wd_x_step = wd_x / smallScaleX;
@@ -784,14 +790,32 @@ namespace GraphicalDebugging
         }
         */
 
-        private static string Pow10StringFormat(double p)
+        private static float StringWidth(Graphics graphics, Font font, double value)
+        {
+            return StringSize(graphics, font, value).Width;
+        }
+
+        private static float MaxStringHeight(Graphics graphics, Font font, double value)
+        {
+            return StringSize(graphics, font, value).Height;
+        }
+
+        private static SizeF StringSize(Graphics graphics, Font font, double value)
+        {
+            string format = StringFormat(value);
+            string str = Util.ToString(value, format);
+            return graphics.MeasureString(str, font);
+        }
+
+        private static string StringFormat(double p)
         {
             double n = Math.Floor(Math.Log10(p));
             string result = "0";
-            if (n < 0)
+            if (n < 0.0)
             {
+                int ni = (int)Math.Max(n, -16.0);
                 result += '.';
-                for (int i = -1; i >= n; --i)
+                for (int i = -1; i >= ni; --i)
                     result += '0';
             }
             return result;

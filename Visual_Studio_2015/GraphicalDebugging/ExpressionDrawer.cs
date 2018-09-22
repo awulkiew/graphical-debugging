@@ -1138,28 +1138,31 @@ namespace GraphicalDebugging
                         // may produce wierd results because zoomBox is relative to the original box.
                     }
 
-                    // Aabb
+                    // Axes
                     Geometry.Unit unit = traits != null ? traits.Unit : Geometry.Unit.None;
                     Drawer.DrawAxes(graphics, box, unit, colors, fill);
-                    Drawer.DrawScales(graphics, box, colors, fill);
-
-                    if (traits != null)
-                    {
-                        // CS info
-                        SolidBrush brush = new SolidBrush(colors.TextColor);
-                        Font font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), 10);
-                        string str = Geometry.Name(csystems.First());
-                        if (units.First() != Geometry.Unit.None)
-                            str += '[' + Geometry.Name(units.First()) + ']';
-                        graphics.DrawString(str, font, brush, 0, 0);
-                    }
-
+                    
+                    // Drawables
                     for (int i = 0; i < count; ++i)
                     {
                         if (drawables[i] != null && drawables[i].Drawable != null)
                         {
                             drawables[i].Drawable.Draw(box, graphics, settings[i], traits);
                         }
+                    }
+
+                    // Scales
+                    Drawer.DrawScales(graphics, box, colors, fill);
+
+                    // CS info
+                    if (traits != null)
+                    {
+                        SolidBrush brush = new SolidBrush(colors.TextColor);
+                        Font font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), 10);
+                        string str = Geometry.Name(csystems.First());
+                        if (units.First() != Geometry.Unit.None)
+                            str += '[' + Geometry.Name(units.First()) + ']';
+                        graphics.DrawString(str, font, brush, 0, 0);
                     }
 
                     return box;
