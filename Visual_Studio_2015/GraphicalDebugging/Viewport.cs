@@ -654,59 +654,78 @@ namespace GraphicalDebugging
             float max_x = cs.ConvertX(box.Max[0]);
             float max_y = cs.ConvertY(box.Max[1]);
 
+            // pen for lines
             Pen penAabb = new Pen(colors.AabbColor, 1);
             float maxHeight = 20.0f;
-            
+            // font and brush for text
+            Font font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), maxHeight / 2.0f);
+            SolidBrush brushText = new SolidBrush(colors.TextColor);
+
             // Scales
             {
+                float wWidth = graphics.VisibleClipBounds.Width;
+                float wHeight = graphics.VisibleClipBounds.Height;
                 // In CS coordinates
                 double mi_x = cs.InverseConvertX(0);
-                double mi_y = cs.InverseConvertY(graphics.VisibleClipBounds.Height);
-                double ma_x = cs.InverseConvertX(graphics.VisibleClipBounds.Width);
+                double mi_y = cs.InverseConvertY(wHeight);
+                double ma_x = cs.InverseConvertX(wWidth);
                 double ma_y = cs.InverseConvertY(0);
-                // Find closest power of 10 greater than abs min coordinates
-                double pmi_x = AbsOuterPow10(mi_x);
-                double pmi_y = AbsOuterPow10(mi_y);
                 // Find closest power of 10 lesser than the width and height
                 double pd_x = AbsOuterPow10((ma_x - mi_x) / 20);
                 double pd_y = AbsOuterPow10((ma_y - mi_y) / 20);
                 // Find starting x and y values being the first lesser whole
                 // values of the same magnitude, per axis
-                double x = mi_x < 0 ? -pmi_x : 0;
-                for (; x < mi_x; x += pd_x)
-                    ;
-                x -= pd_x;
-                double y = mi_y < 0 ? -pmi_y : 0;
-                for (; y < mi_y; y += pd_y)
-                    ;
-                y -= pd_y;
-                // Setup font and brush for text and lines
-                Font font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), maxHeight / 2.0f);
-                SolidBrush brushText = new SolidBrush(colors.TextColor);
+                double x = ScaleStart(mi_x, pd_x);
+                double y = ScaleStart(mi_y, pd_y);
+                // Make sure the scale starts outside the view
+                if (x > mi_x)
+                    x -= pd_x;
+                if (y > mi_y)
+                    y -= pd_y;
                 // Create the string output pattern, e.g. 0.00 for previously calculated step
                 string xStrFormat = Pow10StringFormat(pd_x);
                 string yStrFormat = Pow10StringFormat(pd_y);
+                float wd_x = cs.ConvertDimensionX(pd_x);
+                int smallScaleX = SmallScaleSegments(wd_x, 10);
+                float wd_x_step = wd_x / smallScaleX;
+                float wd_x_limit = wd_x - wd_x_step / 2;
+                float wd_y = cs.ConvertDimensionX(pd_y);
+                int smallScaleY = SmallScaleSegments(wd_y, 10);
+                float wd_y_step = wd_y / smallScaleY;
+                float wd_y_limit = wd_y - wd_y_step / 2;
                 // Draw horizontal scale
-                for (; x < ma_x; x += pd_x)
+                double limit_x = ma_x + pd_x * 1.001;
+                for (; x < limit_x; x += pd_x)
                 {
                     float wx = cs.ConvertX(x);
-                    graphics.DrawLine(penAabb, wx, graphics.VisibleClipBounds.Height, wx, graphics.VisibleClipBounds.Height - 5);
+                    // scale
+                    graphics.DrawLine(penAabb, wx, wHeight, wx, wHeight - 5);
+                    // value
                     string xStr = x.ToString(xStrFormat, System.Globalization.CultureInfo.InvariantCulture);
                     SizeF xStrSize = graphics.MeasureString(xStr, font);
                     float xStrLeft = wx - xStrSize.Width / 2;
-                    float xStrTop = graphics.VisibleClipBounds.Height - 5 - xStrSize.Height;
+                    float xStrTop = wHeight - 5 - xStrSize.Height;
                     graphics.DrawString(xStr, font, brushText, xStrLeft, xStrTop);
+                    // small scale
+                    for (float wsx = wx + wd_x_step; wsx < wx + wd_x_limit; wsx += wd_x_step)
+                        graphics.DrawLine(penAabb, wsx, wHeight, wsx, wHeight - 3);
                 }
                 // Draw vertical scale
-                for (; y < ma_y; y += pd_y)
+                double limit_y = ma_y + pd_y * 1.001;
+                for (; y < limit_y; y += pd_y)
                 {
                     float wy = cs.ConvertY(y);
-                    graphics.DrawLine(penAabb, graphics.VisibleClipBounds.Width, wy, graphics.VisibleClipBounds.Width - 5, wy);
+                    // scale
+                    graphics.DrawLine(penAabb, wWidth, wy, wWidth - 5, wy);
+                    // value
                     string yStr = y.ToString(yStrFormat, System.Globalization.CultureInfo.InvariantCulture);
                     SizeF yStrSize = graphics.MeasureString(yStr, font);
-                    float yStrLeft = graphics.VisibleClipBounds.Width - 5 - yStrSize.Width;
+                    float yStrLeft = wWidth - 5 - yStrSize.Width;
                     float yStrTop = wy - yStrSize.Height / 2;
                     graphics.DrawString(yStr, font, brushText, yStrLeft, yStrTop);
+                    // small scale
+                    for (float wsy = wy + wd_y_step; wsy < wy + wd_y_limit; wsy += wd_y_step)
+                        graphics.DrawLine(penAabb, wWidth, wsy, wWidth - 3, wsy);
                 }
             }
 
@@ -786,6 +805,21 @@ namespace GraphicalDebugging
         private static double AbsInnerPow10(double x)
         {
             return Math.Pow(10, Math.Floor(Math.Log10(Math.Abs(x))));
+        }
+
+        private static double ScaleStart(double val, double step)
+        {
+            double r = val / step;
+            double i = val >= 0 ? Math.Ceiling(r) : Math.Floor(r);
+            return i * step;
+        }
+
+        private static int SmallScaleSegments(float wStep, float wMinSize)
+        {
+            return wStep >= wMinSize * 10 ? 10
+                 : wStep >= wMinSize * 5 ? 5
+                 : wStep >= wMinSize * 2 ? 2
+                 : 1;
         }
 
         private static PointF MulF(PointF p, float v) { return new PointF(p.X * v, p.Y * v); }
