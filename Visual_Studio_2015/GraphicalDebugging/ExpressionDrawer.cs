@@ -913,71 +913,6 @@ namespace GraphicalDebugging
         }
 
         // -------------------------------------------------
-        // High level loading
-        // -------------------------------------------------
-
-        public class DrawablePair
-        {
-            public DrawablePair(IDrawable drawable, Geometry.Traits traits)
-            {
-                Drawable = drawable;
-                Traits = traits;
-            }
-            public IDrawable Drawable { get; set; }
-            public Geometry.Traits Traits { get; set; }
-        }
-
-        public class LoadDrawable
-        {
-            virtual public DrawablePair Load(string name)
-            {
-                Geometry.Traits traits = null;
-                IDrawable drawable = null;
-                ExpressionLoader.Load(name, out traits, out drawable);
-
-                return new DrawablePair(drawable, traits);
-            }
-        }
-
-        public class LoadGeometry : LoadDrawable
-        {
-            static ExpressionLoader.GeometryKindConstraint geometriesOnly = new ExpressionLoader.GeometryKindConstraint();
-
-            public override DrawablePair Load(string name)
-            {
-                Geometry.Traits traits = null;
-                IDrawable drawable = null;
-                ExpressionLoader.Load(name, geometriesOnly, out traits, out drawable);
-                if (traits == null)
-                    drawable = null;
-
-                return new DrawablePair(drawable, traits);
-            }
-        }
-
-        public class LoadPlot : LoadDrawable
-        {
-            static ExpressionLoader.ContainerKindConstraint containersOnly = new ExpressionLoader.ContainerKindConstraint();
-            static ExpressionLoader.MultiPointKindConstraint multiPointsOnly = new ExpressionLoader.MultiPointKindConstraint();
-
-            public override DrawablePair Load(string name)
-            {
-                Geometry.Traits traits = null;
-                IDrawable drawable = null;
-                ExpressionLoader.Load(name, multiPointsOnly, out traits, out drawable);
-                if (drawable != null)
-                {
-                    if (traits != null)
-                        traits = new Geometry.Traits(traits.Dimension); // force cartesian
-                    drawable = new PointsContainer(drawable as MultiPoint);
-                }
-                else
-                    ExpressionLoader.Load(name, containersOnly, out traits, out drawable);
-                return new DrawablePair(drawable, traits);
-            }
-        }
-
-        // -------------------------------------------------
         // Drawing
         // -------------------------------------------------
 
@@ -1017,178 +952,137 @@ namespace GraphicalDebugging
             if (drawable == null)
                 return false;
 
-            try
-            {
-                if (traits != null && traits.CoordinateSystem == Geometry.CoordinateSystem.SphericalPolar)
-                {
-                    throw new Exception("This coordinate system is not yet supported.");
-                }
+            if (traits != null && traits.CoordinateSystem == Geometry.CoordinateSystem.SphericalPolar)
+                throw new Exception("This coordinate system is not yet supported.");
 
-                if (settings.color == Color.Empty)
-                    settings.color = DefaultColor(drawable, colors);
+            if (settings.color == Color.Empty)
+                settings.color = DefaultColor(drawable, colors);
 
-                Geometry.Box aabb = drawable.Aabb(traits, true);
-                Geometry.Unit unit = (traits != null) ? traits.Unit : Geometry.Unit.None;
-                bool fill = (traits == null);
-                Drawer.DrawAxes(graphics, aabb, unit, colors, fill);
-                drawable.Draw(aabb, graphics, settings, traits);
-                return true;
-            }
-            catch(Exception e)
-            {
-                DrawErrorMessage(graphics, e.Message);
-            }
-
-            return false;
+            Geometry.Box aabb = drawable.Aabb(traits, true);
+            Geometry.Unit unit = (traits != null) ? traits.Unit : Geometry.Unit.None;
+            bool fill = (traits == null);
+            Drawer.DrawAxes(graphics, aabb, unit, colors, fill);
+            drawable.Draw(aabb, graphics, settings, traits);
+            return true;
         }
 
         // For GeometryWatch and PlotWatch
-        static Geometry.Box Draw(Graphics graphics,
-                                 LoadDrawable loadDrawable, bool ignoreTraits,
-                                 string[] names, Settings[] settings, Colors colors, ZoomBox zoomBox)
+        static Geometry.Box Draw(Graphics graphics, bool ignoreTraits,
+                                 IDrawable[] drawables, Geometry.Traits[] traits,
+                                 Settings[] settings, Colors colors, ZoomBox zoomBox)
         {
-            try
+            if (drawables.Length != traits.Length || drawables.Length != settings.Length)
+                throw new ArgumentOutOfRangeException("drawables.Length, traits.Length, settings.Length");
+
+            Geometry.Box box = new Geometry.Box();
+            Geometry.AssignInverse(box);
+            int drawnCount = 0;
+            int count = drawables.Length;
+
+            HashSet<int> dimensions = new HashSet<int>();
+            HashSet<Geometry.CoordinateSystem> csystems = new HashSet<Geometry.CoordinateSystem>();
+            HashSet<Geometry.Unit> units = new HashSet<Geometry.Unit>();
+
+            for (int i = 0; i < count; ++i)
             {
-                System.Diagnostics.Debug.Assert(names.Length == settings.Length);
+                if (ignoreTraits)
+                    traits[i] = null;
 
-                Geometry.Box box = new Geometry.Box();
-                Geometry.AssignInverse(box);
-                int drawnCount = 0;
-                int count = names.Length;
-
-                DrawablePair[] drawables = new DrawablePair[count];
-
-                HashSet<int> dimensions = new HashSet<int>();
-                HashSet<Geometry.CoordinateSystem> csystems = new HashSet<Geometry.CoordinateSystem>();
-                HashSet<Geometry.Unit> units = new HashSet<Geometry.Unit>();
-
-                for (int i = 0; i < count; ++i)
+                if (drawables[i] != null)
                 {
-                    if (names[i] != null && names[i] != "")
+                    if (traits[i] != null)
                     {
-                        drawables[i] = loadDrawable.Load(names[i]);
-
-                        if (ignoreTraits)
-                            drawables[i].Traits = null;
-
-                        if (drawables[i].Drawable != null)
-                        {
-                            Geometry.Traits traits = drawables[i].Traits;
-                            if (traits != null)
-                            {
-                                dimensions.Add(traits.Dimension);
-                                csystems.Add(traits.CoordinateSystem);
-                                units.Add(traits.Unit);
-                            }
-
-                            Geometry.Box aabb = drawables[i].Drawable.Aabb(traits, false);
-                            Geometry.Expand(box, aabb);
-
-                            ++drawnCount;
-                        }
-                    }
-                }
-
-                if (drawnCount > 0)
-                {
-                    if (csystems.Count > 1)
-                    {
-                        throw new Exception("Multiple coordinate systems detected.");
-                    }
-                    if (csystems.Count > 0 && csystems.First() == Geometry.CoordinateSystem.SphericalPolar)
-                    {
-                        throw new Exception("This coordinate system is not yet supported.");
-                    }
-                    if (units.Count > 1)
-                    {
-                        throw new Exception("Multiple units detected.");
+                        dimensions.Add(traits[i].Dimension);
+                        csystems.Add(traits[i].CoordinateSystem);
+                        units.Add(traits[i].Unit);
                     }
 
-                    Geometry.Traits traits = (dimensions.Count > 0 && csystems.Count > 0 && units.Count > 0)
-                                           ? new Geometry.Traits(dimensions.Max(), csystems.First(), units.First())
-                                           : null;
+                    Geometry.Box aabb = drawables[i].Aabb(traits[i], false);
+                    Geometry.Expand(box, aabb);
 
-                    bool fill = (traits == null);
-
-                    // Fragment of the box
-                    if (zoomBox.IsZoomed())
-                    {
-                        // window coordinates of the box
-                        LocalCS cs = new LocalCS(box, graphics, fill);
-                        box = cs.BoxFromZoomBox(zoomBox);
-
-                        // TODO: With current approach changing the original box (resize, enlarge, etc.)
-                        // may produce wierd results because zoomBox is relative to the original box.
-                    }
-
-                    // Axes
-                    Geometry.Unit unit = traits != null ? traits.Unit : Geometry.Unit.None;
-                    Drawer.DrawAxes(graphics, box, unit, colors, fill);
-                    
-                    // Drawables
-                    for (int i = 0; i < count; ++i)
-                    {
-                        if (drawables[i] != null && drawables[i].Drawable != null)
-                        {
-                            drawables[i].Drawable.Draw(box, graphics, settings[i], traits);
-                        }
-                    }
-
-                    // Scales
-                    Drawer.DrawScales(graphics, box, colors, fill);
-
-                    // CS info
-                    if (traits != null)
-                    {
-                        SolidBrush brush = new SolidBrush(colors.TextColor);
-                        Font font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), 10);
-                        string str = Geometry.Name(csystems.First());
-                        if (units.First() != Geometry.Unit.None)
-                            str += '[' + Geometry.Name(units.First()) + ']';
-                        graphics.DrawString(str, font, brush, 0, 0);
-                    }
-
-                    return box;
+                    ++drawnCount;
                 }
             }
-            catch (Exception e)
+
+            if (drawnCount > 0)
             {
-                DrawErrorMessage(graphics, e.Message);
+                if (csystems.Count > 1)
+                {
+                    throw new Exception("Multiple coordinate systems detected.");
+                }
+                if (csystems.Count > 0 && csystems.First() == Geometry.CoordinateSystem.SphericalPolar)
+                {
+                    throw new Exception("This coordinate system is not yet supported.");
+                }
+                if (units.Count > 1)
+                {
+                    throw new Exception("Multiple units detected.");
+                }
+
+                Geometry.Traits commonTraits = (dimensions.Count > 0 && csystems.Count > 0 && units.Count > 0)
+                                                ? new Geometry.Traits(dimensions.Max(), csystems.First(), units.First())
+                                                : null;
+
+                bool fill = (commonTraits == null);
+
+                // Fragment of the box
+                if (zoomBox.IsZoomed())
+                {
+                    // window coordinates of the box
+                    LocalCS cs = new LocalCS(box, graphics, fill);
+                    box = cs.BoxFromZoomBox(zoomBox);
+
+                    // TODO: With current approach changing the original box (resize, enlarge, etc.)
+                    // may produce wierd results because zoomBox is relative to the original box.
+                }
+
+                // Axes
+                Geometry.Unit unit = commonTraits != null ? commonTraits.Unit : Geometry.Unit.None;
+                Drawer.DrawAxes(graphics, box, unit, colors, fill);
+                    
+                // Drawables
+                for (int i = 0; i < count; ++i)
+                {
+                    if (drawables[i] != null)
+                    {
+                        drawables[i].Draw(box, graphics, settings[i], commonTraits);
+                    }
+                }
+
+                // Scales
+                Drawer.DrawScales(graphics, box, colors, fill);
+
+                // CS info
+                if (traits != null)
+                {
+                    SolidBrush brush = new SolidBrush(colors.TextColor);
+                    Font font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), 10);
+                    string str = Geometry.Name(csystems.First());
+                    if (units.First() != Geometry.Unit.None)
+                        str += '[' + Geometry.Name(units.First()) + ']';
+                    graphics.DrawString(str, font, brush, 0, 0);
+                }
+
+                return box;
             }
 
             return null;
         }
 
         // For GeometryWatch
-        public static Geometry.Box DrawGeometries(Graphics graphics, string[] names, Settings[] settings, Colors colors, ZoomBox zoomBox)
+        public static Geometry.Box DrawGeometries(Graphics graphics,
+                                                  IDrawable[] drawables, Geometry.Traits[] traits,
+                                                  Settings[] settings, Colors colors, ZoomBox zoomBox)
         {
-            try
-            {
-                LoadGeometry loadDrawable = new LoadGeometry();
-                return Draw(graphics, loadDrawable, false, names, settings, colors, zoomBox);
-            }
-            catch (Exception e)
-            {
-                DrawErrorMessage(graphics, e.Message);
-            }
-
-            return null;
+            return Draw(graphics, false, drawables, traits, settings, colors, zoomBox);
         }
 
         // For PlotWatch
-        public static Geometry.Box DrawPlots(Graphics graphics, string[] names, Settings[] settings, Colors colors, ZoomBox zoomBox)
+        public static Geometry.Box DrawPlots(Graphics graphics,
+                                             IDrawable[] drawables, Geometry.Traits[] traits,
+                                             Settings[] settings, Colors colors, ZoomBox zoomBox)
         {
-            try
-            {
-                LoadPlot loadDrawable = new LoadPlot();
-                return Draw(graphics, loadDrawable, true, names, settings, colors, zoomBox);
-            }
-            catch (Exception e)
-            {
-                Drawer.DrawMessage(graphics, e.Message, Color.Red);
-            }
-
-            return null;
+            return Draw(graphics, true, drawables, traits, settings, colors, zoomBox);
         }
 
         public static void DrawErrorMessage(Graphics graphics, string message)

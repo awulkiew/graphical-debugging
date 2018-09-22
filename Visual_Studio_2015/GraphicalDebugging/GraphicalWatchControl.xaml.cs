@@ -202,9 +202,9 @@ namespace GraphicalDebugging
                             if (!ExpressionDrawer.Draw(graphics, drawable, traits, settings, m_colors))
                                 bmp = null;
                         }
-                        catch (Exception e)
+                        catch (Exception)
                         {
-                            ExpressionDrawer.DrawErrorMessage(graphics, e.Message);
+                            bmp = null;
                         }
 
                         type = expression.Type;

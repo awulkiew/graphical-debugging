@@ -315,7 +315,36 @@ namespace GraphicalDebugging
                         graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                         graphics.Clear(m_colors.ClearColor);
 
-                        m_currentBox = ExpressionDrawer.DrawPlots(graphics, names, settings, m_colors, m_zoomBox);
+                        try
+                        {
+                            ExpressionDrawer.IDrawable[] drawables = new ExpressionDrawer.IDrawable[names.Length];
+                            Geometry.Traits[] traits = new Geometry.Traits[names.Length];
+                            for (int i = 0; i < names.Length; ++i)
+                            {
+                                if (names[i] != null && names[i] != "")
+                                {
+                                    traits[i] = null;
+                                    drawables[i] = null;
+                                    ExpressionLoader.Load(names[i], ExpressionLoader.OnlyMultiPoints,
+                                                          out traits[i], out drawables[i]);
+                                    if (drawables[i] != null)
+                                    {
+                                        if (traits[i] != null)
+                                            traits[i] = new Geometry.Traits(traits[i].Dimension); // force cartesian
+                                        drawables[i] = new ExpressionDrawer.PointsContainer(drawables[i] as ExpressionDrawer.MultiPoint);
+                                    }
+                                    else
+                                        ExpressionLoader.Load(names[i], ExpressionLoader.OnlyContainers,
+                                                              out traits[i], out drawables[i]);
+                                }
+                            }
+
+                            m_currentBox = ExpressionDrawer.DrawPlots(graphics, drawables, traits, settings, m_colors, m_zoomBox);
+                        }
+                        catch (Exception e)
+                        {
+                            ExpressionDrawer.DrawErrorMessage(graphics, e.Message);
+                        }
 
                         image.Source = Util.BitmapToBitmapImage(bmp);
                         imageEmpty = false;

@@ -295,7 +295,29 @@ namespace GraphicalDebugging
                         graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                         graphics.Clear(m_colors.ClearColor);
 
-                        m_currentBox = ExpressionDrawer.DrawGeometries(graphics, names, settings, m_colors, m_zoomBox);
+                        try
+                        {
+                            ExpressionDrawer.IDrawable[] drawables = new ExpressionDrawer.IDrawable[names.Length];
+                            Geometry.Traits[] traits = new Geometry.Traits[names.Length];
+                            for (int i = 0; i < names.Length; ++i)
+                            {
+                                if (names[i] != null && names[i] != "")
+                                {
+                                    traits[i] = null;
+                                    drawables[i] = null;
+                                    ExpressionLoader.Load(names[i], ExpressionLoader.OnlyGeometries,
+                                                          out traits[i], out drawables[i]);
+                                    if (traits[i] == null)
+                                        drawables[i] = null;
+                                }
+                            }
+
+                            m_currentBox = ExpressionDrawer.DrawGeometries(graphics, drawables, traits, settings, m_colors, m_zoomBox);
+                        }
+                        catch(Exception e)
+                        {
+                            ExpressionDrawer.DrawErrorMessage(graphics, e.Message);
+                        }
 
                         image.Source = Util.BitmapToBitmapImage(bmp);
                         imageEmpty = false;

@@ -87,34 +87,46 @@ namespace GraphicalDebugging
             get { return instance.debuggerEvents; }
         }
 
-        public class KindConstraint
+        public interface KindConstraint
         {
-            virtual public bool Check(Kind kind) { return true; }
+            bool Check(Kind kind);
+        }
+
+        public class AllKindsConstraint : KindConstraint
+        {
+            public bool Check(Kind kind) { return true; }
         }
 
         public class GeometryKindConstraint : KindConstraint
         {
-            public override bool Check(Kind kind) { return kind != Kind.Container; }
+            public bool Check(Kind kind) { return kind != Kind.Container; }
         }
 
         public class ContainerKindConstraint : KindConstraint
         {
-            public override bool Check(Kind kind) { return kind == Kind.Container; }
+            public bool Check(Kind kind) { return kind == Kind.Container; }
         }
 
         public class MultiPointKindConstraint : KindConstraint
         {
-            public override bool Check(Kind kind) { return kind == Kind.MultiPoint; }
+            public bool Check(Kind kind) { return kind == Kind.MultiPoint; }
         }
 
-        private static KindConstraint allowAllKinds = new KindConstraint();
+        private static AllKindsConstraint allKinds = new AllKindsConstraint();
+        public static AllKindsConstraint AllKinds { get { return allKinds; } }
+        private static GeometryKindConstraint onlyGeometries = new GeometryKindConstraint();
+        public static GeometryKindConstraint OnlyGeometries { get { return onlyGeometries; } }
+        private static ContainerKindConstraint onlyContainers = new ContainerKindConstraint();
+        public static ContainerKindConstraint OnlyContainers { get { return onlyContainers; } }
+        private static MultiPointKindConstraint onlyMultiPoints = new MultiPointKindConstraint();
+        public static MultiPointKindConstraint OnlyMultiPoints { get { return onlyMultiPoints; } }
 
         public static void Load(string name,
                                 out Geometry.Traits traits,
                                 out ExpressionDrawer.IDrawable result)
         {
 
-            Load(name, allowAllKinds, out traits, out result);
+            Load(name, AllKinds, out traits, out result);
         }
 
         public static void Load(string name,
