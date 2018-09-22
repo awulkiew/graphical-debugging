@@ -44,13 +44,16 @@ namespace GraphicalDebugging
                 AxisColor = Color.LightGray;
                 DrawColor = Color.Black;
 
-                PointColor = Color.FromArgb(0xFF, 255, 165, 0); // Color.Orange;
+                PointColor = Color.Orange;
                 BoxColor = Color.Red;
                 SegmentColor = Color.YellowGreen;
                 NSphereColor = Color.Crimson;
-                LinestringColor = Color.Green;
-                RingColor = Color.SlateBlue;
+                LinestringColor = Color.ForestGreen;
+                RingColor = Color.FromArgb(0xFF, 150, 32, 150);
                 PolygonColor = Color.RoyalBlue;
+                MultiPointColor = Color.FromArgb(0xFF, 255, 92, 0);
+                MultiLinestringColor = Color.DarkGreen;
+                MultiPolygonColor = Color.FromArgb(0xFF, 0, 0, 128);
                 TurnColor = Color.DarkOrange;
 
                 foreach (var v in DarkColorValues)
@@ -61,16 +64,20 @@ namespace GraphicalDebugging
                 ClearColor = Color.FromArgb(0xFF, 24, 24, 24);
                 TextColor = Color.White;
                 AabbColor = Color.White;
-                AxisColor = Color.DarkGray;
+                AxisColor = Color.Gray;
                 DrawColor = Color.White;
 
                 PointColor = Color.FromArgb(0xFF, 255, 205, 128);
                 BoxColor = Color.FromArgb(0xFF, 255, 128, 128);
                 SegmentColor = Color.FromArgb(0xFF, 205, 0xFF, 150);
                 NSphereColor = Color.FromArgb(0xFF, 238, 138, 158);
-                LinestringColor = Color.FromArgb(0xFF, 128, 192, 128);
-                RingColor = Color.FromArgb(0xFF, 180, 172, 230);
+                LinestringColor = Color.FromArgb(0xFF, 128, 224, 128);
+                MultiLinestringColor = Color.FromArgb(0xFF, 128, 192, 128);
+                RingColor = Color.FromArgb(0xFF, 230, 172, 230);
                 PolygonColor = Color.FromArgb(0xFF, 160, 180, 245);
+                MultiPointColor = Color.FromArgb(0xFF, 255, 172, 128);
+                MultiLinestringColor = Color.FromArgb(0xFF, 128, 172, 128);
+                MultiPolygonColor = Color.FromArgb(0xFF, 128, 128, 172);
                 TurnColor = Color.FromArgb(0xFF, 255, 197, 128);
 
                 foreach (var v in LightColorValues)
@@ -120,6 +127,9 @@ namespace GraphicalDebugging
         public Color LinestringColor { get; set; }
         public Color RingColor { get; set; }
         public Color PolygonColor { get; set; }
+        public Color MultiPointColor { get; set; }
+        public Color MultiLinestringColor { get; set; }
+        public Color MultiPolygonColor { get; set; }
         public Color TurnColor { get; set; }
 
         public int Count { get { return m_colors.Count; } }

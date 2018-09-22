@@ -76,7 +76,6 @@ namespace GraphicalDebugging
         {
             void Draw(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits);
             Geometry.Box Aabb(Geometry.Traits traits, bool calculateEnvelope);
-            Color DefaultColor(Colors colors);
         }
 
         private static void DrawPoint(Geometry.Point point, Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
@@ -114,8 +113,6 @@ namespace GraphicalDebugging
             {
                 return new Geometry.Box(this, this);
             }
-
-            public Color DefaultColor(Colors colors) { return colors.PointColor; }
         }
 
         public class Box : Geometry.Box, IDrawable
@@ -190,8 +187,6 @@ namespace GraphicalDebugging
                      ? Geometry.Envelope(this, traits)
                      : Geometry.Aabb(this.Min, this.Max, traits.Unit);
             }
-
-            public Color DefaultColor(Colors colors) { return colors.BoxColor; }
         }
 
         public class NSphere : Geometry.NSphere, IDrawable
@@ -246,8 +241,6 @@ namespace GraphicalDebugging
                      ? Geometry.Envelope(p_min, p_max, traits)
                      : Geometry.Aabb(p_min, p_max, traits.Unit);
             }
-
-            public Color DefaultColor(Colors colors) { return colors.NSphereColor; }
         }
 
         public class Segment : Geometry.Segment, IDrawable
@@ -280,8 +273,6 @@ namespace GraphicalDebugging
                      ? Geometry.Envelope(this, traits)
                      : Geometry.Aabb(this, traits);
             }
-
-            public Color DefaultColor(Colors colors) { return colors.SegmentColor; }
         }
 
         private static void DrawLinestring(Geometry.Linestring linestring, Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
@@ -323,8 +314,6 @@ namespace GraphicalDebugging
             {
                 return AabbRange(this, traits, calculateEnvelope);
             }
-
-            public Color DefaultColor(Colors colors) { return colors.LinestringColor; }
         }
 
         public class Ring : Geometry.Ring, IDrawable
@@ -364,8 +353,6 @@ namespace GraphicalDebugging
             {
                 return AabbRange(this, traits, calculateEnvelope);
             }
-
-            public Color DefaultColor(Colors colors) { return colors.RingColor; }
         }
 
         private static void DrawPolygon(Geometry.Polygon polygon, Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
@@ -464,8 +451,6 @@ namespace GraphicalDebugging
             {
                 return AabbPolygon(this, traits, calculateEnvelope);
             }
-
-            public Color DefaultColor(Colors colors) { return colors.PolygonColor; }
         }
 
         public class MultiPoint : Geometry.MultiPoint, IDrawable
@@ -506,8 +491,6 @@ namespace GraphicalDebugging
 
                 return box;
             }
-
-            public Color DefaultColor(Colors colors) { return colors.PointColor; }
         }
 
         public class MultiLinestring : Geometry.MultiLinestring, IDrawable
@@ -544,8 +527,6 @@ namespace GraphicalDebugging
 
                 return box;
             }
-
-            public Color DefaultColor(Colors colors) { return colors.LinestringColor; }
         }
 
         public class MultiPolygon : Geometry.MultiPolygon, IDrawable
@@ -582,8 +563,6 @@ namespace GraphicalDebugging
 
                 return box;
             }
-
-            public Color DefaultColor(Colors colors) { return colors.PolygonColor; }
         }
 
         public class ValuesContainer : IDrawable
@@ -735,8 +714,6 @@ namespace GraphicalDebugging
                 return box;
             }
 
-            public Color DefaultColor(Colors colors) { return colors.DrawColor; }
-            
             private List<double> values;
         }
 
@@ -828,8 +805,6 @@ namespace GraphicalDebugging
                 return box;
             }
 
-            public Color DefaultColor(Colors colors) { return colors.DrawColor; }
-
             private MultiPoint points;
         }
 
@@ -882,8 +857,6 @@ namespace GraphicalDebugging
                 return new Geometry.Box(point, point);
             }
             
-            public Color DefaultColor(Colors colors) { return colors.PointColor; }
-
             public Geometry.Point Point { get { return point; } }
 
             Geometry.Point point;
@@ -943,10 +916,36 @@ namespace GraphicalDebugging
 
                 return box;
             }
-
-            public Color DefaultColor(Colors colors) { return colors.TurnColor; }
             
             private List<Turn> turns;
+        }
+
+        private Color DefaultColor(IDrawable drawable, Colors colors)
+        {
+            if (drawable is Point)
+                return colors.PointColor;
+            else if (drawable is Box)
+                return colors.BoxColor;
+            else if (drawable is NSphere)
+                return colors.NSphereColor;
+            else if (drawable is Segment)
+                return colors.SegmentColor;
+            else if (drawable is Linestring)
+                return colors.LinestringColor;
+            else if (drawable is Ring)
+                return colors.RingColor;
+            else if (drawable is Polygon)
+                return colors.PolygonColor;
+            else if (drawable is MultiPoint)
+                return colors.MultiPointColor;
+            else if (drawable is MultiLinestring)
+                return colors.MultiLinestringColor;
+            else if (drawable is MultiPolygon)
+                return colors.MultiPolygonColor;
+            else if (drawable is Turn || drawable is TurnsContainer)
+                return colors.TurnColor;
+            else
+                return colors.DrawColor;
         }
 
         // -------------------------------------------------
@@ -1041,7 +1040,7 @@ namespace GraphicalDebugging
                     }
 
                     if (settings.color == Color.Empty)
-                        settings.color = d.Drawable.DefaultColor(colors);
+                        settings.color = DefaultColor(d.Drawable, colors);
 
                     Geometry.Box aabb = d.Drawable.Aabb(d.Traits, true);
                     Geometry.Unit unit = (d.Traits != null) ? d.Traits.Unit : Geometry.Unit.None;
