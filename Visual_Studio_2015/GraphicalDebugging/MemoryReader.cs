@@ -10,6 +10,7 @@ using Microsoft.VisualStudio.Debugger;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Globalization;
 
 namespace GraphicalDebugging
 {
@@ -335,7 +336,7 @@ namespace GraphicalDebugging
             string addr = ptrExpr.Value;
 
             return addr.StartsWith("0x", StringComparison.CurrentCultureIgnoreCase)
-                 ? ulong.Parse(addr.Substring(2), System.Globalization.NumberStyles.HexNumber)
+                 ? ulong.Parse(addr.Substring(2), NumberStyles.HexNumber)
                  : ulong.Parse(addr);
         }
 

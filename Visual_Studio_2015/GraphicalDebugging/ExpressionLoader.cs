@@ -11,7 +11,7 @@ using Microsoft.VisualStudio.Shell;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-
+using System.Globalization;
 
 namespace GraphicalDebugging
 {
@@ -131,7 +131,7 @@ namespace GraphicalDebugging
 
         static double ParseDouble(string s)
         {
-            return double.Parse(s, System.Globalization.CultureInfo.InvariantCulture);
+            return double.Parse(s, CultureInfo.InvariantCulture);
         }
         
         static double LoadAsDouble(Debugger debugger, string name, out bool ok)

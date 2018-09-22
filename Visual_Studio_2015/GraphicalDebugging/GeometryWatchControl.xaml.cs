@@ -404,8 +404,8 @@ namespace GraphicalDebugging
                     m_currentLocalCS = new LocalCS(m_currentBox, (float)image.ActualWidth, (float)image.ActualHeight);
                 else
                     m_currentLocalCS.Reset(m_currentBox, (float)image.ActualWidth, (float)image.ActualHeight);
-                m_mouseTxt.Text = "(" + m_currentLocalCS.InverseConvertX(point.X).ToString(System.Globalization.CultureInfo.InvariantCulture)
-                                + " " + m_currentLocalCS.InverseConvertY(point.Y).ToString(System.Globalization.CultureInfo.InvariantCulture)
+                m_mouseTxt.Text = "(" + Util.ToString(m_currentLocalCS.InverseConvertX(point.X))
+                                + " " + Util.ToString(m_currentLocalCS.InverseConvertY(point.Y))
                                 + ")";
                 Canvas.SetLeft(m_mouseTxt, point.X + 2);
                 Canvas.SetTop(m_mouseTxt, point.Y + 2);

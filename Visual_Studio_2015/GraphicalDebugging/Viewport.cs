@@ -701,7 +701,7 @@ namespace GraphicalDebugging
                     // scale
                     graphics.DrawLine(penAabb, wx, wHeight, wx, wHeight - 5);
                     // value
-                    string xStr = x.ToString(xStrFormat, System.Globalization.CultureInfo.InvariantCulture);
+                    string xStr = Util.ToString(x, xStrFormat);
                     SizeF xStrSize = graphics.MeasureString(xStr, font);
                     float xStrLeft = wx - xStrSize.Width / 2;
                     float xStrTop = wHeight - 5 - xStrSize.Height;
@@ -718,7 +718,7 @@ namespace GraphicalDebugging
                     // scale
                     graphics.DrawLine(penAabb, wWidth, wy, wWidth - 5, wy);
                     // value
-                    string yStr = y.ToString(yStrFormat, System.Globalization.CultureInfo.InvariantCulture);
+                    string yStr = Util.ToString(y, yStrFormat);
                     SizeF yStrSize = graphics.MeasureString(yStr, font);
                     float yStrLeft = wWidth - 5 - yStrSize.Width;
                     float yStrTop = wy - yStrSize.Height / 2;
@@ -756,10 +756,10 @@ namespace GraphicalDebugging
             float maxHeight = 20.0f;// Math.Min(Math.Max(graphics.VisibleClipBounds.Height - min_y, 0.0f), 20.0f);
             if (maxHeight > 1)
             {
-                string min_x_str = box.Min[0].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
-                string min_y_str = box.Min[1].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
-                string max_x_str = box.Max[0].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
-                string max_y_str = box.Max[1].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+                string min_x_str = Util.ToString(box.Min[0], "0.00");
+                string min_y_str = Util.ToString(box.Min[1], "0.00");
+                string max_x_str = Util.ToString(box.Max[0], "0.00");
+                string max_y_str = Util.ToString(box.Max[1], "0.00");
                 Font font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), maxHeight / 2.0f);
                 StringFormat drawFormat = new StringFormat();
                 drawFormat.Alignment = StringAlignment.Center;

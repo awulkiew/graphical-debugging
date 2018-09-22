@@ -8,13 +8,12 @@ using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 
 using System;
-
 using System.Collections.Generic;
-
 using System.Drawing;
 using System.Drawing.Imaging;
-using System.Windows.Media.Imaging;
+using System.Globalization;
 using System.IO;
+using System.Windows.Media.Imaging;
 
 namespace GraphicalDebugging
 {
@@ -183,6 +182,16 @@ namespace GraphicalDebugging
                 return default(T);
 
             return (T)package.GetDialogPage(typeof(T));
+        }
+
+        public static string ToString(double v)
+        {
+            return v.ToString(CultureInfo.InvariantCulture);
+        }
+
+        public static string ToString(double v, string format)
+        {
+            return v.ToString(format, CultureInfo.InvariantCulture);
         }
     }
 }
