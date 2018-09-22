@@ -193,5 +193,46 @@ namespace GraphicalDebugging
         {
             return v.ToString(format, CultureInfo.InvariantCulture);
         }
+
+        public static void SortDsc<T>(T[] array)
+            where T : IComparable
+        {
+            System.Array.Sort(array, delegate (T l, T r) {
+                return -l.CompareTo(r);
+            });
+        }
+
+        public delegate void RemovedItemPredicate<T>(T item);
+
+        public static bool RemoveDataGridItems<T>(System.Windows.Controls.DataGrid dataGrid,
+                                                  System.Collections.ObjectModel.Collection<T> itemsCollection,
+                                                  RemovedItemPredicate<T> removedPredicate)
+        {
+            int[] indexes = new int[dataGrid.SelectedItems.Count];
+            int i = 0;
+            foreach (var item in dataGrid.SelectedItems)
+            {
+                indexes[i] = dataGrid.Items.IndexOf(item);
+                ++i;
+            }
+
+            Util.SortDsc(indexes);
+
+            bool removed = false;
+            foreach (int index in indexes)
+            {
+                if (index + 1 < itemsCollection.Count)
+                {
+                    T item = itemsCollection[index];
+                    removedPredicate(item);
+                    itemsCollection.RemoveAt(index);
+                    removed = true;
+                }
+            }
+
+            dataGrid.SelectedIndex = -1;
+
+            return removed;
+        }
     }
 }

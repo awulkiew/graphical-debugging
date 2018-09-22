@@ -136,25 +136,8 @@ namespace GraphicalDebugging
 
                 if (dataGrid.SelectedItems.Count < 1)
                     return;
-                
-                int[] indexes = new int[dataGrid.SelectedItems.Count];
-                int i = 0;
-                foreach (var item in dataGrid.SelectedItems)
-                {
-                    indexes[i] = dataGrid.Items.IndexOf(item);
-                    ++i;
-                }
-                System.Array.Sort(indexes, delegate (int l, int r) {
-                    return -l.CompareTo(r);
-                });
 
-                foreach (int index in indexes)
-                {
-                    if ( index + 1 < Variables.Count)
-                        Variables.RemoveAt(index);
-                }
-
-                dataGrid.SelectedIndex = -1;
+                Util.RemoveDataGridItems(dataGrid, Variables, delegate (VariableItem variable) { });
             }
         }
 

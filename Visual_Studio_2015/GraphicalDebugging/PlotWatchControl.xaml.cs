@@ -215,36 +215,12 @@ namespace GraphicalDebugging
                 if (dataGrid.SelectedItems.Count < 1)
                     return;
 
-                int[] indexes = new int[dataGrid.SelectedItems.Count];
-                int i = 0;
-                foreach (var item in dataGrid.SelectedItems)
-                {
-                    indexes[i] = dataGrid.Items.IndexOf(item);
-                    ++i;
-                }
-                System.Array.Sort(indexes, delegate (int l, int r) {
-                    return -l.CompareTo(r);
+                bool removed = Util.RemoveDataGridItems(dataGrid, Plots, delegate (PlotItem plot) {
+                    m_intsPool.Push(plot.ColorId);
                 });
 
-                bool removed = false;
-                foreach (int index in indexes)
-                {
-                    if (index + 1 < Plots.Count)
-                    {
-                        GeometryItem geometry = Plots[index];
-                        m_intsPool.Push(geometry.ColorId);
-                        Plots.RemoveAt(index);
-
-                        removed = true;
-                    }
-                }
-
-                dataGrid.SelectedIndex = -1;
-
                 if (removed)
-                {
                     UpdateItems();
-                }
             }
         }
 
