@@ -134,6 +134,9 @@ namespace GraphicalDebugging
                 if (m_isDataGridEdited)
                     return;
 
+                if (dataGrid.SelectedItems.Count < 1)
+                    return;
+                
                 int[] indexes = new int[dataGrid.SelectedItems.Count];
                 int i = 0;
                 foreach (var item in dataGrid.SelectedItems)
@@ -150,6 +153,8 @@ namespace GraphicalDebugging
                     if ( index + 1 < Variables.Count)
                         Variables.RemoveAt(index);
                 }
+
+                dataGrid.SelectedIndex = -1;
             }
         }
 

@@ -201,37 +201,38 @@ namespace GraphicalDebugging
                 if (m_isDataGridEdited)
                     return;
 
-                if (dataGrid.SelectedItems.Count > 0)
+                if (dataGrid.SelectedItems.Count < 1)
+                    return;
+
+                int[] indexes = new int[dataGrid.SelectedItems.Count];
+                int i = 0;
+                foreach (var item in dataGrid.SelectedItems)
                 {
-                    int[] indexes = new int[dataGrid.SelectedItems.Count];
-                    int i = 0;
-                    foreach (var item in dataGrid.SelectedItems)
-                    {
-                        indexes[i] = dataGrid.Items.IndexOf(item);
-                        ++i;
-                    }
-                    System.Array.Sort(indexes, delegate (int l, int r)
-                    {
-                        return -l.CompareTo(r);
-                    });
+                    indexes[i] = dataGrid.Items.IndexOf(item);
+                    ++i;
+                }
+                System.Array.Sort(indexes, delegate (int l, int r) {
+                    return -l.CompareTo(r);
+                });
 
-                    bool removed = false;
-                    foreach (int index in indexes)
+                bool removed = false;
+                foreach (int index in indexes)
+                {
+                    if (index + 1 < Geometries.Count)
                     {
-                        if (index + 1 < Geometries.Count)
-                        {
-                            GeometryItem geometry = Geometries[index];
-                            m_intsPool.Push(geometry.ColorId);
-                            Geometries.RemoveAt(index);
+                        GeometryItem geometry = Geometries[index];
+                        m_intsPool.Push(geometry.ColorId);
+                        Geometries.RemoveAt(index);
 
-                            removed = true;
-                        }
+                        removed = true;
                     }
+                }
 
-                    if (removed)
-                    {
-                        UpdateItems();
-                    }
+                dataGrid.SelectedIndex = -1;
+
+                if (removed)
+                {
+                    UpdateItems();
                 }
             }
         }
