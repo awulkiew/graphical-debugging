@@ -916,7 +916,7 @@ namespace GraphicalDebugging
         // High level loading
         // -------------------------------------------------
 
-        private class DrawablePair
+        public class DrawablePair
         {
             public DrawablePair(IDrawable drawable, Geometry.Traits traits)
             {
@@ -927,7 +927,7 @@ namespace GraphicalDebugging
             public Geometry.Traits Traits { get; set; }
         }
 
-        class LoadDrawable
+        public class LoadDrawable
         {
             virtual public DrawablePair Load(string name)
             {
@@ -939,7 +939,7 @@ namespace GraphicalDebugging
             }
         }
 
-        class LoadGeometry : LoadDrawable
+        public class LoadGeometry : LoadDrawable
         {
             static ExpressionLoader.GeometryKindConstraint geometriesOnly = new ExpressionLoader.GeometryKindConstraint();
 
@@ -955,7 +955,7 @@ namespace GraphicalDebugging
             }
         }
 
-        class LoadPlot : LoadDrawable
+        public class LoadPlot : LoadDrawable
         {
             static ExpressionLoader.ContainerKindConstraint containersOnly = new ExpressionLoader.ContainerKindConstraint();
             static ExpressionLoader.MultiPointKindConstraint multiPointsOnly = new ExpressionLoader.MultiPointKindConstraint();
@@ -1010,33 +1010,33 @@ namespace GraphicalDebugging
         }
 
         // For GraphicalWatch
-        public static bool Draw(Graphics graphics, string name, Settings settings, Colors colors)
+        public static bool Draw(Graphics graphics,
+                                IDrawable drawable, Geometry.Traits traits,
+                                Settings settings, Colors colors)
         {
+            if (drawable == null)
+                return false;
+
             try
             {
-                LoadDrawable loadDrawable = new LoadDrawable();
-                DrawablePair d = loadDrawable.Load(name);
-                if (d.Drawable != null)
+                if (traits != null && traits.CoordinateSystem == Geometry.CoordinateSystem.SphericalPolar)
                 {
-                    if (d.Traits != null && d.Traits.CoordinateSystem == Geometry.CoordinateSystem.SphericalPolar)
-                    {
-                        throw new Exception("This coordinate system is not yet supported.");
-                    }
-
-                    if (settings.color == Color.Empty)
-                        settings.color = DefaultColor(d.Drawable, colors);
-
-                    Geometry.Box aabb = d.Drawable.Aabb(d.Traits, true);
-                    Geometry.Unit unit = (d.Traits != null) ? d.Traits.Unit : Geometry.Unit.None;
-                    bool fill = (d.Traits == null);
-                    Drawer.DrawAxes(graphics, aabb, unit, colors, fill);
-                    d.Drawable.Draw(aabb, graphics, settings, d.Traits);
-                    return true;
+                    throw new Exception("This coordinate system is not yet supported.");
                 }
+
+                if (settings.color == Color.Empty)
+                    settings.color = DefaultColor(drawable, colors);
+
+                Geometry.Box aabb = drawable.Aabb(traits, true);
+                Geometry.Unit unit = (traits != null) ? traits.Unit : Geometry.Unit.None;
+                bool fill = (traits == null);
+                Drawer.DrawAxes(graphics, aabb, unit, colors, fill);
+                drawable.Draw(aabb, graphics, settings, traits);
+                return true;
             }
             catch(Exception e)
             {
-                Drawer.DrawMessage(graphics, e.Message, Color.Red);
+                DrawErrorMessage(graphics, e.Message);
             }
 
             return false;
@@ -1153,7 +1153,7 @@ namespace GraphicalDebugging
             }
             catch (Exception e)
             {
-                Drawer.DrawMessage(graphics, e.Message, Color.Red);
+                DrawErrorMessage(graphics, e.Message);
             }
 
             return null;
@@ -1169,7 +1169,7 @@ namespace GraphicalDebugging
             }
             catch (Exception e)
             {
-                Drawer.DrawMessage(graphics, e.Message, Color.Red);
+                DrawErrorMessage(graphics, e.Message);
             }
 
             return null;
@@ -1189,6 +1189,11 @@ namespace GraphicalDebugging
             }
 
             return null;
+        }
+
+        public static void DrawErrorMessage(Graphics graphics, string message)
+        {
+            Drawer.DrawMessage(graphics, message, Color.Red);
         }
     }
 }

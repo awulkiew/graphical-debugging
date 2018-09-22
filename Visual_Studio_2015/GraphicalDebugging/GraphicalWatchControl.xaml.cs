@@ -17,6 +17,7 @@ namespace GraphicalDebugging
     using Microsoft.VisualStudio.PlatformUI;
 
     using System.Collections.ObjectModel;
+    using System;
 
     /// <summary>
     /// Interaction logic for GraphicalWatchControl.
@@ -204,8 +205,19 @@ namespace GraphicalDebugging
                         graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                         graphics.Clear(m_colors.ClearColor);
 
-                        if (!ExpressionDrawer.Draw(graphics, variable.Name, settings, m_colors))
-                            bmp = null;
+                        try
+                        {
+                            Geometry.Traits traits = null;
+                            ExpressionDrawer.IDrawable drawable = null;
+                            ExpressionLoader.Load(variable.Name, out traits, out drawable);
+
+                            if (!ExpressionDrawer.Draw(graphics, drawable, traits, settings, m_colors))
+                                bmp = null;
+                        }
+                        catch (Exception e)
+                        {
+                            ExpressionDrawer.DrawErrorMessage(graphics, e.Message);
+                        }
 
                         type = expression.Type;
                     }
