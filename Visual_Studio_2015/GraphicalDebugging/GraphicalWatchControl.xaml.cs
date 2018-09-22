@@ -193,6 +193,8 @@ namespace GraphicalDebugging
             {
                 // Empty color - use default
                 ExpressionDrawer.Settings settings = new ExpressionDrawer.Settings();
+                settings.showDir = false;
+                settings.showLabels = false;
                 // Load settings from option page
                 GraphicalWatchOptionPage optionPage = Util.GetDialogPage<GraphicalWatchOptionPage>();
                 if (optionPage != null && (optionPage.EnableBars || optionPage.EnableLines || optionPage.EnablePoints))
