@@ -26,7 +26,7 @@ namespace GraphicalDebugging
 
         public enum Kind { Point = 0, Segment, Box, NSphere, Linestring, Ring, Polygon, MultiPoint, MultiLinestring, MultiPolygon, Container, Variant, Turn, TurnsContainer };
         
-        public ExpressionLoader()
+        private ExpressionLoader()
         {
             this.dte = (DTE2)ServiceProvider.GlobalProvider.GetService(typeof(DTE));
             this.debugger = dte.Debugger;
