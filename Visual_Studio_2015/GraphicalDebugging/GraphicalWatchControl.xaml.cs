@@ -191,8 +191,10 @@ namespace GraphicalDebugging
                         settings.pointPlot_enableLines = optionPage.PointPlot_EnableLines;
                         settings.pointPlot_enablePoints = optionPage.PointPlot_EnablePoints;
                     }
-                    imageWidth = Math.Max(optionPage.ImageWidth, 20);
+                    settings.showDir = optionPage.EnableDirections;
+                    settings.showLabels = optionPage.EnableLabels;
                     imageHeight = Math.Max(optionPage.ImageHeight, 20);
+                    imageWidth = Math.Max(optionPage.ImageWidth, 20);                    
                     displayMultiPointsAsPlots = optionPage.MultiPointDisplayMode == GraphicalWatchOptionPage.MultiPointDisplayModeValue.PointPlot;
                 }
 

@@ -11,12 +11,30 @@ namespace GraphicalDebugging
 {
     public class PlotWatchOptionPage : DialogPage
     {
+        private bool PointPlot_enableLines = false;
+        private bool PointPlot_enablePoints = true;
+
         private bool ValuePlot_enableBars = true;
         private bool ValuePlot_enableLines = false;
         private bool ValuePlot_enablePoints = false;
 
-        private bool PointPlot_enableLines = false;
-        private bool PointPlot_enablePoints = true;
+        [Category("Point Plot")]
+        [DisplayName("Enable Lines")]
+        [Description("Enable/disable drawing lines between points.")]
+        public bool PointPlot_EnableLines
+        {
+            get { return PointPlot_enableLines; }
+            set { PointPlot_enableLines = value; }
+        }
+
+        [Category("Point Plot")]
+        [DisplayName("Enable Points")]
+        [Description("Enable/disable drawing points.")]
+        public bool PointPlot_EnablePoints
+        {
+            get { return PointPlot_enablePoints; }
+            set { PointPlot_enablePoints = value; }
+        }
 
         [Category("Value Plot")]
         [DisplayName("Enable Bars")]
@@ -45,22 +63,15 @@ namespace GraphicalDebugging
             set { ValuePlot_enablePoints = value; }
         }
 
-        [Category("Point Plot")]
-        [DisplayName("Enable Lines")]
-        [Description("Enable/disable drawing lines between points.")]
-        public bool PointPlot_EnableLines
+        protected override void OnApply(PageApplyEventArgs e)
         {
-            get { return PointPlot_enableLines; }
-            set { PointPlot_enableLines = value; }
-        }
+            if (!PointPlot_enableLines && !PointPlot_enablePoints)
+                PointPlot_enablePoints = true;
 
-        [Category("Point Plot")]
-        [DisplayName("Enable Points")]
-        [Description("Enable/disable drawing points.")]
-        public bool PointPlot_EnablePoints
-        {
-            get { return PointPlot_enablePoints; }
-            set { PointPlot_enablePoints = value; }
+            if (!ValuePlot_enableBars && !ValuePlot_enableLines && !ValuePlot_enablePoints)
+                ValuePlot_enableBars = true;
+
+            base.OnApply(e);
         }
     }
 }

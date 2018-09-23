@@ -12,16 +12,11 @@ namespace GraphicalDebugging
 {
     public class GraphicalWatchOptionPage : DialogPage
     {
-        public enum MultiPointDisplayModeValue
-        {
-            [Description("Geometry")]
-            Geometry,
-            [Description("Point Plot")]
-            PointPlot
-        };
-        private MultiPointDisplayModeValue multiPointDisplayMode = MultiPointDisplayModeValue.Geometry;
-        private int imageWidth = 100;
+        private bool enableDirs = false;
+        private bool enableLabels = false;
         private int imageHeight = 100;
+        private int imageWidth = 100;
+        private MultiPointDisplayModeValue multiPointDisplayMode = MultiPointDisplayModeValue.Geometry;
 
         private bool PointPlot_enableLines = false;
         private bool PointPlot_enablePoints = true;
@@ -30,13 +25,39 @@ namespace GraphicalDebugging
         private bool ValuePlot_enableLines = false;
         private bool ValuePlot_enablePoints = false;
 
-        [Category("Display")]
-        [DisplayName("MultiPoint Display Mode")]
-        [Description("Treat MultiPoints as Geometries or Point Plots.")]
-        public MultiPointDisplayModeValue MultiPointDisplayMode
+        public enum MultiPointDisplayModeValue
         {
-            get { return multiPointDisplayMode; }
-            set { multiPointDisplayMode = value; }
+            [Description("Geometry")]
+            Geometry,
+            [Description("Point Plot")]
+            PointPlot
+        };
+
+        [Category("Display")]
+        [DisplayName("Enable Directions")]
+        [Description("Enable/disable drawing directions of segments.")]
+        public bool EnableDirections
+        {
+            get { return enableDirs; }
+            set { enableDirs = value; }
+        }
+
+        [Category("Display")]
+        [DisplayName("Enable Labels")]
+        [Description("Enable/disable drawing labels if applicable (e.g. for Boost.Geometry intersection points).")]
+        public bool EnableLabels
+        {
+            get { return enableLabels; }
+            set { enableLabels = value; }
+        }
+
+        [Category("Display")]
+        [DisplayName("Image Height")]
+        [Description("Height of image displayed on the list.")]
+        public int ImageHeight
+        {
+            get { return imageHeight; }
+            set { imageHeight = Math.Max(value, 20); }
         }
 
         [Category("Display")]
@@ -49,12 +70,12 @@ namespace GraphicalDebugging
         }
 
         [Category("Display")]
-        [DisplayName("Image Height")]
-        [Description("Height of image displayed on the list.")]
-        public int ImageHeight
+        [DisplayName("MultiPoint Display Mode")]
+        [Description("Treat MultiPoints as Geometries or Point Plots.")]
+        public MultiPointDisplayModeValue MultiPointDisplayMode
         {
-            get { return imageHeight; }
-            set { imageHeight = Math.Max(value, 20); }
+            get { return multiPointDisplayMode; }
+            set { multiPointDisplayMode = value; }
         }
 
         [Category("Point Plot")]
@@ -100,6 +121,17 @@ namespace GraphicalDebugging
         {
             get { return ValuePlot_enablePoints; }
             set { ValuePlot_enablePoints = value; }
+        }
+
+        protected override void OnApply(PageApplyEventArgs e)
+        {
+            if (!PointPlot_enableLines && !PointPlot_enablePoints)
+                PointPlot_enablePoints = true;
+
+            if (!ValuePlot_enableBars && !ValuePlot_enableLines && !ValuePlot_enablePoints)
+                ValuePlot_enableBars = true;
+
+            base.OnApply(e);
         }
     }
 }
