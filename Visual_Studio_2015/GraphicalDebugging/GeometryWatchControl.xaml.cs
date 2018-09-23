@@ -113,7 +113,7 @@ namespace GraphicalDebugging
             colL.A = 128;
             m_mouseTxt.Foreground = new System.Windows.Media.SolidColorBrush(colT);
 
-            UpdateItems();
+            UpdateItems(false);
         }
 
         private void GeometryItem_NameChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -132,12 +132,12 @@ namespace GraphicalDebugging
                 {
                     m_intsPool.Push(geometry.ColorId);
                     Geometries.RemoveAt(index);
-                    UpdateItems();
+                    UpdateItems(true);
                 }
             }
             else
             {
-                UpdateItems(index);
+                UpdateItems(true, index);
 
                 // insert new empty row
                 int next_index = index + 1;
@@ -181,17 +181,17 @@ namespace GraphicalDebugging
 
         private void DebuggerEvents_OnEnterBreakMode(dbgEventReason Reason, ref dbgExecutionAction ExecutionAction)
         {
-            UpdateItems();
+            UpdateItems(true);
         }
 
         private void GridSplitter_DragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
         {
-            UpdateItems();
+            UpdateItems(false);
         }
 
         private void GeometryWatchWindow_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            UpdateItems();
+            UpdateItems(false);
         }
 
         private void dataGrid_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
@@ -209,7 +209,7 @@ namespace GraphicalDebugging
                 });
 
                 if (removed)
-                    UpdateItems();
+                    UpdateItems(false);
             }
         }
 
@@ -223,7 +223,7 @@ namespace GraphicalDebugging
             m_isDataGridEdited = false;
         }
 
-        private void UpdateItems(int modified_index = -1)
+        private void UpdateItems(bool load, int modified_index = -1)
         {
             m_currentBox = null;
 
@@ -238,6 +238,7 @@ namespace GraphicalDebugging
                     referenceSettings.showLabels = optionPage.EnableLabels;
                 }
 
+                // TODO: Names are redundant
                 string[] names = new string[Geometries.Count];
                 ExpressionDrawer.Settings[] settings = new ExpressionDrawer.Settings[Geometries.Count];
                 bool tryDrawing = false;
@@ -252,6 +253,12 @@ namespace GraphicalDebugging
                     string type = null;
 
                     bool updateRequred = modified_index < 0 || modified_index == index;
+
+                    if (updateRequred && load)
+                    {
+                        geometry.Drawable = null;
+                        geometry.Traits = null;
+                    }
 
                     if (geometry.Name != null && geometry.Name != "")
                     {
@@ -279,7 +286,11 @@ namespace GraphicalDebugging
 
                     // set new row
                     if (updateRequred)
-                        ResetAt(new GeometryItem(geometry.Name, type, colorId, m_colors), index);
+                    {
+                        ResetAt(new GeometryItem(geometry.Drawable, geometry.Traits,
+                                                 geometry.Name, type, colorId, m_colors),
+                                index);
+                    }
                 }
 
                 // draw variables
@@ -301,15 +312,18 @@ namespace GraphicalDebugging
                             Geometry.Traits[] traits = new Geometry.Traits[names.Length];
                             for (int i = 0; i < names.Length; ++i)
                             {
-                                if (names[i] != null && names[i] != "")
+                                if (Geometries[i].Drawable == null && names[i] != null && names[i] != "")
                                 {
-                                    traits[i] = null;
-                                    drawables[i] = null;
-                                    ExpressionLoader.Load(names[i], ExpressionLoader.OnlyGeometries,
-                                                          out traits[i], out drawables[i]);
-                                    if (traits[i] == null)
-                                        drawables[i] = null;
+                                    ExpressionDrawer.IDrawable d = null;
+                                    Geometry.Traits t = null;
+                                    ExpressionLoader.Load(names[i], ExpressionLoader.OnlyGeometries, out t, out d);
+                                    if (t == null) // Traits has to be defined for Geometry
+                                        d = null;
+                                    Geometries[i].Drawable = d;
+                                    Geometries[i].Traits = t;
                                 }
+                                drawables[i] = Geometries[i].Drawable;
+                                traits[i] = Geometries[i].Traits;
                             }
 
                             m_currentBox = ExpressionDrawer.DrawGeometries(graphics, drawables, traits, settings, m_colors, m_zoomBox);
@@ -358,7 +372,7 @@ namespace GraphicalDebugging
         {
             // Trust the user, always update
             m_zoomBox.Reset();
-            UpdateItems();
+            UpdateItems(false);
         }
 
         private void imageGrid_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -493,7 +507,7 @@ namespace GraphicalDebugging
                     if (wR > 0 && hR > 0)
                     {
                         m_zoomBox.Zoom(leftR, topR, wR, hR, image.ActualWidth, image.ActualHeight);
-                        UpdateItems();
+                        UpdateItems(false);
                     }
                 }
             }

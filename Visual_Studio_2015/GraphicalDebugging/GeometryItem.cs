@@ -16,11 +16,14 @@ namespace GraphicalDebugging
             SetColor(colorId, colors);
         }
 
-        public GeometryItem(string name, /*ExpressionDrawer.IDrawable drawable,*/ string type, int colorId, Colors colors)
+        public GeometryItem(ExpressionDrawer.IDrawable drawable,
+                            Geometry.Traits traits,
+                            string name, string type, int colorId, Colors colors)
             : base(name, null, type)
         {
             SetColor(colorId, colors);
-            //Drawable = drawable;
+            Drawable = drawable;
+            Traits = traits;
         }
 
         private int colorId;
@@ -41,12 +44,18 @@ namespace GraphicalDebugging
             color = Util.ConvertColor(colors[colorId]);
         }
 
-        /*
         private ExpressionDrawer.IDrawable drawable;
         public ExpressionDrawer.IDrawable Drawable
         {
             get { return this.drawable; }
             set { this.drawable = value; }
-        }*/
+        }
+
+        private Geometry.Traits traits;
+        public Geometry.Traits Traits
+        {
+            get { return this.traits; }
+            set { this.traits = value; }
+        }
     }
 }

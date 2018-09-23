@@ -28,8 +28,10 @@ namespace GraphicalDebugging
             : base(colorId, colors)
         { }
 
-        public PlotItem(string name, string type, int colorId, Colors colors)
-            : base(name, type, colorId, colors)
+        public PlotItem(ExpressionDrawer.IDrawable drawable,
+                        Geometry.Traits traits,
+                        string name, string type, int colorId, Colors colors)
+            : base(drawable, traits, name, type, colorId, colors)
         { }
     }
 
@@ -124,7 +126,7 @@ namespace GraphicalDebugging
             colL.A = 128;
             m_mouseTxt.Foreground = new System.Windows.Media.SolidColorBrush(colT);
 
-            UpdateItems();
+            UpdateItems(false);
         }
 
         private void PlotItem_NameChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -143,12 +145,12 @@ namespace GraphicalDebugging
                 {
                     m_intsPool.Push(plot.ColorId);
                     Plots.RemoveAt(index);
-                    UpdateItems();
+                    UpdateItems(true);
                 }
             }
             else
             {
-                UpdateItems(index);
+                UpdateItems(true, index);
 
                 // insert new empty row
                 int next_index = index + 1;
@@ -192,17 +194,17 @@ namespace GraphicalDebugging
 
         private void DebuggerEvents_OnEnterBreakMode(dbgEventReason Reason, ref dbgExecutionAction ExecutionAction)
         {
-            UpdateItems();
+            UpdateItems(true);
         }
 
         private void GridSplitter_DragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
         {
-            UpdateItems();
+            UpdateItems(false);
         }
 
         private void PlotWatchWindow_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            UpdateItems();
+            UpdateItems(false);
         }
 
         private void dataGrid_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
@@ -220,7 +222,7 @@ namespace GraphicalDebugging
                 });
 
                 if (removed)
-                    UpdateItems();
+                    UpdateItems(false);
             }
         }
 
@@ -234,7 +236,7 @@ namespace GraphicalDebugging
             m_isDataGridEdited = false;
         }
 
-        private void UpdateItems(int modified_index = -1)
+        private void UpdateItems(bool load, int modified_index = -1)
         {
             m_currentBox = null;
 
@@ -257,7 +259,8 @@ namespace GraphicalDebugging
                         referenceSettings.pointPlot_enablePoints = optionPage.PointPlot_EnablePoints;
                     }
                 }
-                
+
+                // TODO: Names are redundant
                 string[] names = new string[Plots.Count];
                 ExpressionDrawer.Settings[] settings = new ExpressionDrawer.Settings[Plots.Count];
                 bool tryDrawing = false;
@@ -272,6 +275,12 @@ namespace GraphicalDebugging
                     string type = null;
 
                     bool updateRequred = modified_index < 0 || modified_index == index;
+
+                    if (updateRequred && load)
+                    {
+                        geometry.Drawable = null;
+                        geometry.Traits = null;
+                    }
 
                     if (geometry.Name != null && geometry.Name != "")
                     {
@@ -299,7 +308,11 @@ namespace GraphicalDebugging
 
                     // set new row
                     if (updateRequred)
-                        ResetAt(new PlotItem(geometry.Name, type, colorId, m_colors), index);
+                    {
+                        ResetAt(new PlotItem(geometry.Drawable, geometry.Traits,
+                                             geometry.Name, type, colorId, m_colors),
+                                index);
+                    }
                 }
 
                 // draw variables
@@ -321,22 +334,24 @@ namespace GraphicalDebugging
                             Geometry.Traits[] traits = new Geometry.Traits[names.Length];
                             for (int i = 0; i < names.Length; ++i)
                             {
-                                if (names[i] != null && names[i] != "")
+                                if (Plots[i].Drawable == null && names[i] != null && names[i] != "")
                                 {
-                                    traits[i] = null;
-                                    drawables[i] = null;
-                                    ExpressionLoader.Load(names[i], ExpressionLoader.OnlyMultiPoints,
-                                                          out traits[i], out drawables[i]);
-                                    if (drawables[i] != null)
+                                    ExpressionDrawer.IDrawable d = null;
+                                    Geometry.Traits t = null;
+                                    ExpressionLoader.Load(names[i], ExpressionLoader.OnlyMultiPoints, out t, out d);
+                                    if (d != null)
                                     {
-                                        if (traits[i] != null)
-                                            traits[i] = new Geometry.Traits(traits[i].Dimension); // force cartesian
-                                        drawables[i] = new ExpressionDrawer.PointsContainer(drawables[i] as ExpressionDrawer.MultiPoint);
+                                        if (t != null)
+                                            t = new Geometry.Traits(t.Dimension); // force cartesian
+                                        d = new ExpressionDrawer.PointsContainer(d as ExpressionDrawer.MultiPoint);
                                     }
                                     else
-                                        ExpressionLoader.Load(names[i], ExpressionLoader.OnlyContainers,
-                                                              out traits[i], out drawables[i]);
+                                        ExpressionLoader.Load(names[i], ExpressionLoader.OnlyContainers, out t, out d);
+                                    Plots[i].Drawable = d;
+                                    Plots[i].Traits = t;
                                 }
+                                drawables[i] = Plots[i].Drawable;
+                                traits[i] = Plots[i].Traits;
                             }
 
                             m_currentBox = ExpressionDrawer.DrawPlots(graphics, drawables, traits, settings, m_colors, m_zoomBox);
@@ -385,7 +400,7 @@ namespace GraphicalDebugging
         {
             // Trust the user, always update
             m_zoomBox.Reset();
-            UpdateItems();
+            UpdateItems(false);
         }
 
         private void imageGrid_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -522,7 +537,7 @@ namespace GraphicalDebugging
                     if (wR > 0 && hR > 0)
                     {
                         m_zoomBox.Zoom(leftR, topR, wR, hR, image.ActualWidth, image.ActualHeight);
-                        UpdateItems();
+                        UpdateItems(false);
                     }
                 }
             }

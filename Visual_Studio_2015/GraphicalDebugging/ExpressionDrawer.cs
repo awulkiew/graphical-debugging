@@ -1053,7 +1053,7 @@ namespace GraphicalDebugging
                 Drawer.DrawScales(graphics, box, colors, fill);
 
                 // CS info
-                if (traits != null)
+                if (commonTraits != null)
                 {
                     SolidBrush brush = new SolidBrush(colors.TextColor);
                     Font font = new Font(new FontFamily(System.Drawing.Text.GenericFontFamilies.SansSerif), 10);
