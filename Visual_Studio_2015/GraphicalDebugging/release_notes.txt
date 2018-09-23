@@ -4,9 +4,9 @@ additions:
 - variables of type std::pair<...> are treated as Points
 - containers of Points (e.g. std::vector<std::pair<...>>) are treated as MultiPoints
 - Plot Watch now displays MultiPoints / containers of points as Point Plot
-- Point Plot options for Plot Watch
-- image size, MultiPoint display mode (Geometry or Point Plot) and Point Plot options for Graphical Watch
-- variables are not realoaded if only redraw is required (e.g. while zooming)
+- new options for Plot Watch (Point Plot types)
+- new options for Graphical Watch (image size, Point Plot types, etc.)
+- variables are not realoaded if only redraw is required (e.g. while zooming or view reset)
 - various drawing tweaks
 
 bugfixes:
