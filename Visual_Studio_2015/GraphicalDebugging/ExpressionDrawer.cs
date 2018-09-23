@@ -716,6 +716,8 @@ namespace GraphicalDebugging
                 this.points = points;
             }
 
+            public MultiPoint MultiPoint { get { return points; } }
+
             public void Draw(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
             {
                 // Esstimate the distance between samples, uniform distribution, 2 samples per X

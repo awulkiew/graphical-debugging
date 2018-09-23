@@ -233,6 +233,13 @@ namespace GraphicalDebugging
                                 variable.Drawable = drawable;
                                 variable.Traits = traits;
                             }
+                            else
+                            {
+                                if (displayMultiPointsAsPlots && variable.Drawable is ExpressionDrawer.MultiPoint)
+                                    variable.Drawable = new ExpressionDrawer.PointsContainer(variable.Drawable as ExpressionDrawer.MultiPoint);
+                                else if (!displayMultiPointsAsPlots && variable.Drawable is ExpressionDrawer.PointsContainer)
+                                    variable.Drawable = (variable.Drawable as ExpressionDrawer.PointsContainer).MultiPoint;
+                            }
 
                             if (!ExpressionDrawer.Draw(graphics, variable.Drawable, variable.Traits, settings, m_colors))
                                 bmp = null;
