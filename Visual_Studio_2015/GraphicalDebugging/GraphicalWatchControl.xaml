@@ -23,7 +23,7 @@
                   IsReadOnly="False"
                   Background="{DynamicResource VsBrush.ToolWindowBackground}"
                   Foreground="{DynamicResource VsBrush.ToolWindowText}"
-                  RowHeight="100"
+                  RowHeight="101"
                   BorderThickness="0"
                   PreviewKeyDown="dataGrid_PreviewKeyDown" BeginningEdit="dataGrid_BeginningEdit" CellEditEnding="dataGrid_CellEditEnding">
             <DataGrid.ColumnHeaderStyle>
@@ -76,8 +76,8 @@
                 </Style>
             </DataGrid.CellStyle>
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="100" />
-                <DataGridTemplateColumn Header="Image" Width="100">
+                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="101" />
+                <DataGridTemplateColumn Header="Image" Width="101">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <Image Name="GridImage" Source="{Binding BmpImg}">

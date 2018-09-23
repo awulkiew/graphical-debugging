@@ -47,13 +47,44 @@ namespace GraphicalDebugging
         }
     }
 
-    class GraphicalItem : VariableItem
+    class DrawableItem : VariableItem
+    {
+        public DrawableItem()
+        { }
+
+        public DrawableItem(ExpressionDrawer.IDrawable drawable,
+                            Geometry.Traits traits,
+                            string name, string type)
+            : base(name, type)
+        {
+            Drawable = drawable;
+            Traits = traits;
+        }
+
+        protected ExpressionDrawer.IDrawable drawable;
+        public ExpressionDrawer.IDrawable Drawable
+        {
+            get { return this.drawable; }
+            set { this.drawable = value; }
+        }
+
+        protected Geometry.Traits traits;
+        public Geometry.Traits Traits
+        {
+            get { return this.traits; }
+            set { this.traits = value; }
+        }
+    }
+
+    class GraphicalItem : DrawableItem
     {
         public GraphicalItem()
         { }
 
-        public GraphicalItem(string name, System.Drawing.Bitmap bmp, string type)
-            : base(name, type)
+        public GraphicalItem(ExpressionDrawer.IDrawable drawable,
+                             Geometry.Traits traits,
+                             string name, System.Drawing.Bitmap bmp, string type)
+            : base(drawable, traits, name, type)
         {
             Bmp = bmp;
         }
@@ -76,21 +107,19 @@ namespace GraphicalDebugging
         }
     }
 
-    class GeometryItem : VariableItem
+    class ColoredDrawableItem : DrawableItem
     {
-        public GeometryItem(int colorId, Colors colors)
+        public ColoredDrawableItem(int colorId, Colors colors)
         {
             SetColor(colorId, colors);
         }
 
-        public GeometryItem(ExpressionDrawer.IDrawable drawable,
-                            Geometry.Traits traits,
-                            string name, string type, int colorId, Colors colors)
-            : base(name, type)
+        public ColoredDrawableItem(ExpressionDrawer.IDrawable drawable,
+                                   Geometry.Traits traits,
+                                   string name, string type, int colorId, Colors colors)
+            : base(drawable, traits, name, type)
         {
             SetColor(colorId, colors);
-            Drawable = drawable;
-            Traits = traits;
         }
 
         protected int colorId;
@@ -110,23 +139,22 @@ namespace GraphicalDebugging
             this.colorId = colorId;
             this.color = Util.ConvertColor(colors[colorId]);
         }
-
-        protected ExpressionDrawer.IDrawable drawable;
-        public ExpressionDrawer.IDrawable Drawable
-        {
-            get { return this.drawable; }
-            set { this.drawable = value; }
-        }
-
-        protected Geometry.Traits traits;
-        public Geometry.Traits Traits
-        {
-            get { return this.traits; }
-            set { this.traits = value; }
-        }
     }
 
-    class PlotItem : GeometryItem
+    class GeometryItem : ColoredDrawableItem
+    {
+        public GeometryItem(int colorId, Colors colors)
+            : base(colorId, colors)
+        { }
+
+        public GeometryItem(ExpressionDrawer.IDrawable drawable,
+                        Geometry.Traits traits,
+                        string name, string type, int colorId, Colors colors)
+            : base(drawable, traits, name, type, colorId, colors)
+        { }
+    }
+
+    class PlotItem : ColoredDrawableItem
     {
         public PlotItem(int colorId, Colors colors)
             : base(colorId, colors)

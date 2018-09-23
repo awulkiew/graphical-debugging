@@ -55,7 +55,7 @@ namespace GraphicalDebugging
         private void VSColorTheme_ThemeChanged(ThemeChangedEventArgs e)
         {
             m_colors.Update();
-            UpdateItems();
+            UpdateItems(false);
         }
 
         private void GraphicalItem_NameChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -77,7 +77,7 @@ namespace GraphicalDebugging
             }
             else
             {
-                UpdateItem(index);
+                UpdateItem(true, index);
 
                 // insert new empty row
                 int next_index = index + 1;
@@ -123,7 +123,7 @@ namespace GraphicalDebugging
         {
             if (ExpressionLoader.Debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
             {
-                UpdateItems();
+                UpdateItems(true);
             }
         }
 
@@ -151,15 +151,15 @@ namespace GraphicalDebugging
             m_isDataGridEdited = false;
         }
 
-        private void UpdateItems()
+        private void UpdateItems(bool load)
         {
             for (int index = 0; index < Variables.Count; ++index)
             {
-                UpdateItem(index);
+                UpdateItem(load, index);
             }
         }
 
-        private void UpdateItem(int index)
+        private void UpdateItem(bool load, int index)
         {
             GraphicalItem variable = Variables[index];
 
@@ -196,8 +196,14 @@ namespace GraphicalDebugging
                     displayMultiPointsAsPlots = optionPage.MultiPointDisplayMode == GraphicalWatchOptionPage.MultiPointDisplayModeValue.PointPlot;
                 }
 
-                (dataGrid.Columns[1] as DataGridTemplateColumn).Width = imageWidth;
-                dataGrid.RowHeight = imageHeight;
+                (dataGrid.Columns[1] as DataGridTemplateColumn).Width = imageWidth + 1;
+                dataGrid.RowHeight = imageHeight + 1;
+
+                if (load)
+                {
+                    variable.Drawable = null;
+                    variable.Traits = null;
+                }
 
                 if (variable.Name != null && variable.Name != "")
                 {
@@ -213,14 +219,20 @@ namespace GraphicalDebugging
 
                         try
                         {
-                            Geometry.Traits traits = null;
-                            ExpressionDrawer.IDrawable drawable = null;
-                            ExpressionLoader.Load(variable.Name, out traits, out drawable);
+                            if (variable.Drawable == null)
+                            {
+                                Geometry.Traits traits = null;
+                                ExpressionDrawer.IDrawable drawable = null;
+                                ExpressionLoader.Load(variable.Name, out traits, out drawable);
 
-                            if (drawable != null && displayMultiPointsAsPlots && drawable is ExpressionDrawer.MultiPoint)
-                                drawable = new ExpressionDrawer.PointsContainer(drawable as ExpressionDrawer.MultiPoint);
+                                if (drawable != null && displayMultiPointsAsPlots && drawable is ExpressionDrawer.MultiPoint)
+                                    drawable = new ExpressionDrawer.PointsContainer(drawable as ExpressionDrawer.MultiPoint);
 
-                            if (!ExpressionDrawer.Draw(graphics, drawable, traits, settings, m_colors))
+                                variable.Drawable = drawable;
+                                variable.Traits = traits;
+                            }
+
+                            if (!ExpressionDrawer.Draw(graphics, variable.Drawable, variable.Traits, settings, m_colors))
                                 bmp = null;
                         }
                         catch (Exception)
@@ -234,7 +246,7 @@ namespace GraphicalDebugging
             }
 
             // set new row
-            ResetAt(new GraphicalItem(variable.Name, bmp, type), index);
+            ResetAt(new GraphicalItem(variable.Drawable, variable.Traits, variable.Name, bmp, type), index);
         }
 
         private void imageItem_Copy(object sender, RoutedEventArgs e)
@@ -252,7 +264,7 @@ namespace GraphicalDebugging
             if (v.BmpImg != null)
             {
                 int i = dataGrid.Items.IndexOf(v);
-                UpdateItem(i);
+                UpdateItem(false, i);
             }
         }
     }

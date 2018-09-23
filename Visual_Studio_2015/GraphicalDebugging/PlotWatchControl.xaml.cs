@@ -255,7 +255,7 @@ namespace GraphicalDebugging
                 // update the list, gather names and settings
                 for (int index = 0; index < Plots.Count; ++index)
                 {
-                    GeometryItem geometry = Plots[index];
+                    PlotItem geometry = Plots[index];
 
                     System.Windows.Media.Color color = geometry.Color;
                     int colorId = geometry.ColorId;
