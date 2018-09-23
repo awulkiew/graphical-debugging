@@ -5,6 +5,7 @@
 //------------------------------------------------------------------------------
 
 using Microsoft.VisualStudio.Shell;
+using System;
 using System.ComponentModel;
 
 namespace GraphicalDebugging
@@ -44,7 +45,7 @@ namespace GraphicalDebugging
         public int ImageWidth
         {
             get { return imageWidth; }
-            set { imageWidth = value; }
+            set { imageWidth = Math.Max(value, 20); }
         }
 
         [Category("Display")]
@@ -53,7 +54,7 @@ namespace GraphicalDebugging
         public int ImageHeight
         {
             get { return imageHeight; }
-            set { imageHeight = value; }
+            set { imageHeight = Math.Max(value, 20); }
         }
 
         [Category("Point Plot")]
