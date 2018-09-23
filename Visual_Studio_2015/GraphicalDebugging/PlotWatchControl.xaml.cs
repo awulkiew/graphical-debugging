@@ -22,19 +22,6 @@ namespace GraphicalDebugging
     using System.Collections.Generic;
     using System.Collections.ObjectModel;
 
-    class PlotItem : GeometryItem
-    {
-        public PlotItem(int colorId, Colors colors)
-            : base(colorId, colors)
-        { }
-
-        public PlotItem(ExpressionDrawer.IDrawable drawable,
-                        Geometry.Traits traits,
-                        string name, string type, int colorId, Colors colors)
-            : base(drawable, traits, name, type, colorId, colors)
-        { }
-    }
-
     /// <summary>
     /// Interaction logic for PlotWatchControl.
     /// </summary>

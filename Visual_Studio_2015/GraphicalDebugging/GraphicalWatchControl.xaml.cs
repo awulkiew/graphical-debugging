@@ -28,7 +28,7 @@ namespace GraphicalDebugging
 
         private Colors m_colors;
 
-        ObservableCollection<VariableItem> Variables { get; set; }
+        ObservableCollection<GraphicalItem> Variables { get; set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="GraphicalWatchControl"/> class.
@@ -43,13 +43,13 @@ namespace GraphicalDebugging
 
             m_colors = new Colors(this);
 
-            Variables = new ObservableCollection<VariableItem>();
+            Variables = new ObservableCollection<GraphicalItem>();
 
             this.InitializeComponent();
 
             dataGrid.ItemsSource = Variables;
 
-            ResetAt(new VariableItem(), Variables.Count);
+            ResetAt(new GraphicalItem(), Variables.Count);
         }
 
         private void VSColorTheme_ThemeChanged(ThemeChangedEventArgs e)
@@ -58,11 +58,11 @@ namespace GraphicalDebugging
             UpdateItems();
         }
 
-        private void VariableItem_NameChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void GraphicalItem_NameChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             //e.PropertyName == "Name"
 
-            VariableItem variable = (VariableItem)sender;
+            GraphicalItem variable = (GraphicalItem)sender;
             int index = Variables.IndexOf(variable);
 
             if (index < 0 || index >= dataGrid.Items.Count)
@@ -83,7 +83,7 @@ namespace GraphicalDebugging
                 int next_index = index + 1;
                 if (next_index == Variables.Count)
                 {
-                    ResetAt(new VariableItem(), Variables.Count);
+                    ResetAt(new GraphicalItem(), Variables.Count);
                     SelectAt(index + 1, true);
                 }
                 else
@@ -93,9 +93,9 @@ namespace GraphicalDebugging
             }
         }
 
-        private void ResetAt(VariableItem item, int index)
+        private void ResetAt(GraphicalItem item, int index)
         {
-            ((System.ComponentModel.INotifyPropertyChanged)item).PropertyChanged += VariableItem_NameChanged;
+            ((System.ComponentModel.INotifyPropertyChanged)item).PropertyChanged += GraphicalItem_NameChanged;
             if (index < Variables.Count)
                 Variables.RemoveAt(index);
             Variables.Insert(index, item);
@@ -137,7 +137,7 @@ namespace GraphicalDebugging
                 if (dataGrid.SelectedItems.Count < 1)
                     return;
 
-                Util.RemoveDataGridItems(dataGrid, Variables, delegate (VariableItem variable) { });
+                Util.RemoveDataGridItems(dataGrid, Variables, delegate (GraphicalItem variable) { });
             }
         }
 
@@ -161,7 +161,7 @@ namespace GraphicalDebugging
 
         private void UpdateItem(int index)
         {
-            VariableItem variable = Variables[index];
+            GraphicalItem variable = Variables[index];
 
             Bitmap bmp = null;
             string type = null;
@@ -213,12 +213,12 @@ namespace GraphicalDebugging
             }
 
             // set new row
-            ResetAt(new VariableItem(variable.Name, bmp, type), index);
+            ResetAt(new GraphicalItem(variable.Name, bmp, type), index);
         }
 
         private void imageItem_Copy(object sender, RoutedEventArgs e)
         {
-            VariableItem v = (VariableItem)((MenuItem)sender).DataContext;
+            GraphicalItem v = (GraphicalItem)((MenuItem)sender).DataContext;
             if (v.BmpImg != null)
             {
                 Clipboard.SetImage(v.BmpImg);
@@ -227,7 +227,7 @@ namespace GraphicalDebugging
 
         private void imageItem_Reset(object sender, RoutedEventArgs e)
         {
-            VariableItem v = (VariableItem)((MenuItem)sender).DataContext;
+            GraphicalItem v = (GraphicalItem)((MenuItem)sender).DataContext;
             if (v.BmpImg != null)
             {
                 int i = dataGrid.Items.IndexOf(v);

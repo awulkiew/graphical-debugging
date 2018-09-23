@@ -71,7 +71,6 @@
     <Compile Include="GeometryWatchControl.xaml.cs">
       <DependentUpon>GeometryWatchControl.xaml</DependentUpon>
     </Compile>
-    <Compile Include="GeometryItem.cs" />
     <Compile Include="GeometryWatchOptionPage.cs">
       <SubType>Component</SubType>
     </Compile>

@@ -4,31 +4,28 @@
 // </copyright>
 //------------------------------------------------------------------------------
 
-using System.Drawing;
-using System.Windows.Media.Imaging;
-
 namespace GraphicalDebugging
 {
     class VariableItem
-            : System.ComponentModel.INotifyPropertyChanged
+        : System.ComponentModel.INotifyPropertyChanged
     {
         public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
         private void NotifyPropertyChanged([System.Runtime.CompilerServices.CallerMemberName] string propertyName = "")
         {
             if (PropertyChanged != null)
-            {
                 PropertyChanged(this, new System.ComponentModel.PropertyChangedEventArgs(propertyName));
-            }
         }
 
-        public VariableItem(string name = null, Bitmap bmp = null, string type = null)
+        public VariableItem()
+        { }
+
+        public VariableItem(string name, string type)
         {
             Name = name;
-            Bmp = bmp;
             Type = type;
         }
 
-        private string name;
+        protected string name;
         public string Name
         {
             get { return this.name; }
@@ -42,8 +39,27 @@ namespace GraphicalDebugging
             }
         }
 
-        private Bitmap bmp;
-        public Bitmap Bmp
+        protected string type;
+        public string Type
+        {
+            get { return this.type; }
+            set { this.type = value; }
+        }
+    }
+
+    class GraphicalItem : VariableItem
+    {
+        public GraphicalItem()
+        { }
+
+        public GraphicalItem(string name, System.Drawing.Bitmap bmp, string type)
+            : base(name, type)
+        {
+            Bmp = bmp;
+        }
+
+        protected System.Drawing.Bitmap bmp;
+        public System.Drawing.Bitmap Bmp
         {
             get { return this.bmp; }
             set
@@ -53,14 +69,73 @@ namespace GraphicalDebugging
             }
         }
 
-        private BitmapImage bmpImg;
-        public BitmapImage BmpImg { get { return this.bmpImg; } }
-
-        private string type;
-        public string Type
+        protected System.Windows.Media.Imaging.BitmapImage bmpImg;
+        public System.Windows.Media.Imaging.BitmapImage BmpImg
         {
-            get { return this.type; }
-            set { this.type = value; }
+            get { return this.bmpImg; }
         }
+    }
+
+    class GeometryItem : VariableItem
+    {
+        public GeometryItem(int colorId, Colors colors)
+        {
+            SetColor(colorId, colors);
+        }
+
+        public GeometryItem(ExpressionDrawer.IDrawable drawable,
+                            Geometry.Traits traits,
+                            string name, string type, int colorId, Colors colors)
+            : base(name, type)
+        {
+            SetColor(colorId, colors);
+            Drawable = drawable;
+            Traits = traits;
+        }
+
+        protected int colorId;
+        public int ColorId
+        {
+            get { return colorId; }
+        }
+
+        protected System.Windows.Media.Color color;
+        public System.Windows.Media.Color Color
+        {
+            get { return color; }
+        }
+
+        protected void SetColor(int colorId, Colors colors)
+        {
+            this.colorId = colorId;
+            this.color = Util.ConvertColor(colors[colorId]);
+        }
+
+        protected ExpressionDrawer.IDrawable drawable;
+        public ExpressionDrawer.IDrawable Drawable
+        {
+            get { return this.drawable; }
+            set { this.drawable = value; }
+        }
+
+        protected Geometry.Traits traits;
+        public Geometry.Traits Traits
+        {
+            get { return this.traits; }
+            set { this.traits = value; }
+        }
+    }
+
+    class PlotItem : GeometryItem
+    {
+        public PlotItem(int colorId, Colors colors)
+            : base(colorId, colors)
+        { }
+
+        public PlotItem(ExpressionDrawer.IDrawable drawable,
+                        Geometry.Traits traits,
+                        string name, string type, int colorId, Colors colors)
+            : base(drawable, traits, name, type, colorId, colors)
+        { }
     }
 }
