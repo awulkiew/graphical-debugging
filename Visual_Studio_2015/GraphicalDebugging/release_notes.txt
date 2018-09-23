@@ -1,11 +1,16 @@
 version 0.16
 
 additions:
-- variables of type std::pair are treated as Points
-- containers of Points are treated as MultiPoints
-- Plot Watch can now display MultiPoints or containers of points
-- options for Point Plot
-- size of circles representing points in PlotWatch tweaked
+- variables of type std::pair<...> are treated as Points
+- containers of Points (e.g. std::vector<std::pair<...>>) are treated as MultiPoints
+- Plot Watch now displays MultiPoints / containers of points as Point Plot
+- Point Plot options for Plot Watch
+- image size, MultiPoint display mode (Geometry or Point Plot) and Point Plot options for Graphical Watch
+- variables are not realoaded if only redraw is required (e.g. while zooming)
+- various drawing tweaks
+
+bugfixes:
+- fix for variable list items removal causing the list to be nonresponding
 
 version 0.15
 
