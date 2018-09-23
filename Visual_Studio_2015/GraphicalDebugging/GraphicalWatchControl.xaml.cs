@@ -172,14 +172,32 @@ namespace GraphicalDebugging
                 ExpressionDrawer.Settings settings = new ExpressionDrawer.Settings();
                 settings.showDir = false;
                 settings.showLabels = false;
+                // Other settings
+                int imageWidth = 100;
+                int imageHeight = 100;
+                bool displayMultiPointsAsPlots = false;
                 // Load settings from option page
                 GraphicalWatchOptionPage optionPage = Util.GetDialogPage<GraphicalWatchOptionPage>();
-                if (optionPage != null && (optionPage.EnableBars || optionPage.EnableLines || optionPage.EnablePoints))
+                if (optionPage != null)
                 {
-                    settings.valuePlot_enableBars = optionPage.EnableBars;
-                    settings.valuePlot_enableLines = optionPage.EnableLines;
-                    settings.valuePlot_enablePoints = optionPage.EnablePoints;
+                    if (optionPage.ValuePlot_EnableBars || optionPage.ValuePlot_EnableLines || optionPage.ValuePlot_EnablePoints)
+                    {
+                        settings.valuePlot_enableBars = optionPage.ValuePlot_EnableBars;
+                        settings.valuePlot_enableLines = optionPage.ValuePlot_EnableLines;
+                        settings.valuePlot_enablePoints = optionPage.ValuePlot_EnablePoints;
+                    }
+                    if (optionPage.PointPlot_EnableLines || optionPage.PointPlot_EnablePoints)
+                    {
+                        settings.pointPlot_enableLines = optionPage.PointPlot_EnableLines;
+                        settings.pointPlot_enablePoints = optionPage.PointPlot_EnablePoints;
+                    }
+                    imageWidth = Math.Max(optionPage.ImageWidth, 20);
+                    imageHeight = Math.Max(optionPage.ImageHeight, 20);
+                    displayMultiPointsAsPlots = optionPage.MultiPointDisplayMode == GraphicalWatchOptionPage.MultiPointDisplayModeValue.PointPlot;
                 }
+
+                (dataGrid.Columns[1] as DataGridTemplateColumn).Width = imageWidth;
+                dataGrid.RowHeight = imageHeight;
 
                 if (variable.Name != null && variable.Name != "")
                 {
@@ -187,7 +205,7 @@ namespace GraphicalDebugging
                     if (expression.IsValidValue)
                     {
                         // create bitmap
-                        bmp = new Bitmap(100, 100);
+                        bmp = new Bitmap(imageWidth, imageHeight);
 
                         Graphics graphics = Graphics.FromImage(bmp);
                         graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
@@ -198,6 +216,9 @@ namespace GraphicalDebugging
                             Geometry.Traits traits = null;
                             ExpressionDrawer.IDrawable drawable = null;
                             ExpressionLoader.Load(variable.Name, out traits, out drawable);
+
+                            if (drawable != null && displayMultiPointsAsPlots && drawable is ExpressionDrawer.MultiPoint)
+                                drawable = new ExpressionDrawer.PointsContainer(drawable as ExpressionDrawer.MultiPoint);
 
                             if (!ExpressionDrawer.Draw(graphics, drawable, traits, settings, m_colors))
                                 bmp = null;

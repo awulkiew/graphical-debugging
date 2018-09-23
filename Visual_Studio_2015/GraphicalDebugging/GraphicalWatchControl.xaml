@@ -23,6 +23,7 @@
                   IsReadOnly="False"
                   Background="{DynamicResource VsBrush.ToolWindowBackground}"
                   Foreground="{DynamicResource VsBrush.ToolWindowText}"
+                  RowHeight="100"
                   BorderThickness="0"
                   PreviewKeyDown="dataGrid_PreviewKeyDown" BeginningEdit="dataGrid_BeginningEdit" CellEditEnding="dataGrid_CellEditEnding">
             <DataGrid.ColumnHeaderStyle>
@@ -79,7 +80,7 @@
                 <DataGridTemplateColumn Header="Image" Width="100">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <Image Name="GridImage" Source="{Binding BmpImg}" Width="100" Height="100">
+                            <Image Name="GridImage" Source="{Binding BmpImg}">
                                 <Image.ContextMenu>
                                     <ContextMenu>
                                         <MenuItem Header="Copy" Click="imageItem_Copy"/>
@@ -94,7 +95,7 @@
                 <DataGridTemplateColumn Header="Type" Width="*" IsReadOnly="True">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding Type}" TextWrapping="Wrap" Height="100">
+                            <TextBlock Text="{Binding Type}" TextWrapping="Wrap">
                                 <TextBlock.ToolTip>
                                     <TextBlock Text="{Binding Type}" TextWrapping="Wrap" />
                                 </TextBlock.ToolTip>
