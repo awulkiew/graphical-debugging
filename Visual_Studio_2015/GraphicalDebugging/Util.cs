@@ -14,6 +14,8 @@ using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
 using System.Windows.Media.Imaging;
+using System.Threading;
+using Task = System.Threading.Tasks.Task;
 
 namespace GraphicalDebugging
 {
@@ -150,34 +152,10 @@ namespace GraphicalDebugging
             return result;
         }
 
-        private class MainPackage
-        {
-            private static Guid packageGuid = new Guid(GraphicalWatchPackage.PackageGuidString);
-
-            public MainPackage()
-            {
-                IVsPackage ipackage = null;
-                int res = ((IVsShell)ServiceProvider.GlobalProvider.GetService(typeof(IVsShell))).IsPackageLoaded(packageGuid, out ipackage);
-                if (res == 0 && ipackage != null)
-                    package = (GraphicalWatchPackage)ipackage;
-            }
-
-            public GraphicalWatchPackage Get() { return package; }
-
-            private GraphicalWatchPackage package = null;
-        }
-
-        private static MainPackage mainPackage = new MainPackage();
-
-        public static GraphicalWatchPackage GetPackage()
-        {
-            return mainPackage.Get();
-        }
-
         public static T GetDialogPage<T>()
             where T : DialogPage
         {
-            GraphicalWatchPackage package = GetPackage();
+            Package package = GraphicalWatchPackage.Instance;
             if (package == null)
                 return default(T);
 

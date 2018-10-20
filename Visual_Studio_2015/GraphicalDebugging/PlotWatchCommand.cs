@@ -4,11 +4,12 @@
 // </copyright>
 //------------------------------------------------------------------------------
 
-using System;
-using System.ComponentModel.Design;
-using System.Globalization;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
+using System;
+using System.ComponentModel.Design;
+using System.Threading;
+using Task = System.Threading.Tasks.Task;
 
 namespace GraphicalDebugging
 {
@@ -37,8 +38,10 @@ namespace GraphicalDebugging
         /// Adds our command handlers for menu (commands must exist in the command table file)
         /// </summary>
         /// <param name="package">Owner package, not null.</param>
-        private PlotWatchCommand(Package package)
+        private PlotWatchCommand(Package package, OleMenuCommandService commandService)
         {
+            ThreadHelper.ThrowIfNotOnUIThread();
+
             if (package == null)
             {
                 throw new ArgumentNullException("package");
@@ -46,7 +49,6 @@ namespace GraphicalDebugging
 
             this.package = package;
 
-            OleMenuCommandService commandService = this.ServiceProvider.GetService(typeof(IMenuCommandService)) as OleMenuCommandService;
             if (commandService != null)
             {
                 var menuCommandID = new CommandID(CommandSet, CommandId);
@@ -79,9 +81,13 @@ namespace GraphicalDebugging
         /// Initializes the singleton instance of the command.
         /// </summary>
         /// <param name="package">Owner package, not null.</param>
-        public static void Initialize(Package package)
+        public static async Task InitializeAsync(AsyncPackage package, CancellationToken cancellationToken)
         {
-            Instance = new PlotWatchCommand(package);
+            OleMenuCommandService commandService = await package.GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
+
+            await package.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+
+            Instance = new PlotWatchCommand(package, commandService);
         }
 
         /// <summary>

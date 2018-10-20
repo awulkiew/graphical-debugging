@@ -4,17 +4,12 @@
 // </copyright>
 //------------------------------------------------------------------------------
 
-using System;
-using System.ComponentModel.Design;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
-using System.Runtime.InteropServices;
-using Microsoft.VisualStudio;
-using Microsoft.VisualStudio.OLE.Interop;
 using Microsoft.VisualStudio.Shell;
-using Microsoft.VisualStudio.Shell.Interop;
-using Microsoft.Win32;
+using System;
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices;
+using System.Threading;
+using Task = System.Threading.Tasks.Task;
 
 namespace GraphicalDebugging
 {
@@ -35,7 +30,7 @@ namespace GraphicalDebugging
     /// To get loaded into VS, the package must be referred by &lt;Asset Type="Microsoft.VisualStudio.VsPackage" ...&gt; in .vsixmanifest file.
     /// </para>
     /// </remarks>
-    [PackageRegistration(UseManagedResourcesOnly = true)]
+    [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [InstalledProductRegistration("#110", "#112", "1.0", IconResourceID = 400)] // Info on this package for Help/About
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [Guid(GraphicalWatchPackage.PackageGuidString)]
@@ -47,12 +42,17 @@ namespace GraphicalDebugging
     [ProvideOptionPage(typeof(GeometryWatchOptionPage), "Graphical Debugging", "Geometry Watch", 0, 0, true)]
     [ProvideOptionPage(typeof(GraphicalWatchOptionPage), "Graphical Debugging", "Graphical Watch", 0, 0, true)]
     [ProvideOptionPage(typeof(PlotWatchOptionPage), "Graphical Debugging", "Plot Watch", 0, 0, true)]
-    public sealed class GraphicalWatchPackage : Package
+    public sealed class GraphicalWatchPackage : AsyncPackage
     {
         /// <summary>
         /// GraphicalWatchPackage GUID string.
         /// </summary>
         public const string PackageGuidString = "f63e15c7-29b1-420d-94a9-8b28e516c170";
+
+        /// <summary>
+        /// GraphicalWatchPackage Instance set during initialization of the package.
+        /// </summary>
+        public static GraphicalWatchPackage Instance { get; private set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="GraphicalWatch"/> class.
@@ -71,12 +71,17 @@ namespace GraphicalDebugging
         /// Initialization of the package; this method is called right after the package is sited, so this is the place
         /// where you can put all the initialization code that rely on services provided by VisualStudio.
         /// </summary>
-        protected override void Initialize()
+        protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
         {
-            base.Initialize();
-            GeometryWatchCommand.Initialize(this);
-            GraphicalWatchCommand.Initialize(this);
-            PlotWatchCommand.Initialize(this);
+            Instance = this;
+
+            await base.InitializeAsync(cancellationToken, progress);
+
+            await ExpressionLoader.InitializeAsync(this, cancellationToken);
+
+            await GeometryWatchCommand.InitializeAsync(this, cancellationToken);
+            await GraphicalWatchCommand.InitializeAsync(this, cancellationToken);
+            await PlotWatchCommand.InitializeAsync(this, cancellationToken);
         }
 
         #endregion

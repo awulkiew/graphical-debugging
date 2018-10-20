@@ -12,6 +12,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Threading;
+using Task = System.Threading.Tasks.Task;
 
 namespace GraphicalDebugging
 {
@@ -22,13 +24,24 @@ namespace GraphicalDebugging
         private DebuggerEvents debuggerEvents;
         private Loaders loaders;
 
-        private static ExpressionLoader instance = new ExpressionLoader();
-
         public enum Kind { Point = 0, Segment, Box, NSphere, Linestring, Ring, Polygon, MultiPoint, MultiLinestring, MultiPolygon, Container, Variant, Turn, TurnsContainer };
-        
-        private ExpressionLoader()
+
+        private static ExpressionLoader Instance { get; set; }
+
+        public static async Task InitializeAsync(AsyncPackage package, CancellationToken cancellationToken)
         {
-            this.dte = (DTE2)ServiceProvider.GlobalProvider.GetService(typeof(DTE));
+            DTE2 dte = await package.GetServiceAsync(typeof(DTE)) as DTE2;
+
+            await package.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+
+            Instance = new ExpressionLoader(dte);
+        }
+
+        private ExpressionLoader(DTE2 dte)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+
+            this.dte = dte;
             this.debugger = dte.Debugger;
             this.debuggerEvents = this.dte.Events.DebuggerEvents;
 
@@ -79,12 +92,12 @@ namespace GraphicalDebugging
 
         public static Debugger Debugger
         {
-            get { return instance.debugger; }
+            get { return Instance.debugger; }
         }
 
         public static DebuggerEvents DebuggerEvents
         {
-            get { return instance.debuggerEvents; }
+            get { return Instance.debuggerEvents; }
         }
 
         public interface KindConstraint
@@ -137,11 +150,11 @@ namespace GraphicalDebugging
             traits = null;
             result = null;
 
-            Expression expr = instance.debugger.GetExpression(name);
+            Expression expr = Instance.debugger.GetExpression(name);
             if (!expr.IsValidValue)
                 return;
 
-            Loader loader = instance.loaders.FindByType(expr.Type);
+            Loader loader = Instance.loaders.FindByType(expr.Type);
             if (loader == null)
                 return;
 
@@ -155,7 +168,7 @@ namespace GraphicalDebugging
                 accessMemory = optionPage.EnableDirectMemoryAccess;
             }
 
-            loader.Load(instance.loaders, accessMemory, instance.debugger, expr.Name, expr.Type, out traits, out result);
+            loader.Load(Instance.loaders, accessMemory, Instance.debugger, expr.Name, expr.Type, out traits, out result);
         }
 
         static int ParseInt(string s)
