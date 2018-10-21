@@ -1863,7 +1863,7 @@ namespace GraphicalDebugging
                 // Just in case, offset should be 0
                 long firstOffset = MemoryReader.GetAddressDifference(debugger, ptrName, ptrFirst);
                 // Just in case, offset should be:
-                //   MemoryReader.GetValueSizeof(debugger, name + ".first", null);
+                //   MemoryReader.GetValueSizeof(debugger, name + ".first");
                 long secondOffset = MemoryReader.GetAddressDifference(debugger, ptrName, ptrSecond);
                 if (MemoryReader.IsInvalidAddressDifference(firstOffset)
                  || MemoryReader.IsInvalidAddressDifference(secondOffset))

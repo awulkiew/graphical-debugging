@@ -265,44 +265,14 @@ namespace GraphicalDebugging
             return Read(debugger, ptrName, values, converter);
         }
 
-        /*public static bool ReadNumericArray(Debugger debugger, string ptrName, string valType, string innerPtrName, string innerValType, double[] values, int innerCount)
-        {
-            //System.Diagnostics.Debug.Assert(innerCount <= values.Length && values.Length % innerCount == 0);
-
-            if (innerCount < 1)
-                return true;
-
-            int outerCount = values.Length / innerCount;
-            if (outerCount < 1)
-                return true;
-
-            int addressOffset = (int)GetAddressDifference(debugger, ptrName, innerPtrName);
-            if (addressOffset < 0)
-                return false;
-
-            Converter innerConverter = GetNumericConverter(debugger, innerPtrName, innerValType, innerCount, addressOffset);
-            if (innerConverter == null)
-                return false;
-
-            int outerValSize = GetValueSizeof(debugger, ptrName, valType);
-
-            Converter converter = new WrappingConverter(innerConverter, outerCount, outerValSize);
-
-            return Read(debugger, ptrName, values, converter);
-        }*/
-
         public static bool ReadBytes(Debugger debugger, string ptrName, byte[] buffer)
         {
             if (buffer.Length < 1)
                 return true;
 
-            //Process process = debugger.CurrentProcess;
-            DkmProcess[] procs = DkmProcess.GetProcesses();
-            if (procs.Length != 1)
+            DkmProcess proc = GetDebuggedProcess(debugger);
+            if (proc == null)
                 return false;
-            DkmProcess proc = procs[0];
-            // Alternatively somehow detect the correct process.
-            // One possibility: debugger.CurrentProcess.Name == proc.Path
 
             ulong address = GetValueAddress(debugger, ptrName);
             if (address == 0)
@@ -310,6 +280,24 @@ namespace GraphicalDebugging
 
             int bytesRead = proc.ReadMemory(address, DkmReadMemoryFlags.None, buffer);
             return bytesRead == buffer.Length;
+        }
+
+        public static DkmProcess GetDebuggedProcess(Debugger debugger)
+        {
+            DkmProcess[] procs = DkmProcess.GetProcesses();
+            if (procs.Length == 1)
+            {
+                return procs[0];
+            }
+            else if (procs.Length > 1)
+            {
+                foreach (DkmProcess proc in procs)
+                {
+                    if (proc.Path == debugger.CurrentProcess.Name)
+                        return proc;
+                }
+            }
+            return null;
         }
 
         public static bool IsInvalidAddressDifference(long diff)
@@ -342,16 +330,15 @@ namespace GraphicalDebugging
 
         // Valid size or 0
         // NOTE: The actual byte size depends on sizeof(char)
-        public static int GetValueSizeof(Debugger debugger, string ptrName, string valType)
+        public static int GetValueSizeof(Debugger debugger, string ptrName)
         {
-            Expression valSizeExpr = valType != null
-                                   ? debugger.GetExpression("sizeof(" + valType + ")")
-                                   : debugger.GetExpression("sizeof(*(" + ptrName + "))");
+            Expression valSizeExpr = debugger.GetExpression("sizeof(*(" + ptrName + "))");
             return valSizeExpr.IsValidValue
                  ? int.Parse(valSizeExpr.Value)
                  : 0;
         }
 
+        // Valid size or 0
         public static int GetValueTypeSizeof(Debugger debugger, string valType)
         {
             Expression valSizeExpr = debugger.GetExpression("sizeof(" + valType + ")");
