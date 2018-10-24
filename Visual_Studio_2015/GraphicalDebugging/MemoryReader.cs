@@ -19,7 +19,6 @@ namespace GraphicalDebugging
         public abstract class Converter
         {
             abstract public int ValueCount();
-            abstract public int ByteOffset();
             abstract public int ByteSize();
             abstract public void Copy(byte[] bytes, int bytesOffset, double[] result, int resultOffset);
             public void Copy(byte[] bytes, double[] result)
@@ -28,177 +27,192 @@ namespace GraphicalDebugging
             }
         }
 
-        public class NumericConverter<T> : Converter
+        public abstract class ValueConverter : Converter
+        {
+            abstract public void Copy(byte[] bytes, int bytesOffset, double[] result, int resultOffset, int resultCount);
+
+            public override int ValueCount() { return 1; }
+            public override void Copy(byte[] bytes, int bytesOffset, double[] result, int resultOffset)
+            {
+                this.Copy(bytes, bytesOffset, result, resultOffset, 1);
+            }
+        }
+
+        public class ValueConverter<T> : ValueConverter
             where T : struct
         {
             private static int sizeOfValue = Marshal.SizeOf(default(T));
-
-            public NumericConverter(int count, int byteOffset = 0)
+            
+            public override int ByteSize() { return sizeOfValue; }
+            public override void Copy(byte[] bytes, int bytesOffset, double[] result, int resultOffset, int resultCount)
             {
-                if (byteOffset < 0)
-                    throw new ArgumentOutOfRangeException("byteOffset");
-
-                this.count = count;
-                this.byteOffset = byteOffset;
-            }
-
-            public override int ValueCount()
-            {
-                return count;
-            }
-
-            public override int ByteSize()
-            {
-                return count * sizeOfValue;
-            }
-
-            public override int ByteOffset()
-            {
-                return byteOffset;
-            }
-
-            public override void Copy(byte[] bytes, int baseOffset, double[] result, int resultOffset)
-            {
-                int offset = baseOffset + byteOffset;
-                if (typeof(T) != typeof(double))
+                if (typeof(T) == typeof(double))
                 {
-                    T[] tmp = new T[count];
-                    Buffer.BlockCopy(bytes, offset, tmp, 0, ByteSize());
-                    Array.Copy(tmp, 0, result, resultOffset, count);
+                    Buffer.BlockCopy(bytes, bytesOffset, result, resultOffset * sizeof(double), resultCount * sizeof(double));
                 }
                 else
                 {
-                    Buffer.BlockCopy(bytes, offset, result, resultOffset * sizeOfValue, ByteSize());
+                    T[] tmp = new T[resultCount];
+                    Buffer.BlockCopy(bytes, bytesOffset, tmp, 0, resultCount * sizeOfValue);
+                    Array.Copy(tmp, 0, result, resultOffset, resultCount);
                 }
             }
-            
-            int count = 0;
-            int byteOffset = 0;
         }
 
-        public class WrappingConverter : Converter
+        public class ArrayConverter : Converter
         {
-            // offset of wrapper == 0
-            // internal offset set in converter
-            public WrappingConverter(Converter converter, int count, int sizeOfWrapper)
+            public ArrayConverter(Converter elementConverter, int count)
             {
-                if (sizeOfWrapper < 0
-                 || sizeOfWrapper < converter.ByteOffset() + converter.ByteSize())
-                    throw new ArgumentOutOfRangeException("sizeOfWrapper");
-
-                this.converter = converter;
                 this.count = count;
-                this.sizeOfWrapper = sizeOfWrapper;
+                this.elementConverter = elementConverter;
             }
 
             public override int ValueCount()
             {
-                return count * converter.ValueCount();
+                return count * elementConverter.ValueCount();
             }
 
             public override int ByteSize()
             {
-                return count * sizeOfWrapper;
+                return count * elementConverter.ByteSize();
             }
 
-            public override int ByteOffset()
+            public override void Copy(byte[] bytes, int byteOffset, double[] result, int resultOffset)
             {
-                return 0;
-            }
-
-            public override void Copy(byte[] bytes, int bytesOffset, double[] result, int resultOffset)
-            {
-                // TODO: Copy in one block if possible
-                // second condition for safety
-                //if (sizeOfWrapper == converter.ByteSize() && converter.ByteOffset() == 0)
-
+                int bOff = byteOffset;
+                int vOff = resultOffset;
+                int bOffStep = elementConverter.ByteSize();
+                int vOffStep = elementConverter.ValueCount();
                 for (int i = 0; i < count; ++i)
                 {
-                    // internal offset set in converter
-                    converter.Copy(bytes, bytesOffset + i * sizeOfWrapper, result, resultOffset + i * converter.ValueCount());
+                    elementConverter.Copy(bytes, bOff, result, vOff);
+                    bOff += bOffStep;
+                    vOff += vOffStep;
                 }
             }
 
-            Converter converter;
-            int count = 0;
-            int sizeOfWrapper = 0;
+            protected int count = 0;
+            protected Converter elementConverter = null;
         }
 
-        public class WrappingManyConverter : Converter
+        public class ArrayConverter<ElementConverter> : ArrayConverter
+            where ElementConverter : Converter, new()
         {
-            public WrappingManyConverter(Converter[] valueConverters, int count, int sizeOfWrapper)
+            public ArrayConverter(int count)
+                : base(new ElementConverter(), count)
+            {}
+
+            public ArrayConverter(ElementConverter elementConverter, int count)
+                : base(elementConverter, count)
+            {}
+
+            public override void Copy(byte[] bytes, int byteOffset, double[] result, int resultOffset)
             {
-                if (valueConverters == null || valueConverters.Length < 1)
-                    throw new ArgumentOutOfRangeException("valueConverters");
-
-                this.valueConverters = valueConverters;
-                this.count = count;
-                this.sizeOfWrapper = sizeOfWrapper;
-
-                this.internalValueCount = 0;
-                foreach (Converter converter in valueConverters)
+                if (typeof(ElementConverter).IsSubclassOf(typeof(ValueConverter)))
                 {
-                    this.internalValueCount += converter.ValueCount();
+                    (elementConverter as ValueConverter).Copy(bytes, byteOffset, result, resultOffset, count);
                 }
+                else
+                {
+                    base.Copy(bytes, byteOffset, result, resultOffset);
+                }
+            }
+        }
+        
+        public class Member
+        {
+            public Member(Converter converter)
+            {
+                this.Converter = converter;
+                this.ByteOffset = 0;
+            }
+
+            public Member(Converter converter, int byteOffset)
+            {
+                this.Converter = converter;
+                this.ByteOffset = byteOffset;
+            }
+
+            public Converter Converter { get; private set; }
+            public int ByteOffset { get; private set; }
+        }
+
+        public class StructConverter : Converter
+        {
+            public StructConverter(int byteSize, Member member)
+            {
+                this.members = new[] {member};
+                initialize(byteSize);               
+            }
+
+            public StructConverter(int byteSize, Member member1, Member member2)
+            {
+                this.members = new[] {member1, member2};
+                initialize(byteSize);
             }
 
             public override int ValueCount()
             {
-                return count * internalValueCount;
+                return internalValueCount;
             }
 
             public override int ByteSize()
             {
-                return count * sizeOfWrapper;
+                return byteSize;
             }
-
-            public override int ByteOffset()
-            {
-                return 0;
-            }
-
+            
             public override void Copy(byte[] bytes, int bytesOffset, double[] result, int resultOffset)
             {
                 // TODO: Copy in one block if possible
                 // if offsets and sizes defined in valueConverters create contigeous block
 
-                for (int i = 0; i < count; ++i)
+                int vOff = 0;
+                foreach (Member member in members)
                 {
-                    //int bOffset = 0;
-                    int vOffset = 0;
-                    foreach (Converter converter in valueConverters)
-                    {
-                        // TODO: Inconsistent offsets, one stored inside and one outside converter
-                        converter.Copy(bytes, bytesOffset + i * sizeOfWrapper/* + bOffset*/, result, resultOffset + i * internalValueCount + vOffset);
-                        //bOffset += converter.ByteSize();
-                        vOffset += converter.ValueCount();
-                    }
+                    member.Converter.Copy(bytes, bytesOffset + member.ByteOffset,
+                                          result, resultOffset + vOff);
+                    vOff += member.Converter.ValueCount();
                 }
             }
 
-            Converter[] valueConverters = null;
-            int count = 0;
-            int sizeOfWrapper = 0;
+            private void initialize(int byteSize)
+            {
+                this.byteSize = byteSize;
+
+                this.internalValueCount = 0;
+                foreach (Member m in members)
+                {
+                    this.internalValueCount += m.Converter.ValueCount();
+                }
+            }
+
+            Member[] members = null;
+            int byteSize = 0;
 
             int internalValueCount = 0;
         }
 
-        public static Converter GetNumericConverter(Debugger debugger, string ptrName, string valType, int size, int byteOffset = 0)
+        public static Converter GetNumericArrayConverter(Debugger debugger, string ptrName, string valType, int size)
         {
             if (valType == null)
                 valType = GetValueType(debugger, ptrName);
             int valSize = GetValueTypeSizeof(debugger, valType);
 
+            return GetNumericArrayConverter(valType, valSize, size);
+        }
+
+        public static Converter GetNumericArrayConverter(string valType, int valSize, int size)
+        {
             if (valType == null || valSize == 0)
                 return null;
             
             if (valType == "double")
             {
-                return new NumericConverter<double>(size, byteOffset);
+                return new ArrayConverter<ValueConverter<double>>(size);
             }
             else if (valType == "float")
             {
-                return new NumericConverter<float>(size, byteOffset);
+                return new ArrayConverter<ValueConverter<float>>(size);
             }
             else if (valType == "int"
                   || valType == "long"
@@ -207,13 +221,13 @@ namespace GraphicalDebugging
                   || valType == "char")
             {
                 if (valSize == 4)
-                    return new NumericConverter<int>(size, byteOffset);
+                    return new ArrayConverter<ValueConverter<int>>(size);
                 else if (valSize == 8)
-                    return new NumericConverter<long>(size, byteOffset);
+                    return new ArrayConverter<ValueConverter<long>>(size);
                 else if (valSize == 2)
-                    return new NumericConverter<short>(size, byteOffset);
+                    return new ArrayConverter<ValueConverter<short>>(size);
                 else if (valSize == 1)
-                    return new NumericConverter<sbyte>(size, byteOffset);
+                    return new ArrayConverter<ValueConverter<sbyte>>(size);
             }
             else if (valType == "unsigned short"
                   || valType == "unsigned int"
@@ -222,13 +236,13 @@ namespace GraphicalDebugging
                   || valType == "unsigned char")
             {
                 if (valSize == 4 && sizeof(uint) == 4)
-                    return new NumericConverter<uint>(size, byteOffset);
+                    return new ArrayConverter<ValueConverter<uint>>(size);
                 else if (valSize == 8 && sizeof(ulong) == 8)
-                    return new NumericConverter<ulong>(size, byteOffset);
+                    return new ArrayConverter<ValueConverter<ulong>>(size);
                 else if (valSize == 2)
-                    return new NumericConverter<ushort>(size, byteOffset);
+                    return new ArrayConverter<ValueConverter<ushort>>(size);
                 else if (valSize == 1)
-                    return new NumericConverter<byte>(size, byteOffset);
+                    return new ArrayConverter<ValueConverter<byte>>(size);
             }
 
             return null;
@@ -252,13 +266,13 @@ namespace GraphicalDebugging
             return true;
         }
 
-        public static bool ReadNumericArray(Debugger debugger, string ptrName, string valType, double[] values)
+        public static bool ReadNumericArray(Debugger debugger, string ptrName, double[] values)
         {
             int count = values.Length;
             if (count < 1)
                 return true;
 
-            Converter converter = GetNumericConverter(debugger, ptrName, valType, count);
+            Converter converter = GetNumericArrayConverter(debugger, ptrName, null, count);
             if (converter == null)
                 return false;
 

@@ -15,6 +15,8 @@ using System.Globalization;
 using System.Threading;
 using Task = System.Threading.Tasks.Task;
 
+// TODO: Experiment with loading in DispatcherTimer
+
 namespace GraphicalDebugging
 {
     class ExpressionLoader
@@ -388,7 +390,7 @@ namespace GraphicalDebugging
                             throw new ArgumentOutOfRangeException("count");
 
                         double[] values = new double[count];
-                        if (MemoryReader.ReadNumericArray(debugger, ptrName, null, values))
+                        if (MemoryReader.ReadNumericArray(debugger, ptrName, values))
                         {
                             if (count > 1)
                                 return new ExpressionDrawer.Point(values[0], values[1]);
@@ -474,21 +476,37 @@ namespace GraphicalDebugging
             abstract public IEnumerator<string> GetEnumerator(string name, int size);
 
             abstract public string ElementPtrName(string name);
-            abstract public MemoryReader.Converter GetMemoryConverter(Debugger debugger, string name, MemoryReader.Converter elementConverter, string elementType);
+            abstract public MemoryReader.Converter GetMemoryConverter(Debugger debugger, string name, MemoryReader.Converter elementConverter);
 
-            protected MemoryReader.Converter GetContiguousMemoryConverter(Debugger debugger, string name, MemoryReader.Converter elementConverter, string elementType)
+            protected MemoryReader.Converter GetContiguousMemoryConverter(
+                Debugger debugger, string name, MemoryReader.Converter elementConverter)
             {
                 if (elementConverter == null)
                     return null;
                 int size = LoadSize(debugger, name);
-                int elemSizeof = MemoryReader.GetValueTypeSizeof(debugger, elementType);
-                if (elemSizeof <= 0)
-                    return null;
-                return new MemoryReader.WrappingConverter(elementConverter, size, elemSizeof);
+                return new MemoryReader.ArrayConverter(elementConverter, size);
             }
         }
 
-        class BGPoint : PointLoader
+        abstract class BXPoint : PointLoader
+        {
+            protected MemoryReader.Converter GetMemoryConverter(Debugger debugger, string name, string memberArray, string elemType, int count)
+            {
+                string ptrName = "(&" + name + ")";
+
+                MemoryReader.Converter arrayConverter
+                    = MemoryReader.GetNumericArrayConverter(debugger, memberArray, elemType, count);
+                int byteSize = MemoryReader.GetValueSizeof(debugger, ptrName);
+                long byteOffset
+                    = MemoryReader.GetAddressDifference(debugger, ptrName, memberArray);
+                if (MemoryReader.IsInvalidAddressDifference(byteOffset))
+                    return null;
+                return new MemoryReader.StructConverter(byteSize,
+                            new MemoryReader.Member(arrayConverter, (int)byteOffset));
+            }
+        }
+
+        class BGPoint : BXPoint
         {
             public override string Id() { return "boost::geometry::model::point"; }
 
@@ -526,9 +544,8 @@ namespace GraphicalDebugging
                 string coordType = tparams[0];
                 int dimension = ParseInt(tparams[1]);
                 int count = Math.Min(dimension, 2);
-                // Just in case, offset should be 0
-                long byteOffset = MemoryReader.GetAddressDifference(debugger, "(&" + name + ")", name + ".m_values");
-                return MemoryReader.GetNumericConverter(debugger, name + ".m_values", coordType, count, (int)byteOffset);
+
+                return GetMemoryConverter(debugger, name, name + ".m_values", coordType, count);
             }
 
             protected void ParseCSAndUnit(string cs_type, out Geometry.CoordinateSystem cs, out Geometry.Unit unit)
@@ -591,9 +608,8 @@ namespace GraphicalDebugging
                 if (tparams.Count < 1)
                     return null;
                 string coordType = tparams[0];
-                // Just in case, offset should be 0
-                long byteOffset = MemoryReader.GetAddressDifference(debugger, "(&" + name + ")", name + ".m_values");
-                return MemoryReader.GetNumericConverter(debugger, name + ".m_values", coordType, 2, (int)byteOffset);
+
+                return GetMemoryConverter(debugger, name, name + ".m_values", coordType, 2);
             }
         }
 
@@ -769,7 +785,7 @@ namespace GraphicalDebugging
                     {
                         string pointName = "(*((" + pointType + "*)" + pointPtrName + "))";
                         MemoryReader.Converter pointConverter = pointLoader.GetMemoryConverter(debugger, pointName, pointType);
-                        MemoryReader.Converter containerConverter = containerLoader.GetMemoryConverter(debugger, name, pointConverter, pointType);
+                        MemoryReader.Converter containerConverter = containerLoader.GetMemoryConverter(debugger, name, pointConverter);
                         if (pointConverter != null && containerConverter != null)
                         {
                             double[] values = new double[containerConverter.ValueCount()];
@@ -1051,7 +1067,7 @@ namespace GraphicalDebugging
             }
         }
 
-        class BPPoint : PointLoader
+        class BPPoint : BXPoint
         {
             public override string Id() { return "boost::polygon::point_data"; }
 
@@ -1071,9 +1087,8 @@ namespace GraphicalDebugging
                 if (tparams.Count < 1)
                     return null;
                 string coordType = tparams[0];
-                // Just in case, offset should be 0
-                long byteOffset = MemoryReader.GetAddressDifference(debugger, "(&" + name + ")", name + ".coords_");
-                return MemoryReader.GetNumericConverter(debugger, name + ".coords_", coordType, 2, (int)byteOffset);
+
+                return GetMemoryConverter(debugger, name, name + ".coords_", coordType, 2);
             }
         }
 
@@ -1173,7 +1188,7 @@ namespace GraphicalDebugging
                     {
                         string pointName = "(*((" + pointType + "*)" + pointPtrName + "))";
                         MemoryReader.Converter pointConverter = pointLoader.GetMemoryConverter(debugger, pointName, pointType);
-                        MemoryReader.Converter containerConverter = containerLoader.GetMemoryConverter(debugger, containerName, pointConverter, pointType);
+                        MemoryReader.Converter containerConverter = containerLoader.GetMemoryConverter(debugger, containerName, pointConverter);
                         if (pointConverter != null && containerConverter != null)
                         {
                             double[] values = new double[containerConverter.ValueCount()];
@@ -1360,23 +1375,23 @@ namespace GraphicalDebugging
             }
 
             protected void LoadContiguousOrGeneric(bool accessMemory,
-                                                   Debugger debugger, string name, string ptrName, string valType,
+                                                   Debugger debugger, string name, string ptrName,
                                                    out ExpressionDrawer.ValuesContainer result)
             {
                 result = null;
                 if (accessMemory)
-                    LoadContiguous(debugger, name, ptrName, valType, out result);
+                    LoadContiguous(debugger, name, ptrName, out result);
 
                 if (result == null)
                     LoadGeneric(debugger, name, out result);
             }
 
-            protected void LoadContiguous(Debugger debugger, string name, string ptrName, string valType, out ExpressionDrawer.ValuesContainer result)
+            protected void LoadContiguous(Debugger debugger, string name, string ptrName, out ExpressionDrawer.ValuesContainer result)
             {
                 result = null;                
                 int size = this.LoadSize(debugger, name);
                 double[] values = new double[size];
-                if (MemoryReader.ReadNumericArray(debugger, ptrName, valType, values))
+                if (MemoryReader.ReadNumericArray(debugger, ptrName, values))
                 {
                     List<double> list = new List<double>(size);
                     for (int i = 0; i < values.Length; ++i)
@@ -1411,7 +1426,7 @@ namespace GraphicalDebugging
                                       out Geometry.Traits traits, out ExpressionDrawer.ValuesContainer result)
             {
                 traits = null;
-                LoadContiguousOrGeneric(accessMemory, debugger, name, name + "._Elems", null, out result);
+                LoadContiguousOrGeneric(accessMemory, debugger, name, name + "._Elems", out result);
             }
 
             public override string ElementPtrName(string name)
@@ -1419,9 +1434,9 @@ namespace GraphicalDebugging
                 return name + "._Elems";
             }
 
-            public override MemoryReader.Converter GetMemoryConverter(Debugger debugger, string name, MemoryReader.Converter elementConverter, string elementType)
+            public override MemoryReader.Converter GetMemoryConverter(Debugger debugger, string name, MemoryReader.Converter elementConverter)
             {
-                return GetContiguousMemoryConverter(debugger, name, elementConverter, elementType);
+                return GetContiguousMemoryConverter(debugger, name, elementConverter);
             }
 
             public override int LoadSize(Debugger debugger, string name)
@@ -1447,7 +1462,7 @@ namespace GraphicalDebugging
                                       out Geometry.Traits traits, out ExpressionDrawer.ValuesContainer result)
             {
                 traits = null;
-                LoadContiguousOrGeneric(accessMemory, debugger, name, name + ".elems", null, out result);
+                LoadContiguousOrGeneric(accessMemory, debugger, name, name + ".elems", out result);
             }
 
             public override string ElementPtrName(string name)
@@ -1455,9 +1470,9 @@ namespace GraphicalDebugging
                 return name + ".elems";
             }
 
-            public override MemoryReader.Converter GetMemoryConverter(Debugger debugger, string name, MemoryReader.Converter elementConverter, string elementType)
+            public override MemoryReader.Converter GetMemoryConverter(Debugger debugger, string name, MemoryReader.Converter elementConverter)
             {
-                return GetContiguousMemoryConverter(debugger, name, elementConverter, elementType);
+                return GetContiguousMemoryConverter(debugger, name, elementConverter);
             }
         }
 
@@ -1470,7 +1485,7 @@ namespace GraphicalDebugging
                                       out Geometry.Traits traits, out ExpressionDrawer.ValuesContainer result)
             {
                 traits = null;
-                LoadContiguousOrGeneric(accessMemory, debugger, name, name + ".m_holder.m_start", null, out result);
+                LoadContiguousOrGeneric(accessMemory, debugger, name, name + ".m_holder.m_start", out result);
             }
 
             public override string ElementPtrName(string name)
@@ -1478,9 +1493,9 @@ namespace GraphicalDebugging
                 return name + ".m_holder.m_start";
             }
 
-            public override MemoryReader.Converter GetMemoryConverter(Debugger debugger, string name, MemoryReader.Converter elementConverter, string elementType)
+            public override MemoryReader.Converter GetMemoryConverter(Debugger debugger, string name, MemoryReader.Converter elementConverter)
             {
-                return GetContiguousMemoryConverter(debugger, name, elementConverter, elementType);
+                return GetContiguousMemoryConverter(debugger, name, elementConverter);
             }
 
             public override int LoadSize(Debugger debugger, string name)
@@ -1506,8 +1521,7 @@ namespace GraphicalDebugging
                                       out Geometry.Traits traits, out ExpressionDrawer.ValuesContainer result)
             {
                 traits = null;
-                string valueType = Util.Tparams(type)[0];
-                LoadContiguousOrGeneric(accessMemory, debugger, name, name + ".m_holder.storage.data", valueType, out result);
+                LoadContiguousOrGeneric(accessMemory, debugger, name, name + ".m_holder.storage.data", out result);
             }
 
             public override string ElementPtrName(string name)
@@ -1515,9 +1529,9 @@ namespace GraphicalDebugging
                 return name + ".m_holder.storage.data";
             }
 
-            public override MemoryReader.Converter GetMemoryConverter(Debugger debugger, string name, MemoryReader.Converter elementConverter, string elementType)
+            public override MemoryReader.Converter GetMemoryConverter(Debugger debugger, string name, MemoryReader.Converter elementConverter)
             {
-                return GetContiguousMemoryConverter(debugger, name, elementConverter, elementType);
+                return GetContiguousMemoryConverter(debugger, name, elementConverter);
             }
         }
 
@@ -1530,8 +1544,7 @@ namespace GraphicalDebugging
                                       out Geometry.Traits traits, out ExpressionDrawer.ValuesContainer result)
             {
                 traits = null;
-                string valueType = Util.Tparams(type)[0];
-                LoadContiguousOrGeneric(accessMemory, debugger, name, name + ".m_storage.data_.buf", valueType, out result);
+                LoadContiguousOrGeneric(accessMemory, debugger, name, name + ".m_storage.data_.buf", out result);
             }
 
             public override string ElementPtrName(string name)
@@ -1539,9 +1552,9 @@ namespace GraphicalDebugging
                 return name + ".m_storage.data_.buf";
             }
 
-            public override MemoryReader.Converter GetMemoryConverter(Debugger debugger, string name, MemoryReader.Converter elementConverter, string elementType)
+            public override MemoryReader.Converter GetMemoryConverter(Debugger debugger, string name, MemoryReader.Converter elementConverter)
             {
-                return GetContiguousMemoryConverter(debugger, name, elementConverter, elementType);
+                return GetContiguousMemoryConverter(debugger, name, elementConverter);
             }
 
             public override int LoadSize(Debugger debugger, string name)
@@ -1567,7 +1580,7 @@ namespace GraphicalDebugging
                                       out Geometry.Traits traits, out ExpressionDrawer.ValuesContainer result)
             {
                 traits = null;
-                LoadContiguousOrGeneric(accessMemory, debugger, name, name + "._Mypair._Myval2._Myfirst", null, out result);
+                LoadContiguousOrGeneric(accessMemory, debugger, name, name + "._Mypair._Myval2._Myfirst", out result);
             }
 
             public override string ElementPtrName(string name)
@@ -1575,9 +1588,9 @@ namespace GraphicalDebugging
                 return name + "._Mypair._Myval2._Myfirst";
             }
 
-            public override MemoryReader.Converter GetMemoryConverter(Debugger debugger, string name, MemoryReader.Converter elementConverter, string elementType)
+            public override MemoryReader.Converter GetMemoryConverter(Debugger debugger, string name, MemoryReader.Converter elementConverter)
             {
-                return GetContiguousMemoryConverter(debugger, name, elementConverter, elementType);
+                return GetContiguousMemoryConverter(debugger, name, elementConverter);
             }
 
             public override int LoadSize(Debugger debugger, string name)
@@ -1603,7 +1616,7 @@ namespace GraphicalDebugging
                 return null;
             }
 
-            public override MemoryReader.Converter GetMemoryConverter(Debugger debugger, string name, MemoryReader.Converter elementConverter, string elementType)
+            public override MemoryReader.Converter GetMemoryConverter(Debugger debugger, string name, MemoryReader.Converter elementConverter)
             {
                 return null;
             }
@@ -1631,7 +1644,7 @@ namespace GraphicalDebugging
                 return null;
             }
 
-            public override MemoryReader.Converter GetMemoryConverter(Debugger debugger, string name, MemoryReader.Converter elementConverter, string elementType)
+            public override MemoryReader.Converter GetMemoryConverter(Debugger debugger, string name, MemoryReader.Converter elementConverter)
             {
                 return null;
             }
@@ -1860,21 +1873,20 @@ namespace GraphicalDebugging
                 string ptrName = "(&" + name + ")";
                 string ptrFirst = "(&" + name + ".first)";
                 string ptrSecond = "(&" + name + ".second)";
-                // Just in case, offset should be 0
                 long firstOffset = MemoryReader.GetAddressDifference(debugger, ptrName, ptrFirst);
-                // Just in case, offset should be:
-                //   MemoryReader.GetValueSizeof(debugger, name + ".first");
                 long secondOffset = MemoryReader.GetAddressDifference(debugger, ptrName, ptrSecond);
                 if (MemoryReader.IsInvalidAddressDifference(firstOffset)
                  || MemoryReader.IsInvalidAddressDifference(secondOffset))
                     return null;
-                MemoryReader.Converter[] converters = new MemoryReader.Converter[2];
-                converters[0] = MemoryReader.GetNumericConverter(debugger, ptrFirst, firstType, 1, (int)firstOffset);
-                converters[1] = MemoryReader.GetNumericConverter(debugger, ptrSecond, secondType, 1, (int)secondOffset);
-                if (converters[0] == null || converters[1] == null)
+                MemoryReader.Converter firstConverter = MemoryReader.GetNumericArrayConverter(debugger, ptrFirst, firstType, 1);
+                MemoryReader.Converter secondConverter = MemoryReader.GetNumericArrayConverter(debugger, ptrSecond, secondType, 1);
+                if (firstConverter == null || secondConverter == null)
                     return null;
                 int sizeOfPair = MemoryReader.GetValueTypeSizeof(debugger, type);
-                return new MemoryReader.WrappingManyConverter(converters, 1, sizeOfPair);
+                return new MemoryReader.StructConverter(
+                            sizeOfPair,
+                            new MemoryReader.Member(firstConverter, (int)firstOffset),
+                            new MemoryReader.Member(secondConverter, (int)secondOffset));
             }
         }
 
