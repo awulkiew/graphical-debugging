@@ -497,6 +497,8 @@ namespace GraphicalDebugging
                 MemoryReader.Converter arrayConverter
                     = MemoryReader.GetNumericArrayConverter(debugger, memberArray, elemType, count);
                 int byteSize = MemoryReader.GetValueSizeof(debugger, ptrName);
+                if (byteSize == 0)
+                    return null;
                 long byteOffset
                     = MemoryReader.GetAddressDifference(debugger, ptrName, memberArray);
                 if (MemoryReader.IsInvalidAddressDifference(byteOffset))
@@ -1613,7 +1615,13 @@ namespace GraphicalDebugging
 
             public override string ElementPtrName(string name)
             {
-                return null;
+                return "(&(" + ElementName(name, 0) + "))";
+            }
+
+            private string ElementName(string name, int index)
+            {
+                string id = index.ToString();
+                return name + "._Mypair._Myval2._Map[((" + id + " + " + name + "._Mypair._Myval2._Myoff) / " + name + "._EEN_DS) % " + name + "._Mypair._Myval2._Mapsize][(" + id + " + " + name + "._Mypair._Myval2._Myoff) % " + name + "._EEN_DS]";
             }
 
             public override MemoryReader.Converter GetMemoryConverter(Debugger debugger, string name, MemoryReader.Converter elementConverter)
@@ -1883,6 +1891,8 @@ namespace GraphicalDebugging
                 if (firstConverter == null || secondConverter == null)
                     return null;
                 int sizeOfPair = MemoryReader.GetValueTypeSizeof(debugger, type);
+                if (sizeOfPair == 0)
+                    return null;
                 return new MemoryReader.StructConverter(
                             sizeOfPair,
                             new MemoryReader.Member(firstConverter, (int)firstOffset),
