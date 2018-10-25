@@ -961,10 +961,13 @@ namespace GraphicalDebugging
                 settings.color = DefaultColor(drawable, colors);
 
             Geometry.Box aabb = drawable.Aabb(traits, true);
-            Geometry.Unit unit = (traits != null) ? traits.Unit : Geometry.Unit.None;
-            bool fill = (traits == null);
-            Drawer.DrawAxes(graphics, aabb, unit, colors, fill);
-            drawable.Draw(aabb, graphics, settings, traits);
+            if (aabb.IsValid())
+            {
+                Geometry.Unit unit = (traits != null) ? traits.Unit : Geometry.Unit.None;
+                bool fill = (traits == null);
+                Drawer.DrawAxes(graphics, aabb, unit, colors, fill);
+                drawable.Draw(aabb, graphics, settings, traits);
+            }
             return true;
         }
 
@@ -978,8 +981,10 @@ namespace GraphicalDebugging
 
             Geometry.Box box = new Geometry.Box();
             Geometry.AssignInverse(box);
+
             int drawnCount = 0;
             int count = drawables.Length;
+            bool[] drawnFlags = new bool[count];
 
             HashSet<int> dimensions = new HashSet<int>();
             HashSet<Geometry.CoordinateSystem> csystems = new HashSet<Geometry.CoordinateSystem>();
@@ -1003,6 +1008,7 @@ namespace GraphicalDebugging
                     Geometry.Expand(box, aabb);
 
                     ++drawnCount;
+                    drawnFlags[i] = aabb.IsValid();
                 }
             }
 
@@ -1028,7 +1034,7 @@ namespace GraphicalDebugging
                 bool fill = (commonTraits == null);
 
                 // Fragment of the box
-                if (zoomBox.IsZoomed())
+                if (box.IsValid() && zoomBox.IsZoomed())
                 {
                     // window coordinates of the box
                     LocalCS cs = new LocalCS(box, graphics, fill);
@@ -1039,20 +1045,26 @@ namespace GraphicalDebugging
                 }
 
                 // Axes
-                Geometry.Unit unit = commonTraits != null ? commonTraits.Unit : Geometry.Unit.None;
-                Drawer.DrawAxes(graphics, box, unit, colors, fill);
+                if (box.IsValid())
+                {
+                    Geometry.Unit unit = commonTraits != null ? commonTraits.Unit : Geometry.Unit.None;
+                    Drawer.DrawAxes(graphics, box, unit, colors, fill);
+                }
                     
                 // Drawables
                 for (int i = 0; i < count; ++i)
                 {
-                    if (drawables[i] != null)
+                    if (drawables[i] != null && drawnFlags[i] == true)
                     {
                         drawables[i].Draw(box, graphics, settings[i], commonTraits);
                     }
                 }
 
                 // Scales
-                Drawer.DrawScales(graphics, box, colors, fill);
+                if (box.IsValid())
+                {
+                    Drawer.DrawScales(graphics, box, colors, fill);
+                }
 
                 // CS info
                 if (commonTraits != null)
