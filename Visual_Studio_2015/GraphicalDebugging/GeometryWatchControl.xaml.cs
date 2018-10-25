@@ -120,7 +120,7 @@ namespace GraphicalDebugging
         {
             //e.PropertyName == "Name"
 
-            GeometryItem geometry = (GeometryItem)sender;
+            GeometryItem geometry = sender as GeometryItem;
             int index = Geometries.IndexOf(geometry);
 
             if (index < 0 || index >= dataGrid.Items.Count)
@@ -133,23 +133,24 @@ namespace GraphicalDebugging
                     m_intsPool.Push(geometry.ColorId);
                     Geometries.RemoveAt(index);
                     UpdateItems(true);
+                    if (index > 0)
+                    {
+                        Util.SelectDataGridItem(dataGrid, index - 1);
+                    }
                 }
             }
             else
             {
                 UpdateItems(true, index);
 
-                // insert new empty row
                 int next_index = index + 1;
+                // insert new empty row if needed
                 if (next_index == Geometries.Count)
                 {
-                    ResetAt(new GeometryItem(-1, m_colors), index + 1);
-                    SelectAt(index + 1, true);
+                    ResetAt(new GeometryItem(-1, m_colors), next_index);
                 }
-                else
-                {
-                    SelectAt(index + 1);
-                }
+                // select current row, move to next one is automatic
+                Util.SelectDataGridItem(dataGrid, index);
             }
         }
 
@@ -159,24 +160,6 @@ namespace GraphicalDebugging
             if (index < Geometries.Count)
                 Geometries.RemoveAt(index);
             Geometries.Insert(index, item);
-        }
-
-        private void SelectAt(int index, bool isNew = false)
-        {
-            object item = dataGrid.Items[index];
-
-            if (isNew)
-            {
-                dataGrid.SelectedItem = item;
-                dataGrid.ScrollIntoView(item);
-                DataGridRow dgrow = (DataGridRow)dataGrid.ItemContainerGenerator.ContainerFromItem(item);
-                dgrow.MoveFocus(new System.Windows.Input.TraversalRequest(System.Windows.Input.FocusNavigationDirection.Next));
-            }
-            else
-            {
-                dataGrid.SelectedItem = item;
-                dataGrid.ScrollIntoView(item);
-            }
         }
 
         private void DebuggerEvents_OnEnterBreakMode(dbgEventReason Reason, ref dbgExecutionAction ExecutionAction)
@@ -204,12 +187,19 @@ namespace GraphicalDebugging
                 if (dataGrid.SelectedItems.Count < 1)
                     return;
 
-                bool removed = Util.RemoveDataGridItems(dataGrid, Geometries, delegate (GeometryItem geometry) {
-                    m_intsPool.Push(geometry.ColorId);
-                });
+                int selectIndex = -1;
+                bool removed = Util.RemoveDataGridItems(dataGrid,
+                                                        Geometries,
+                                                        delegate (GeometryItem geometry)
+                                                        {
+                                                            m_intsPool.Push(geometry.ColorId);
+                                                        },
+                                                        out selectIndex);
 
                 if (removed)
                     UpdateItems(false);
+
+                Util.SelectDataGridItem(dataGrid, selectIndex);
             }
         }
 

@@ -73,23 +73,24 @@ namespace GraphicalDebugging
                 if (index < dataGrid.Items.Count - 1)
                 {
                     Variables.RemoveAt(index);
+                    if (index > 0)
+                    {
+                        Util.SelectDataGridItem(dataGrid, index - 1);
+                    }
                 }
             }
             else
             {
                 UpdateItem(true, index);
 
-                // insert new empty row
                 int next_index = index + 1;
+                // insert new empty row if needed
                 if (next_index == Variables.Count)
                 {
-                    ResetAt(new GraphicalItem(), Variables.Count);
-                    SelectAt(index + 1, true);
+                    ResetAt(new GraphicalItem(), next_index);
                 }
-                else
-                {
-                    SelectAt(index + 1);
-                }
+                // select current row, move to next one is automatic
+                Util.SelectDataGridItem(dataGrid, index);
             }
         }
 
@@ -100,25 +101,7 @@ namespace GraphicalDebugging
                 Variables.RemoveAt(index);
             Variables.Insert(index, item);
         }
-
-        private void SelectAt(int index, bool isNew = false)
-        {
-            object item = dataGrid.Items[index];
-
-            if (isNew)
-            {
-                dataGrid.SelectedItem = item;
-                dataGrid.ScrollIntoView(item);
-                DataGridRow dgrow = (DataGridRow)dataGrid.ItemContainerGenerator.ContainerFromItem(item);
-                dgrow.MoveFocus(new System.Windows.Input.TraversalRequest(System.Windows.Input.FocusNavigationDirection.Next));
-            }
-            else
-            {
-                dataGrid.SelectedItem = item;
-                dataGrid.ScrollIntoView(item);
-            }
-        }
-
+        
         private void DebuggerEvents_OnEnterBreakMode(dbgEventReason Reason, ref dbgExecutionAction ExecutionAction)
         {
             if (ExpressionLoader.Debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
@@ -137,7 +120,13 @@ namespace GraphicalDebugging
                 if (dataGrid.SelectedItems.Count < 1)
                     return;
 
-                Util.RemoveDataGridItems(dataGrid, Variables, delegate (GraphicalItem variable) { });
+                int selectIndex = -1;
+                Util.RemoveDataGridItems(dataGrid,
+                                         Variables,
+                                         delegate (GraphicalItem variable) { },
+                                         out selectIndex);
+
+                Util.SelectDataGridItem(dataGrid, selectIndex);
             }
         }
 

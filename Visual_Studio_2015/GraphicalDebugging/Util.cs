@@ -180,11 +180,12 @@ namespace GraphicalDebugging
             });
         }
 
-        public delegate void RemovedItemPredicate<T>(T item);
+        public delegate void RemovedItemPredicate<Item>(Item item);
 
-        public static bool RemoveDataGridItems<T>(System.Windows.Controls.DataGrid dataGrid,
-                                                  System.Collections.ObjectModel.Collection<T> itemsCollection,
-                                                  RemovedItemPredicate<T> removedPredicate)
+        public static bool RemoveDataGridItems<Item>(System.Windows.Controls.DataGrid dataGrid,
+                                                     System.Collections.ObjectModel.ObservableCollection<Item> itemsCollection,
+                                                     RemovedItemPredicate<Item> removedPredicate,
+                                                     out int selectIndex)
         {
             int[] indexes = new int[dataGrid.SelectedItems.Count];
             int i = 0;
@@ -201,16 +202,35 @@ namespace GraphicalDebugging
             {
                 if (index + 1 < itemsCollection.Count)
                 {
-                    T item = itemsCollection[index];
+                    Item item = itemsCollection[index];
                     removedPredicate(item);
                     itemsCollection.RemoveAt(index);
                     removed = true;
                 }
             }
 
-            dataGrid.SelectedIndex = -1;
-
+            selectIndex = -1;
+            if (indexes.Length > 0)
+                selectIndex = indexes[indexes.Length - 1];
+            
             return removed;
+        }
+
+        public static void SelectDataGridItem(System.Windows.Controls.DataGrid dataGrid,
+                                              int index)
+        {
+            if (0 <= index && index < dataGrid.Items.Count)
+            {
+                object item = dataGrid.Items[index];
+                dataGrid.CurrentItem = item;
+                dataGrid.SelectedItem = item;
+                dataGrid.ScrollIntoView(item);
+            }
+            else
+            {
+                dataGrid.CurrentItem = null;
+                dataGrid.SelectedItem = null;
+            }
         }
     }
 }
