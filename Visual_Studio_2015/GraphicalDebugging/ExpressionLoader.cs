@@ -424,40 +424,15 @@ namespace GraphicalDebugging
         {
             public override ExpressionLoader.Kind Kind() { return ExpressionLoader.Kind.Container; }            
 
-            public class ElementsContainer
-            {
-                public ElementsContainer(ContainerLoader loader, string name, int size)
-                {
-                    this.loader = loader;
-                    this.name = name;
-                    this.size = size;
-                }
-                public IEnumerator<string> GetEnumerator()
-                {
-                    return loader.GetEnumerator(name, size);
-                }
-                ContainerLoader loader;
-                string name;
-                int size;
-            }
-
-            public ElementsContainer GetElementsContainer(string name, int size)
-            {
-                return new ElementsContainer(this, name, size);
-            }
-
-            public ElementsContainer GetElementsContainer(Debugger debugger, string name)
-            {
-                int size = LoadSize(debugger, name);
-                return new ElementsContainer(this, name, size);
-            }
-
             abstract public int LoadSize(Debugger debugger, string name);
 
-            abstract public IEnumerator<string> GetEnumerator(string name, int size);
+            public delegate bool ElementPredicate(string elementName);
+            abstract public bool ForEachElement(Debugger debugger, string name, ElementPredicate elementPredicate);
 
             abstract public string ElementPtrName(string name);
             abstract public MemoryReader.Converter GetMemoryConverter(Debugger debugger, string name, MemoryReader.Converter elementConverter);
+            //public delegate bool MemoryBlockPredicate();
+            //abstract public void ForEachMemoryBlock(Debugger debugger, string name, MemoryBlockPredicate memoryBlockPredicate);
 
             protected MemoryReader.Converter GetContiguousMemoryConverter(
                 Debugger debugger, string name, MemoryReader.Converter elementConverter)
@@ -804,18 +779,16 @@ namespace GraphicalDebugging
                 if (containerLoader == null)
                     return;
 
-                int size = containerLoader.LoadSize(debugger, name);
-
                 if (accessMemory)
                 {
                     result = LoadMemory(debugger, name, type,
-                                        pointType, pointLoader, containerLoader, size);
+                                        pointType, pointLoader, containerLoader);
                 }
 
                 if (result == null)
                 {
                     result = LoadParsed(accessMemory, debugger, name, type,
-                                        pointType, pointLoader, containerLoader, size);
+                                        pointType, pointLoader, containerLoader);
                 }
             }
 
@@ -823,28 +796,27 @@ namespace GraphicalDebugging
                                             Debugger debugger, string name, string type,
                                             string pointType,
                                             PointLoader pointLoader,
-                                            ContainerLoader containerLoader,
-                                            int size)
+                                            ContainerLoader containerLoader)
             {
                 ResultType result = new ResultType();
-                foreach (string n in containerLoader.GetElementsContainer(name, size))
+                containerLoader.ForEachElement(debugger, name, delegate (string elName)
                 {
-                    ExpressionDrawer.Point p = pointLoader.LoadPoint(accessMemory, debugger, n, pointType);
+                    ExpressionDrawer.Point p = pointLoader.LoadPoint(accessMemory, debugger, elName, pointType);
                     if (p == null)
                     {
                         result = null;
-                        break;
+                        return false;
                     }
                     result.Add(p);
-                }
+                    return true;
+                });
                 return result;
             }
 
             protected ResultType LoadMemory(Debugger debugger, string name, string type,
                                             string pointType,
                                             PointLoader pointLoader,
-                                            ContainerLoader containerLoader,
-                                            int size)
+                                            ContainerLoader containerLoader)
             {
                 ResultType result = null;
 
@@ -859,6 +831,7 @@ namespace GraphicalDebugging
                         double[] values = new double[containerConverter.ValueCount()];
                         if (MemoryReader.Read(debugger, pointPtrName, values, containerConverter))
                         {
+                            int size = containerLoader.LoadSize(debugger, name);
                             int dimension = pointConverter.ValueCount();
                             if (values.Length == size * dimension)
                             {
@@ -909,31 +882,30 @@ namespace GraphicalDebugging
                     return;
 
                 string lsType = tparams[0];
-                RangeLoader<ExpressionDrawer.Linestring> lsLoader
-                    = (RangeLoader<ExpressionDrawer.Linestring>)loaders.FindByType(ExpressionLoader.Kind.Linestring, lsType);
+                RangeLoader<ExpressionDrawer.Linestring> lsLoader = loaders.FindByType(ExpressionLoader.Kind.Linestring, lsType) as RangeLoader<ExpressionDrawer.Linestring>;
                 if (lsLoader == null)
                     return;
 
                 string containerType = tparams[1];
-                ContainerLoader containerLoader = (ContainerLoader)loaders.FindByType(ExpressionLoader.Kind.Container, containerType);
+                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container, containerType) as ContainerLoader;
                 if (containerLoader == null)
                     return;
 
-                // TODO: Calculate point traits only once, now it's calculated for each linestring
-
-                result = new ExpressionDrawer.MultiLinestring();
-
-                int size = containerLoader.LoadSize(debugger, name);
-                foreach (string n in containerLoader.GetElementsContainer(name, size))
+                Geometry.Traits t = null;
+                ExpressionDrawer.MultiLinestring mls = new ExpressionDrawer.MultiLinestring();
+                bool ok = containerLoader.ForEachElement(debugger, name, delegate (string elName)
                 {
                     ExpressionDrawer.Linestring ls = null;
-                    lsLoader.Load(loaders, accessMemory, debugger, n, lsType, out traits, out ls);
+                    lsLoader.Load(loaders, accessMemory, debugger, elName, lsType, out t, out ls);
                     if (ls == null)
-                    {
-                        result = null;
-                        return;
-                    }
-                    result.Add(ls);
+                        return false;
+                    mls.Add(ls);
+                    return true;
+                });
+                if (ok)
+                {
+                    traits = t;
+                    result = mls;
                 }
             }
         }
@@ -971,12 +943,12 @@ namespace GraphicalDebugging
                 Expression innersExpr = debugger.GetExpression(innersName);
 
                 string outerType = outerExpr.Type;
-                BGRing outerLoader = (BGRing)loaders.FindByType(ExpressionLoader.Kind.Ring, outerType);
+                BGRing outerLoader = loaders.FindByType(ExpressionLoader.Kind.Ring, outerType) as BGRing;
                 if (outerLoader == null)
                     return;
 
                 string innersType = innersExpr.Type;
-                ContainerLoader innersLoader = (ContainerLoader)loaders.FindByType(ExpressionLoader.Kind.Container, innersType);
+                ContainerLoader innersLoader = loaders.FindByType(ExpressionLoader.Kind.Container, innersType) as ContainerLoader;
                 if (innersLoader == null)
                     return;
 
@@ -985,21 +957,22 @@ namespace GraphicalDebugging
                 if (outer == null)
                     return;
 
+                Geometry.Traits t = null;
                 List<Geometry.Ring> inners = new List<Geometry.Ring>();
-
-                int innersCount = innersLoader.LoadSize(debugger, innersName);
-                foreach (string n in innersLoader.GetElementsContainer(innersName, innersCount))
+                bool ok = innersLoader.ForEachElement(debugger, innersName, delegate (string elName)
                 {
                     ExpressionDrawer.Ring inner = null;
-                    // TODO: Do this differently
-                    // and traits are not needed here
-                    outerLoader.Load(loaders, accessMemory, debugger, n, outerExpr.Type, out traits, out inner);
+                    outerLoader.Load(loaders, accessMemory, debugger, elName, outerExpr.Type, out t, out inner);
                     if (inner == null)
-                        return;
+                        return false;
                     inners.Add(inner);
+                    return true;
+                });
+                if (ok)
+                {
+                    result = new ExpressionDrawer.Polygon(outer, inners);
+                    traits = t;
                 }
-
-                result = new ExpressionDrawer.Polygon(outer, inners);
             }
         }
 
@@ -1022,30 +995,30 @@ namespace GraphicalDebugging
                     return;
 
                 string polyType = tparams[0];
-                PolygonLoader polyLoader = (PolygonLoader)loaders.FindByType(ExpressionLoader.Kind.Polygon, polyType);
+                PolygonLoader polyLoader = loaders.FindByType(ExpressionLoader.Kind.Polygon, polyType) as PolygonLoader;
                 if (polyLoader == null)
                     return;
 
                 string containerType = tparams[1];
-                ContainerLoader containerLoader = (ContainerLoader)loaders.FindByType(ExpressionLoader.Kind.Container, containerType);
+                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container, containerType) as ContainerLoader;
                 if (containerLoader == null)
                     return;
 
-                // TODO: Calculate point traits only once, now it's calculated for each linestring
-
-                result = new ExpressionDrawer.MultiPolygon();
-
-                int size = containerLoader.LoadSize(debugger, name);
-                foreach (string n in containerLoader.GetElementsContainer(name, size))
+                Geometry.Traits t = null;
+                ExpressionDrawer.MultiPolygon mpoly = new ExpressionDrawer.MultiPolygon();
+                bool ok = containerLoader.ForEachElement(debugger, name, delegate (string elName)
                 {
                     ExpressionDrawer.Polygon poly = null;
-                    polyLoader.Load(loaders, accessMemory, debugger, n, polyType, out traits, out poly);
+                    polyLoader.Load(loaders, accessMemory, debugger, elName, polyType, out t, out poly);
                     if (poly == null)
-                    {
-                        result = null;
-                        return;
-                    }
-                    result.Add(poly);
+                        return false;
+                    mpoly.Add(poly);
+                    return true;
+                });
+                if (ok)
+                {
+                    traits = t;
+                    result = mpoly;
                 }
             }
         }
@@ -1069,7 +1042,7 @@ namespace GraphicalDebugging
                     return;
 
                 string ringType = tparams[0];
-                RangeLoader<ExpressionDrawer.Ring> ringLoader = (RangeLoader<ExpressionDrawer.Ring>)loaders.FindByType(ExpressionLoader.Kind.Ring, ringType);
+                RangeLoader<ExpressionDrawer.Ring> ringLoader = loaders.FindByType(ExpressionLoader.Kind.Ring, ringType) as RangeLoader<ExpressionDrawer.Ring>;
                 if (ringLoader == null)
                     return;
 
@@ -1097,27 +1070,29 @@ namespace GraphicalDebugging
                     return;
 
                 string ringType = tparams[0];
-                RangeLoader<ExpressionDrawer.Ring> ringLoader = (RangeLoader<ExpressionDrawer.Ring>)loaders.FindByType(ExpressionLoader.Kind.Ring, ringType);
+                RangeLoader<ExpressionDrawer.Ring> ringLoader = loaders.FindByType(ExpressionLoader.Kind.Ring, ringType) as RangeLoader<ExpressionDrawer.Ring>;
                 if (ringLoader == null)
                     return;
 
-                ContainerLoader containerLoader = (ContainerLoader)loaders.FindById(ExpressionLoader.Kind.Container, "std::vector");
+                ContainerLoader containerLoader = loaders.FindById(ExpressionLoader.Kind.Container, "std::vector") as ContainerLoader;
                 if (containerLoader == null)
                     return;
 
-                result = new ExpressionDrawer.MultiPolygon();
-
-                int size = containerLoader.LoadSize(debugger, name);
-                foreach (string n in containerLoader.GetElementsContainer(name, size))
+                Geometry.Traits t = null;
+                ExpressionDrawer.MultiPolygon mpoly = new ExpressionDrawer.MultiPolygon();
+                bool ok = containerLoader.ForEachElement(debugger, name, delegate (string elName)
                 {
                     ExpressionDrawer.Ring ring = null;
-                    ringLoader.Load(loaders, accessMemory, debugger, n, ringType, out traits, out ring);
+                    ringLoader.Load(loaders, accessMemory, debugger, elName, ringType, out t, out ring);
                     if (ring == null)
-                    {
-                        result = null;
-                        return;
-                    }
-                    result.Add(new ExpressionDrawer.Polygon(ring));
+                        return false;
+                    mpoly.Add(new ExpressionDrawer.Polygon(ring));
+                    return true;
+                });
+                if (ok)
+                {
+                    traits = t;
+                    result = mpoly;
                 }
             }
         }
@@ -1222,11 +1197,11 @@ namespace GraphicalDebugging
                 traits = new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
                 result = null;
 
-                BPPoint pointLoader = (BPPoint)loaders.FindById(ExpressionLoader.Kind.Point, "boost::polygon::point_data");
+                BPPoint pointLoader = loaders.FindById(ExpressionLoader.Kind.Point, "boost::polygon::point_data") as BPPoint;
                 if (pointLoader == null)
                     return;
 
-                ContainerLoader containerLoader = (ContainerLoader)loaders.FindById(ExpressionLoader.Kind.Container, "std::vector");
+                ContainerLoader containerLoader = loaders.FindById(ExpressionLoader.Kind.Container, "std::vector") as ContainerLoader;
                 if (containerLoader == null)
                     return;
 
@@ -1261,16 +1236,17 @@ namespace GraphicalDebugging
                                                        int size)
             {
                 ExpressionDrawer.Ring result = new ExpressionDrawer.Ring();
-                foreach (string n in containerLoader.GetElementsContainer(name + ".coords_", size))
+                containerLoader.ForEachElement(debugger, name + ".coords_", delegate (string elName)
                 {
-                    ExpressionDrawer.Point p = pointLoader.LoadPoint(accessMemory, debugger, n, pointType);
+                    ExpressionDrawer.Point p = pointLoader.LoadPoint(accessMemory, debugger, elName, pointType);
                     if (p == null)
                     {
                         result = null;
-                        break;
+                        return false;
                     }
                     result.Add(p);
-                }
+                    return true;
+                });
                 return result;
             }
 
@@ -1326,15 +1302,15 @@ namespace GraphicalDebugging
                 traits = new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
                 result = null;
 
-                PointLoader pointLoader = (PointLoader)loaders.FindById(ExpressionLoader.Kind.Point, "boost::polygon::point_data");
+                PointLoader pointLoader = loaders.FindById(ExpressionLoader.Kind.Point, "boost::polygon::point_data") as PointLoader;
                 if (pointLoader == null)
                     return;
 
-                BPRing outerLoader = (BPRing)loaders.FindById(ExpressionLoader.Kind.Ring, "boost::polygon::polygon_data");
+                BPRing outerLoader = loaders.FindById(ExpressionLoader.Kind.Ring, "boost::polygon::polygon_data") as BPRing;
                 if (outerLoader == null)
                     return;
 
-                ContainerLoader holesLoader = (ContainerLoader)loaders.FindById(ExpressionLoader.Kind.Container, "std::list");
+                ContainerLoader holesLoader = loaders.FindById(ExpressionLoader.Kind.Container, "std::list") as ContainerLoader;
                 if (holesLoader == null)
                     return;
 
@@ -1352,106 +1328,25 @@ namespace GraphicalDebugging
                 if (outer == null)
                     return;
 
-                // TODO: avoid loading traits
-
-                int size = holesLoader.LoadSize(debugger, name + ".holes_");
+                Geometry.Traits t = null;
                 List<Geometry.Ring> holes = new List<Geometry.Ring>();
-                foreach (string n in holesLoader.GetElementsContainer(name + ".holes_", size))
+                bool ok = holesLoader.ForEachElement(debugger, name + ".holes_", delegate (string elName)
                 {
                     ExpressionDrawer.Ring hole = null;
-                    outerLoader.Load(loaders, accessMemory,
-                                     debugger, n, polygonType,
-                                     out traits, out hole);
+                    outerLoader.Load(loaders, accessMemory, debugger, elName, polygonType, out t, out hole);
                     if (hole == null)
-                        return;
+                        return false;
                     holes.Add(hole);
-                }
-
-                result = new ExpressionDrawer.Polygon(outer, holes);
-            }
-        }
-
-        class RandomAccessEnumerator : IEnumerator<string>
-        {
-            public RandomAccessEnumerator(string name, int size)
-            {
-                this.name = name;
-                this.index = -1;
-                this.size = size;
-            }
-
-            public void Dispose() { }
-
-            object IEnumerator.Current { get { return CurrentString; } }
-            public string Current { get { return CurrentString; } }
-
-            private string CurrentString
-            {
-                get
+                    return true;
+                });
+                if (ok)
                 {
-                    if (index < 0 || index >= size)
-                        throw new InvalidOperationException();
-
-                    return name + "[" + index + "]";
+                    traits = t;
+                    result = new ExpressionDrawer.Polygon(outer, holes);
                 }
             }
-
-            public bool MoveNext() { return ++index < size; }
-            public void Reset() { index = -1; }
-            public int Count { get { return size; } }
-
-            private string name;
-            private int index;
-            private int size;
         }
-
-        class StdListEnumerator : IEnumerator<string>
-        {
-            public StdListEnumerator(string name, int size)
-            {
-                this.name = name;
-                this.index = -1;
-                this.size = size;
-                this.nextNode = name + "._Mypair._Myval2._Myhead";
-            }
-
-            public void Dispose() { }
-
-            object IEnumerator.Current { get { return CurrentString; } }
-            public string Current { get { return CurrentString; } }
-
-            private string CurrentString
-            {
-                get
-                {
-                    if (index < 0 || index >= size)
-                        throw new InvalidOperationException();
-
-                    return nextNode + "->_Myval";
-                }
-            }
-
-            public bool MoveNext()
-            {
-                nextNode = nextNode + "->_Next";
-                return ++index < size;
-            }
-
-            public void Reset()
-            {
-                index = -1;
-                if (nextNode != null)
-                    nextNode = name + "._Mypair._Myval2._Myhead";
-            }
-
-            public int Count { get { return size; } }
-
-            private string name;
-            private int index;
-            private int size;
-            private string nextNode;
-        }
-
+        
         abstract class ValuesContainer : ContainerLoader
         {
             public override void Load(Loaders loaders, bool accessMemory,
@@ -1492,19 +1387,37 @@ namespace GraphicalDebugging
                 result = null;
                 int size = this.LoadSize(debugger, name);
                 List<double> values = new List<double>();
-                foreach (string n in this.GetElementsContainer(debugger, name))
+                bool ok = this.ForEachElement(debugger, name, delegate (string elName)
                 {
-                    bool ok = false;
-                    double value = LoadAsDouble(debugger, n, out ok);
-                    if (ok == false)
-                        return;
-                    values.Add(value);
+                    bool okV = false;
+                    double value = LoadAsDouble(debugger, elName, out okV);
+                    if (okV)
+                        values.Add(value);
+                    return okV;
+                });
+                if (ok)
+                {
+                    result = new ExpressionDrawer.ValuesContainer(values);
                 }
-                result = new ExpressionDrawer.ValuesContainer(values);
             }
         }
 
-        class StdArray : ValuesContainer
+        abstract class RandomAccessContainer : ValuesContainer
+        {
+            public override bool ForEachElement(Debugger debugger, string name, ElementPredicate elementPredicate)
+            {
+                int size = this.LoadSize(debugger, name);
+                for (int i = 0; i < size; ++i)
+                {
+                    string elName = name + "[" + i + "]";
+                    if (!elementPredicate(elName))
+                        return false;
+                }
+                return true;
+            }
+        }
+
+        class StdArray : RandomAccessContainer
         {
             public override string Id() { return "std::array"; }
 
@@ -1533,11 +1446,6 @@ namespace GraphicalDebugging
                      ? Math.Max(ParseInt(Util.Tparams(expr.Type)[1]), 0)
                      : 0;
             }
-
-            public override IEnumerator<string> GetEnumerator(string name, int size)
-            {
-                return new RandomAccessEnumerator(name, size);
-            }
         }
 
         class BoostArray : StdArray
@@ -1563,7 +1471,7 @@ namespace GraphicalDebugging
             }
         }
 
-        class BoostContainerVector : ValuesContainer
+        class BoostContainerVector : RandomAccessContainer
         {
             public override string Id() { return "boost::container::vector"; }
 
@@ -1592,11 +1500,6 @@ namespace GraphicalDebugging
                      ? Math.Max(ParseInt(expr.Value), 0)
                      : 0;
             }
-
-            public override IEnumerator<string> GetEnumerator(string name, int size)
-            {
-                return new RandomAccessEnumerator(name, size);
-            }
         }
 
         class BoostContainerStaticVector : BoostContainerVector
@@ -1608,7 +1511,8 @@ namespace GraphicalDebugging
                                       out Geometry.Traits traits, out ExpressionDrawer.ValuesContainer result)
             {
                 traits = null;
-                LoadContiguousOrGeneric(accessMemory, debugger, name, name + ".m_holder.storage.data", out result);
+                string elType = Util.Tparams(type)[0];
+                LoadContiguousOrGeneric(accessMemory, debugger, name, "(" + elType + " *)" + name + ".m_holder.storage.data", out result);
             }
 
             public override string ElementPtrName(string name)
@@ -1622,7 +1526,7 @@ namespace GraphicalDebugging
             }
         }
 
-        class BGVarray : ValuesContainer
+        class BGVarray : RandomAccessContainer
         {
             public override string Id() { return "boost::geometry::index::detail::varray"; }
 
@@ -1651,14 +1555,9 @@ namespace GraphicalDebugging
                      ? Math.Max(ParseInt(expr.Value), 0)
                      : 0;
             }
-
-            public override IEnumerator<string> GetEnumerator(string name, int size)
-            {
-                return new RandomAccessEnumerator(name, size);
-            }
         }
 
-        class StdVector : ValuesContainer
+        class StdVector : RandomAccessContainer
         {
             public override string Id() { return "std::vector"; }
 
@@ -1687,14 +1586,9 @@ namespace GraphicalDebugging
                      ? Math.Max(ParseInt(expr.Value), 0)
                      : 0;
             }
-
-            public override IEnumerator<string> GetEnumerator(string name, int size)
-            {
-                return new RandomAccessEnumerator(name, size);
-            }
         }
 
-        class StdDeque : ValuesContainer
+        class StdDeque : RandomAccessContainer
         {
             public override string Id() { return "std::deque"; }
 
@@ -1721,11 +1615,6 @@ namespace GraphicalDebugging
                      ? Math.Max(ParseInt(expr.Value), 0)
                      : 0;
             }
-
-            public override IEnumerator<string> GetEnumerator(string name, int size)
-            {
-                return new RandomAccessEnumerator(name, size);
-            }
         }
 
         class StdList : ValuesContainer
@@ -1750,9 +1639,17 @@ namespace GraphicalDebugging
                      : 0;
             }
 
-            public override IEnumerator<string> GetEnumerator(string name, int size)
+            public override bool ForEachElement(Debugger debugger, string name, ElementPredicate elementPredicate)
             {
-                return new StdListEnumerator(name, size);
+                int size = this.LoadSize(debugger, name);
+                string nodeName = name + "._Mypair._Myval2._Myhead->_Next";
+                for (int i = 0; i < size; ++i, nodeName += "->_Next")
+                {
+                    string elName = nodeName + "->_Myval";
+                    if (!elementPredicate(elName))
+                        return false;
+                }
+                return true;
             }
         }
 
@@ -1888,7 +1785,7 @@ namespace GraphicalDebugging
                 traits = null;
                 result = null;
 
-                ContainerLoader containerLoader = (ContainerLoader)loaders.FindByType(ExpressionLoader.Kind.Container, type);
+                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container, type) as ContainerLoader;
                 if (containerLoader == null)
                     return;
 
@@ -1898,23 +1795,26 @@ namespace GraphicalDebugging
 
                 // TODO: Get element type from ContainerLoader instead?
                 string turnType = tparams[0];
-                BGTurn turnLoader = (BGTurn)loaders.FindByType(ExpressionLoader.Kind.Turn, turnType);
+                BGTurn turnLoader = loaders.FindByType(ExpressionLoader.Kind.Turn, turnType) as BGTurn;
                 if (turnLoader == null)
                     return;
 
+                Geometry.Traits t = null;
                 List<ExpressionDrawer.Turn> turns = new List<ExpressionDrawer.Turn>();
-
-                int size = containerLoader.LoadSize(debugger, name);                
-                foreach (string n in containerLoader.GetElementsContainer(name, size))
+                bool ok = containerLoader.ForEachElement(debugger, name, delegate (string elName)
                 {
-                    ExpressionDrawer.Turn t = null;
-                    turnLoader.Load(loaders, accessMemory, debugger, n, turnType, out traits, out t);
-                    if (t == null)
-                        return;
-                    turns.Add(t);
+                    ExpressionDrawer.Turn turn = null;
+                    turnLoader.Load(loaders, accessMemory, debugger, elName, turnType, out t, out turn);
+                    if (turn == null)
+                        return false;
+                    turns.Add(turn);
+                    return true;
+                });
+                if (ok)
+                {
+                    traits = t;
+                    result = new ExpressionDrawer.TurnsContainer(turns);
                 }
-
-                result = new ExpressionDrawer.TurnsContainer(turns);
             }
 
             string id;
