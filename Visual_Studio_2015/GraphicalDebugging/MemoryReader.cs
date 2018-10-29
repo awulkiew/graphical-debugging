@@ -248,6 +248,32 @@ namespace GraphicalDebugging
             return null;
         }
 
+        public static bool ReadArray(Debugger debugger, string ptrName, double[] values, Converter elementConverter)
+        {
+            if (values.Length < 1 || elementConverter.ValueCount() < 1)
+                return true;
+
+            if (values.Length % elementConverter.ValueCount() == 0)
+                throw new ArgumentOutOfRangeException("values.Length");
+
+            int elemsCount = values.Length / elementConverter.ValueCount();
+            int byteSize = elementConverter.ByteSize() * elemsCount;
+            if (byteSize < 1)
+                return true;
+            byte[] bytes = new byte[byteSize];
+            bool ok = ReadBytes(debugger, ptrName, bytes);
+            if (!ok)
+                return false;
+
+            for (int i = 0; i < elemsCount; ++i)
+            {
+                elementConverter.Copy(bytes, i * elementConverter.ByteSize(),
+                                      values, i * elementConverter.ValueCount());
+            }
+
+            return true;
+        }
+
         public static bool Read(Debugger debugger, string ptrName, double[] values, Converter converter)
         {
             if (converter.ValueCount() != values.Length)
