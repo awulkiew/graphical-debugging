@@ -16,52 +16,56 @@ namespace GraphicalDebugging
 {
     class MemoryReader
     {
-        public abstract class Converter
+        public abstract class Converter<ValueType>
+            where ValueType : struct
         {
             abstract public int ValueCount();
             abstract public int ByteSize();
-            abstract public void Copy(byte[] bytes, int bytesOffset, double[] result, int resultOffset);
-            public void Copy(byte[] bytes, double[] result)
+            abstract public void Copy(byte[] bytes, int bytesOffset, ValueType[] result, int resultOffset);
+            public void Copy(byte[] bytes, ValueType[] result)
             {
                 this.Copy(bytes, 0, result, 0);
             }
         }
 
-        public abstract class ValueConverter : Converter
+        public abstract class ValueConverter<ValueType> : Converter<ValueType>
+            where ValueType : struct
         {
-            abstract public void Copy(byte[] bytes, int bytesOffset, double[] result, int resultOffset, int resultCount);
+            abstract public void Copy(byte[] bytes, int bytesOffset, ValueType[] result, int resultOffset, int resultCount);
 
             public override int ValueCount() { return 1; }
-            public override void Copy(byte[] bytes, int bytesOffset, double[] result, int resultOffset)
+            public override void Copy(byte[] bytes, int bytesOffset, ValueType[] result, int resultOffset)
             {
                 this.Copy(bytes, bytesOffset, result, resultOffset, 1);
             }
         }
 
-        public class ValueConverter<T> : ValueConverter
+        public class ValueConverter<ValueType, T> : ValueConverter<ValueType>
+            where ValueType : struct
             where T : struct
         {
-            private static int sizeOfValue = Marshal.SizeOf(default(T));
+            private static int sizeOfT = Marshal.SizeOf(default(T));
             
-            public override int ByteSize() { return sizeOfValue; }
-            public override void Copy(byte[] bytes, int bytesOffset, double[] result, int resultOffset, int resultCount)
+            public override int ByteSize() { return sizeOfT; }
+            public override void Copy(byte[] bytes, int bytesOffset, ValueType[] result, int resultOffset, int resultCount)
             {
-                if (typeof(T) == typeof(double))
+                if (typeof(T) == typeof(ValueType))
                 {
-                    Buffer.BlockCopy(bytes, bytesOffset, result, resultOffset * sizeof(double), resultCount * sizeof(double));
+                    Buffer.BlockCopy(bytes, bytesOffset, result, resultOffset * sizeOfT, resultCount * sizeOfT);
                 }
                 else
                 {
                     T[] tmp = new T[resultCount];
-                    Buffer.BlockCopy(bytes, bytesOffset, tmp, 0, resultCount * sizeOfValue);
+                    Buffer.BlockCopy(bytes, bytesOffset, tmp, 0, resultCount * sizeOfT);
                     Array.Copy(tmp, 0, result, resultOffset, resultCount);
                 }
             }
         }
 
-        public class ArrayConverter : Converter
+        public class ArrayConverter<ValueType> : Converter<ValueType>
+            where ValueType : struct
         {
-            public ArrayConverter(Converter elementConverter, int count)
+            public ArrayConverter(Converter<ValueType> elementConverter, int count)
             {
                 this.count = count;
                 this.elementConverter = elementConverter;
@@ -77,7 +81,7 @@ namespace GraphicalDebugging
                 return count * elementConverter.ByteSize();
             }
 
-            public override void Copy(byte[] bytes, int byteOffset, double[] result, int resultOffset)
+            public override void Copy(byte[] bytes, int byteOffset, ValueType[] result, int resultOffset)
             {
                 int bOff = byteOffset;
                 int vOff = resultOffset;
@@ -92,11 +96,12 @@ namespace GraphicalDebugging
             }
 
             protected int count = 0;
-            protected Converter elementConverter = null;
+            protected Converter<ValueType> elementConverter = null;
         }
 
-        public class ArrayConverter<ElementConverter> : ArrayConverter
-            where ElementConverter : Converter, new()
+        public class ArrayConverter<ValueType, ElementConverter> : ArrayConverter<ValueType>
+            where ValueType : struct
+            where ElementConverter : Converter<ValueType>, new()
         {
             public ArrayConverter(int count)
                 : base(new ElementConverter(), count)
@@ -106,11 +111,12 @@ namespace GraphicalDebugging
                 : base(elementConverter, count)
             {}
 
-            public override void Copy(byte[] bytes, int byteOffset, double[] result, int resultOffset)
+            public override void Copy(byte[] bytes, int byteOffset, ValueType[] result, int resultOffset)
             {
-                if (typeof(ElementConverter).IsSubclassOf(typeof(ValueConverter)))
+                if (typeof(ElementConverter).IsSubclassOf(typeof(ValueConverter<ValueType>)))
                 {
-                    (elementConverter as ValueConverter).Copy(bytes, byteOffset, result, resultOffset, count);
+                    ((ValueConverter<ValueType>)
+                        elementConverter).Copy(bytes, byteOffset, result, resultOffset, count);
                 }
                 else
                 {
@@ -121,23 +127,23 @@ namespace GraphicalDebugging
         
         public class Member
         {
-            public Member(Converter converter)
+            public Member(Converter<double> converter)
             {
                 this.Converter = converter;
                 this.ByteOffset = 0;
             }
 
-            public Member(Converter converter, int byteOffset)
+            public Member(Converter<double> converter, int byteOffset)
             {
                 this.Converter = converter;
                 this.ByteOffset = byteOffset;
             }
 
-            public Converter Converter { get; private set; }
+            public Converter<double> Converter { get; private set; }
             public int ByteOffset { get; private set; }
         }
 
-        public class StructConverter : Converter
+        public class StructConverter : Converter<double>
         {
             public StructConverter(int byteSize, Member member)
             {
@@ -192,7 +198,7 @@ namespace GraphicalDebugging
             int internalValueCount = 0;
         }
 
-        public static Converter GetNumericArrayConverter(Debugger debugger, string ptrName, string valType, int size)
+        public static Converter<double> GetNumericArrayConverter(Debugger debugger, string ptrName, string valType, int size)
         {
             if (valType == null)
                 valType = GetValueType(debugger, ptrName);
@@ -201,18 +207,18 @@ namespace GraphicalDebugging
             return GetNumericArrayConverter(valType, valSize, size);
         }
 
-        public static Converter GetNumericArrayConverter(string valType, int valSize, int size)
+        public static Converter<double> GetNumericArrayConverter(string valType, int valSize, int size)
         {
             if (valType == null || valSize == 0)
                 return null;
             
             if (valType == "double")
             {
-                return new ArrayConverter<ValueConverter<double>>(size);
+                return new ArrayConverter<double, ValueConverter<double, double>>(size);
             }
             else if (valType == "float")
             {
-                return new ArrayConverter<ValueConverter<float>>(size);
+                return new ArrayConverter<double, ValueConverter<double, float>>(size);
             }
             else if (valType == "int"
                   || valType == "long"
@@ -221,13 +227,13 @@ namespace GraphicalDebugging
                   || valType == "char")
             {
                 if (valSize == 4)
-                    return new ArrayConverter<ValueConverter<int>>(size);
+                    return new ArrayConverter<double, ValueConverter<double, int>>(size);
                 else if (valSize == 8)
-                    return new ArrayConverter<ValueConverter<long>>(size);
+                    return new ArrayConverter<double, ValueConverter<double, long>>(size);
                 else if (valSize == 2)
-                    return new ArrayConverter<ValueConverter<short>>(size);
+                    return new ArrayConverter<double, ValueConverter<double, short>>(size);
                 else if (valSize == 1)
-                    return new ArrayConverter<ValueConverter<sbyte>>(size);
+                    return new ArrayConverter<double, ValueConverter<double, sbyte>>(size);
             }
             else if (valType == "unsigned short"
                   || valType == "unsigned int"
@@ -236,19 +242,23 @@ namespace GraphicalDebugging
                   || valType == "unsigned char")
             {
                 if (valSize == 4 && sizeof(uint) == 4)
-                    return new ArrayConverter<ValueConverter<uint>>(size);
+                    return new ArrayConverter<double, ValueConverter<double, uint>>(size);
                 else if (valSize == 8 && sizeof(ulong) == 8)
-                    return new ArrayConverter<ValueConverter<ulong>>(size);
+                    return new ArrayConverter<double, ValueConverter<double, ulong>>(size);
                 else if (valSize == 2)
-                    return new ArrayConverter<ValueConverter<ushort>>(size);
+                    return new ArrayConverter<double, ValueConverter<double, ushort>>(size);
                 else if (valSize == 1)
-                    return new ArrayConverter<ValueConverter<byte>>(size);
+                    return new ArrayConverter<double, ValueConverter<double, byte>>(size);
             }
 
             return null;
         }
 
-        public static bool ReadArray(Debugger debugger, string ptrName, double[] values, Converter elementConverter)
+        /*
+        public static bool ReadArray<ValueType>(Debugger debugger, string ptrName,
+                                                ValueType[] values,
+                                                Converter<ValueType> elementConverter)
+            where ValueType : struct
         {
             if (values.Length < 1 || elementConverter.ValueCount() < 1)
                 return true;
@@ -273,8 +283,12 @@ namespace GraphicalDebugging
 
             return true;
         }
+        */
 
-        public static bool Read(Debugger debugger, string ptrName, double[] values, Converter converter)
+        public static bool Read<ValueType>(Debugger debugger, string ptrName,
+                                           ValueType[] values,
+                                           Converter<ValueType> converter)
+            where ValueType : struct
         {
             if (converter.ValueCount() != values.Length)
                 throw new ArgumentOutOfRangeException("values.Length");
@@ -298,7 +312,7 @@ namespace GraphicalDebugging
             if (count < 1)
                 return true;
 
-            Converter converter = GetNumericArrayConverter(debugger, ptrName, null, count);
+            Converter<double> converter = GetNumericArrayConverter(debugger, ptrName, null, count);
             if (converter == null)
                 return false;
 
@@ -396,6 +410,7 @@ namespace GraphicalDebugging
                  : null;
         }
 
+        /*
         private static void Convert(byte[] byteBuffer, double[] doubleBuffer)
         {
             System.Diagnostics.Debug.Assert(byteBuffer.Length == doubleBuffer.Length * sizeof(double));
@@ -410,5 +425,6 @@ namespace GraphicalDebugging
             for (int i = 0; i < doubleBuffer.Count; ++i)
                 doubleBuffer[i] = BitConverter.ToDouble(byteBuffer, i * sizeof(double));
         }
+        */
     }
 }
