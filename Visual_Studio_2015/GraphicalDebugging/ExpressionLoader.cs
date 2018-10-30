@@ -1595,13 +1595,6 @@ namespace GraphicalDebugging
                                                     MemoryReader.Converter<double> elementConverter,
                                                     MemoryBlockPredicate memoryBlockPredicate)
             {
-                /*
-                string mapName = name + "._Mypair._Myval2._Map";
-                string pointerType = MemoryReader.GetValueType(debugger, mapName);
-                int pointerSize = MemoryReader.GetValueTypeSizeof(debugger, pointerType);
-                if (pointerType == null || pointerSize == 0)
-                    return false;
-
                 string mapSizeName = name + "._Mypair._Myval2._Mapsize";
                 Expression mapSizeExpr = debugger.GetExpression(mapSizeName);
                 int mapSize = mapSizeExpr.IsValidValue
@@ -1618,36 +1611,24 @@ namespace GraphicalDebugging
                 if (dequeSize <= 0)
                     return false;
 
-                MemoryReader.Converter<ulong> pointerArrayConverter = null;
-                if (pointerSize == 4)
-                {
-                    pointerArrayConverter = new MemoryReader.ArrayConverter<ulong, MemoryReader.ValueConverter<ulong, uint>>(mapSize);
-                }
-                else if (pointerSize == 8)
-                {
-                    pointerArrayConverter = new MemoryReader.ArrayConverter<ulong, MemoryReader.ValueConverter<ulong, ulong>>(mapSize);
-                }
-
-                if (pointerArrayConverter == null)
-                    return false;
-
+                string mapName = name + "._Mypair._Myval2._Map";
                 ulong[] pointers = new ulong[mapSize];
-                if (MemoryReader.Read(debugger, mapName, pointers, pointerArrayConverter))
+                if (MemoryReader.ReadPointerArray(debugger, mapName, pointers))
                 {
                     for (int i = 0; i < mapSize; ++i)
                     {
                         string blockPtrName = mapName + "[" + i + "]";
-                        MemoryReader.Converter<double> ar = MemoryReader.GetNumericArrayConverter(debugger, blockPtrName, null, dequeSize);
-                        if (ar == null)
+                        MemoryReader.ArrayConverter<double>
+                            arrayConverter = new MemoryReader.ArrayConverter<double>(elementConverter, dequeSize);
+                        if (arrayConverter == null)
                             return false;
 
-                        double[] values = new double[dequeSize];
-                        bool ok = MemoryReader.Read(debugger, blockPtrName, values, ar);
+                        double[] values = new double[elementConverter.ValueCount() * dequeSize];
+                        bool ok = MemoryReader.Read(debugger, blockPtrName, values, arrayConverter);
 
                         int a = 10;
                     }
                 }
-                */
 
                 return false;
             }
