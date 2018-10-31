@@ -1644,14 +1644,54 @@ namespace GraphicalDebugging
 
             public override string ElementPtrName(string name)
             {
-                return null;
+                return "(&" + name + "._Mypair._Myval2._Myhead->_Next->_Myval)";
             }
 
             public override bool ForEachMemoryBlock(Debugger debugger, string name,
                                                     MemoryReader.Converter<double> elementConverter,
                                                     MemoryBlockPredicate memoryBlockPredicate)
             {
-                return false;
+                int size = LoadSize(debugger, name);
+                if (size <= 0)
+                    return true;
+
+                string nextName = name + "._Mypair._Myval2._Myhead->_Next";
+                string nextNextPtrName = "(&" + name + "._Mypair._Myval2._Myhead->_Next->_Next)";
+                string nextValPtrName = "(&" + name + "._Mypair._Myval2._Myhead->_Next->_Myval)";
+
+                string nextPtrName = "(&" + nextName + ")";
+                MemoryReader.ValueConverter<ulong> nextConverter = MemoryReader.GetPointerConverter(debugger, nextPtrName, null);
+                if (nextConverter == null)
+                    return false;
+
+                long nextDiff = MemoryReader.GetAddressDifference(debugger, nextName, nextNextPtrName);
+                long valDiff = MemoryReader.GetAddressDifference(debugger, nextName, nextValPtrName);
+                if (MemoryReader.IsInvalidAddressDifference(nextDiff)
+                 || MemoryReader.IsInvalidAddressDifference(valDiff)
+                 || nextDiff < 0 || valDiff < 0)
+                    return false;
+
+                ulong[] nextTmp = new ulong[1];
+                ulong next = 0;
+
+                for (int i = 0; i < size; ++i)
+                {
+                    bool ok = next == 0
+                            ? MemoryReader.Read(debugger, nextPtrName, nextTmp, nextConverter)
+                            : MemoryReader.Read(debugger, next + (ulong)nextDiff, nextTmp, nextConverter);
+                    if (!ok)
+                        return false;
+                    next = nextTmp[0];
+
+                    double[] values = new double[elementConverter.ValueCount()];
+                    if (!MemoryReader.Read(debugger, next + (ulong)valDiff, values, elementConverter))
+                        return false;
+
+                    if (!memoryBlockPredicate(values))
+                        return false;
+                }
+
+                return true;
             }
 
             public override int LoadSize(Debugger debugger, string name)
