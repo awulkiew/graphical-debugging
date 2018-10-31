@@ -440,7 +440,7 @@ namespace GraphicalDebugging
             // Or not
 
             abstract public string ElementPtrName(string name);
-            public delegate bool MemoryBlockPredicate(string blockPtrName, MemoryReader.Converter<double> blockConverter);
+            public delegate bool MemoryBlockPredicate(double[] values);
             abstract public bool ForEachMemoryBlock(Debugger debugger, string name, MemoryReader.Converter<double> elementConverter, MemoryBlockPredicate memoryBlockPredicate);
         }
 
@@ -781,27 +781,26 @@ namespace GraphicalDebugging
                     if (pointConverter != null)
                     {
                         int dimension = pointConverter.ValueCount();
+                        result = new ResultType();
                         bool ok = containerLoader.ForEachMemoryBlock(debugger, name, pointConverter,
-                            delegate (string blockPtrName, MemoryReader.Converter<double> blockConverter)
+                            delegate (double[] values)
                             {
-                                double[] values = new double[blockConverter.ValueCount()];
-                                if (MemoryReader.Read(debugger, pointPtrName, values, blockConverter))
+                                if (dimension == 0 || values.Length % dimension != 0)
+                                    return false;
+                                int size = dimension > 0
+                                         ? values.Length / dimension
+                                         : 0;
+                                for (int i = 0; i < size; ++i)
                                 {
-                                    result = new ResultType();
-                                    int size = dimension > 0
-                                             ? blockConverter.ValueCount() / dimension
-                                             : 0;
-                                    for (int i = 0; i < size; ++i)
-                                    {
-                                        double x = dimension > 0 ? values[i * dimension] : 0;
-                                        double y = dimension > 1 ? values[i * dimension + 1] : 0;
-                                        ExpressionDrawer.Point p = new ExpressionDrawer.Point(x, y);
-                                        result.Add(p);
-                                    }
-                                    return true;
+                                    double x = dimension > 0 ? values[i * dimension] : 0;
+                                    double y = dimension > 1 ? values[i * dimension + 1] : 0;
+                                    ExpressionDrawer.Point p = new ExpressionDrawer.Point(x, y);
+                                    result.Add(p);
                                 }
-                                return false;
+                                return true;
                             });
+                        if (!ok)
+                            result = null;
                     }
                 }
 
@@ -1305,39 +1304,42 @@ namespace GraphicalDebugging
         abstract class ValuesContainer : ContainerLoader
         {
             public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type, out Geometry.Traits traits, out ExpressionDrawer.ValuesContainer result)
+                                      Debugger debugger, string name, string type,
+                                      out Geometry.Traits traits, out ExpressionDrawer.ValuesContainer result)
             {
                 traits = null;
-                LoadGeneric(debugger, name, out result);
-            }
-
-            protected void LoadContiguousOrGeneric(bool accessMemory,
-                                                   Debugger debugger, string name, string ptrName,
-                                                   out ExpressionDrawer.ValuesContainer result)
-            {
                 result = null;
+
                 if (accessMemory)
-                    LoadContiguous(debugger, name, ptrName, out result);
+                    LoadMemory(debugger, name, out result);
 
                 if (result == null)
-                    LoadGeneric(debugger, name, out result);
+                    LoadParsed(debugger, name, out result);
             }
 
-            protected void LoadContiguous(Debugger debugger, string name, string ptrName, out ExpressionDrawer.ValuesContainer result)
+            protected void LoadMemory(Debugger debugger, string name, out ExpressionDrawer.ValuesContainer result)
             {
-                result = null;                
-                int size = this.LoadSize(debugger, name);
-                double[] values = new double[size];
-                if (MemoryReader.ReadNumericArray(debugger, ptrName, values))
-                {
-                    List<double> list = new List<double>(size);
-                    for (int i = 0; i < values.Length; ++i)
-                        list.Add(values[i]);
+                result = null;
+
+                MemoryReader.ValueConverter<double>
+                    valueConverter = MemoryReader.GetNumericConverter(debugger, this.ElementPtrName(name), null);
+                if (valueConverter == null)
+                    return;
+
+                List<double> list = new List<double>();
+                bool ok = this.ForEachMemoryBlock(debugger, name, valueConverter,
+                    delegate (double[] values)
+                    {
+                        foreach (double v in values)
+                            list.Add(v);
+                        return true;
+                    });
+
+                if (ok)
                     result = new ExpressionDrawer.ValuesContainer(list);
-                }
             }
 
-            protected void LoadGeneric(Debugger debugger, string name, out ExpressionDrawer.ValuesContainer result)
+            protected void LoadParsed(Debugger debugger, string name, out ExpressionDrawer.ValuesContainer result)
             {                
                 result = null;
                 int size = this.LoadSize(debugger, name);
@@ -1382,21 +1384,16 @@ namespace GraphicalDebugging
                     return false;
                 int size = LoadSize(debugger, name);
                 var blockConverter = new MemoryReader.ArrayConverter<double>(elementConverter, size);
-                return memoryBlockPredicate(blockPtrName, blockConverter);
+                double[] values = new double[blockConverter.ValueCount()];
+                if (!MemoryReader.Read(debugger, blockPtrName, values, blockConverter))
+                    return false;
+                return memoryBlockPredicate(values);
             }
         }
 
         class StdArray : ContiguousContainer
         {
             public override string Id() { return "std::array"; }
-
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
-                                      out Geometry.Traits traits, out ExpressionDrawer.ValuesContainer result)
-            {
-                traits = null;
-                LoadContiguousOrGeneric(accessMemory, debugger, name, name + "._Elems", out result);
-            }
 
             public override string ElementPtrName(string name)
             {
@@ -1424,14 +1421,6 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "boost::array"; }
 
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
-                                      out Geometry.Traits traits, out ExpressionDrawer.ValuesContainer result)
-            {
-                traits = null;
-                LoadContiguousOrGeneric(accessMemory, debugger, name, name + ".elems", out result);
-            }
-
             public override string ElementPtrName(string name)
             {
                 return name + ".elems";
@@ -1449,14 +1438,6 @@ namespace GraphicalDebugging
         class BoostContainerVector : ContiguousContainer
         {
             public override string Id() { return "boost::container::vector"; }
-
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
-                                      out Geometry.Traits traits, out ExpressionDrawer.ValuesContainer result)
-            {
-                traits = null;
-                LoadContiguousOrGeneric(accessMemory, debugger, name, name + ".m_holder.m_start", out result);
-            }
 
             public override string ElementPtrName(string name)
             {
@@ -1484,16 +1465,6 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "boost::container::static_vector"; }
 
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
-                                      out Geometry.Traits traits,
-                                      out ExpressionDrawer.ValuesContainer result)
-            {
-                traits = null;
-                string elType = Util.Tparams(type)[0];
-                LoadContiguousOrGeneric(accessMemory, debugger, name, "(" + elType + " *)" + name + ".m_holder.storage.data", out result);
-            }
-
             public override string ElementPtrName(string name)
             {
                 return name + ".m_holder.storage.data";
@@ -1511,14 +1482,6 @@ namespace GraphicalDebugging
         class BGVarray : BoostContainerVector
         {
             public override string Id() { return "boost::geometry::index::detail::varray"; }
-
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
-                                      out Geometry.Traits traits, out ExpressionDrawer.ValuesContainer result)
-            {
-                traits = null;
-                LoadContiguousOrGeneric(accessMemory, debugger, name, name + ".m_storage.data_.buf", out result);
-            }
 
             public override string ElementPtrName(string name)
             {
@@ -1545,14 +1508,6 @@ namespace GraphicalDebugging
         class StdVector : ContiguousContainer
         {
             public override string Id() { return "std::vector"; }
-
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
-                                      out Geometry.Traits traits, out ExpressionDrawer.ValuesContainer result)
-            {
-                traits = null;
-                LoadContiguousOrGeneric(accessMemory, debugger, name, name + "._Mypair._Myval2._Myfirst", out result);
-            }
 
             public override string ElementPtrName(string name)
             {
@@ -1595,42 +1550,83 @@ namespace GraphicalDebugging
                                                     MemoryReader.Converter<double> elementConverter,
                                                     MemoryBlockPredicate memoryBlockPredicate)
             {
+                int size = LoadSize(debugger, name);
+                if (size == 0)
+                    return true;
+
+                // Map size
                 string mapSizeName = name + "._Mypair._Myval2._Mapsize";
                 Expression mapSizeExpr = debugger.GetExpression(mapSizeName);
-                int mapSize = mapSizeExpr.IsValidValue
-                            ? int.Parse(mapSizeExpr.Value)
-                            : 0;
-                if (mapSize <= 0)
+                if (!mapSizeExpr.IsValidValue)
                     return false;
+                int mapSize = int.Parse(mapSizeExpr.Value);
 
-                string dequeSizeName = "((int)" + name + "._EEN_DS)";
-                Expression dequeSizeExpr = debugger.GetExpression(dequeSizeName);
-                int dequeSize = dequeSizeExpr.IsValidValue
-                              ? int.Parse(dequeSizeExpr.Value)
-                              : 0;
-                if (dequeSize <= 0)
-                    return false;
-
+                // Map - array of pointers
                 string mapName = name + "._Mypair._Myval2._Map";
                 ulong[] pointers = new ulong[mapSize];
-                if (MemoryReader.ReadPointerArray(debugger, mapName, pointers))
+                if (! MemoryReader.ReadPointerArray(debugger, mapName, pointers))
+                    return false;
+
+                // Block size
+                string dequeSizeName = "((int)" + name + "._EEN_DS)";
+                Expression dequeSizeExpr = debugger.GetExpression(dequeSizeName);
+                if (!dequeSizeExpr.IsValidValue)
+                    return false;
+                int dequeSize = int.Parse(dequeSizeExpr.Value);
+
+                // Offset
+                string offsetName = name + "._Mypair._Myval2._Myoff";
+                Expression offsetExpr = debugger.GetExpression(offsetName);
+                if (!offsetExpr.IsValidValue)
+                    return false;
+                int offset = int.Parse(offsetExpr.Value);
+                    
+                // Initial indexes
+                int firstBlock = ((0 + offset) / dequeSize) % mapSize;
+                int firstElement = (0 + offset) % dequeSize;
+                int backBlock = (((size - 1) + offset) / dequeSize) % mapSize;
+                int backElement = ((size - 1) + offset) % dequeSize;
+                int blocksCount = firstBlock <= backBlock
+                                ? backBlock - firstBlock + 1
+                                : mapSize - firstBlock + backBlock + 1;
+
+                int globalIndex = 0;
+                for (int i = 0; i < blocksCount; ++i)
                 {
-                    for (int i = 0; i < mapSize; ++i)
+                    int blockIndex = (firstBlock + i) % mapSize;
+                    ulong address = pointers[blockIndex];
+                    if (address != 0) // just in case
                     {
-                        string blockPtrName = mapName + "[" + i + "]";
-                        MemoryReader.ArrayConverter<double>
-                            arrayConverter = new MemoryReader.ArrayConverter<double>(elementConverter, dequeSize);
-                        if (arrayConverter == null)
-                            return false;
+                        int elemIndex = (i == 0)
+                                        ? firstElement
+                                        : 0;
+                        int blockSize = dequeSize - elemIndex;
+                        if (i == blocksCount - 1) // last block
+                            blockSize -= dequeSize - (backElement + 1);
+                            
+                        if (blockSize > 0) // just in case
+                        {
+                            MemoryReader.ArrayConverter<double>
+                                arrayConverter = new MemoryReader.ArrayConverter<double>(elementConverter, blockSize);
+                            if (arrayConverter == null)
+                                return false;
 
-                        double[] values = new double[elementConverter.ValueCount() * dequeSize];
-                        bool ok = MemoryReader.Read(debugger, blockPtrName, values, arrayConverter);
+                            int valuesCount = elementConverter.ValueCount() * blockSize;
+                            ulong firstAddress = address + (ulong)(elemIndex * elementConverter.ByteSize());
 
-                        int a = 10;
+                            double[] values = new double[valuesCount];
+                            if (!MemoryReader.Read(debugger, firstAddress, values, arrayConverter))
+                                return false;
+
+                            if (!memoryBlockPredicate(values))
+                                return false;
+
+                            globalIndex += blockSize;
+                        }
                     }
                 }
 
-                return false;
+                return true;
             }
 
             public override int LoadSize(Debugger debugger, string name)

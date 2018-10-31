@@ -303,6 +303,27 @@ namespace GraphicalDebugging
             return true;
         }
 
+        public static bool Read<ValueType>(Debugger debugger, ulong address,
+                                           ValueType[] values,
+                                           Converter<ValueType> converter)
+            where ValueType : struct
+        {
+            if (converter.ValueCount() != values.Length)
+                throw new ArgumentOutOfRangeException("values.Length");
+
+            int byteSize = converter.ByteSize();
+            if (byteSize < 1)
+                return true;
+            byte[] bytes = new byte[byteSize];
+            bool ok = ReadBytes(debugger, address, bytes);
+            if (!ok)
+                return false;
+
+            converter.Copy(bytes, values);
+
+            return true;
+        }
+
         public static bool ReadNumericArray(Debugger debugger, string ptrName, double[] values)
         {
             int count = values.Length;
@@ -331,15 +352,20 @@ namespace GraphicalDebugging
 
         public static bool ReadBytes(Debugger debugger, string ptrName, byte[] buffer)
         {
+            ulong address = GetValueAddress(debugger, ptrName);
+            if (address == 0)
+                return false;
+
+            return ReadBytes(debugger, address, buffer);
+        }
+
+        public static bool ReadBytes(Debugger debugger, ulong address, byte[] buffer)
+        {
             if (buffer.Length < 1)
                 return true;
 
             DkmProcess proc = GetDebuggedProcess(debugger);
             if (proc == null)
-                return false;
-
-            ulong address = GetValueAddress(debugger, ptrName);
-            if (address == 0)
                 return false;
 
             int bytesRead = proc.ReadMemory(address, DkmReadMemoryFlags.None, buffer);
