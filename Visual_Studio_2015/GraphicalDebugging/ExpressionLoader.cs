@@ -1961,13 +1961,7 @@ namespace GraphicalDebugging
 
             protected override ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type)
             {
-                bool okx = true, oky = true;
-                double x = 0, y = 0;
-                x = LoadAsDouble(debugger, name + "._Val[0]", out okx);
-                y = LoadAsDouble(debugger, name + "._Val[1]", out oky);
-                return IsOk(okx, oky)
-                     ? new ExpressionDrawer.Point(x, y)
-                     : null;
+                return LoadPointParsed(debugger, name, type, name + "._Val", 2);
             }
 
             protected override ExpressionDrawer.Point LoadPointMemory(Debugger debugger, string name, string type)
