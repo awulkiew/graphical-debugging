@@ -1,3 +1,14 @@
+version 0.17
+
+additions:
+- asynchronious loading of the extension
+- improved debugging speed of std::deque by direct memory access
+- improved debugging speed of std::list by direct memory access
+
+bugfixes:
+- fixed/improved navigation in watches' lists of variables
+- better handling of empty geometries
+
 version 0.16
 
 additions:
