@@ -90,6 +90,7 @@ namespace GraphicalDebugging
             loaders.Add(new PointContainer("std::vector"));
             loaders.Add(new PointContainer("std::deque"));
             loaders.Add(new PointContainer("std::list"));
+            loaders.Add(new StdComplexPoint());
         }
 
         public static Debugger Debugger
@@ -1946,6 +1947,42 @@ namespace GraphicalDebugging
                             sizeOfPair,
                             new MemoryReader.Member(firstConverter, (int)firstOffset),
                             new MemoryReader.Member(secondConverter, (int)secondOffset));
+            }
+        }
+
+        class StdComplexPoint : BXPoint
+        {
+            public override string Id() { return "std::complex"; }
+
+            public override Geometry.Traits LoadTraits(string type)
+            {
+                return new Geometry.Traits(2, Geometry.CoordinateSystem.Complex, Geometry.Unit.None);
+            }
+
+            protected override ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type)
+            {
+                bool okx = true, oky = true;
+                double x = 0, y = 0;
+                x = LoadAsDouble(debugger, name + "._Val[0]", out okx);
+                y = LoadAsDouble(debugger, name + "._Val[1]", out oky);
+                return IsOk(okx, oky)
+                     ? new ExpressionDrawer.Point(x, y)
+                     : null;
+            }
+
+            protected override ExpressionDrawer.Point LoadPointMemory(Debugger debugger, string name, string type)
+            {
+                return LoadPointMemory(debugger, name, type, name + "._Val", 2);
+            }
+
+            public override MemoryReader.Converter<double> GetMemoryConverter(Debugger debugger, string name, string type)
+            {
+                List<string> tparams = Util.Tparams(type);
+                if (tparams.Count < 1)
+                    return null;
+                string coordType = tparams[0];
+
+                return GetMemoryConverter(debugger, name, name + "._Val", coordType, 2);
             }
         }
 

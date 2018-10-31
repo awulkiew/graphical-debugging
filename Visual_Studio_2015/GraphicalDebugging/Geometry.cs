@@ -12,7 +12,7 @@ namespace GraphicalDebugging
 {
     class Geometry
     {
-        public enum CoordinateSystem { None, Cartesian, SphericalPolar, SphericalEquatorial, Geographic };
+        public enum CoordinateSystem { None, Cartesian, SphericalPolar, SphericalEquatorial, Geographic, Complex };
         public enum Unit { None, Radian, Degree };
 
         public static string Name(CoordinateSystem cs)
@@ -23,6 +23,7 @@ namespace GraphicalDebugging
                 case CoordinateSystem.SphericalPolar: return "spherical_polar";
                 case CoordinateSystem.SphericalEquatorial: return "spherical_equatorial";
                 case CoordinateSystem.Geographic: return "geographic";
+                case CoordinateSystem.Complex: return "complex";
                 default: return "unknown";
             }
         }
