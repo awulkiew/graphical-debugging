@@ -8,7 +8,7 @@
     <ReleaseNotes>release_notes.txt</ReleaseNotes>
     <Icon>icon.ico</Icon>
     <PreviewImage>preview.png</PreviewImage>
-    <Tags>2d array boost c++ container curve debugger debugging deque geographic geometry gis graphical linestring mpl plot point polygon spherical tuple variant vector</Tags>
+    <Tags>2d array boost box c++ cartesian chart container complex curve debugger debugging deque geographic geometry gis graphical linestring list mpl plot point polygon ring segment spherical std stl tuple variant vector</Tags>
   </Metadata>
   <Installation>
     <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[14.0]" />

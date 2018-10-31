@@ -4,6 +4,7 @@ additions:
 - asynchronious loading of the extension
 - improved debugging speed of std::deque by direct memory access
 - improved debugging speed of std::list by direct memory access
+- variables of type std::complex<...> can be displayed as Points in complex coordinate system
 
 bugfixes:
 - fixed/improved navigation in watches' lists of variables
