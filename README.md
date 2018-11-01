@@ -170,6 +170,8 @@ Options for each Watch can be found under **Tools**->**Options**->**Graphical De
 The extension attempts to obtain data through direct memory access if possible. From this feature benefit all supported contiguous containers of fundamental numeric types and geometries using such coordinate types. E.g.:
   * `std::array<float>`
   * `std::vector<double>`
+  * `std::deque<std::pair<float> >`
+  * `std::list<std::complex<double> >`
   * `boost::container::vector<int>`
   * `boost::geometry::model::linestring< boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> >`
   * `boost::polygon::polygon_data<int>`
