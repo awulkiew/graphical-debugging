@@ -69,13 +69,20 @@ Watch window displaying graphical representation of variables in a single image.
 
 Supported:
 
+* Containers of points
+  * STL: array, vector, deque, list
+  * Boost.Array: array
+  * Boost.Container: vector, static_vector
 * 2D cartesian geometries
   * Boost.Geometry: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
   * Boost.Polygon: point_data, segment_data, rectangle_data, polygon_data, polygon_with_holes_data
+  * STL: pair
 * Non-cartesian geometries (spherical_equatorial and geographic)
   * Boost.Geometry: point, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
+* Complex numbers
+  * STL: complex
 * Variants of geometries
-  * Boost.Variant
+  * Boost.Variant: variant
 
 ![Geometry Watch](images/geometry_watch.png)
 
@@ -97,17 +104,20 @@ Watch window displaying graphical representations of variables in a list. Each v
 
 Supported:
 
-* Containers of elements convertible to double
+* Containers of elements convertible to double and containers of points 
   * STL: array, vector, deque, list
   * Boost.Array: array
   * Boost.Container: vector, static_vector
 * 2D cartesian geometries
   * Boost.Geometry: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
   * Boost.Polygon: point_data, segment_data, rectangle_data, polygon_data, polygon_with_holes_data
+  * STL: pair
 * Non-cartesian geometries (spherical_equatorial and geographic)
   * Boost.Geometry: point, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
+* Complex numbers
+  * STL: complex
 * Variants of geometries
-  * Boost.Variant
+  * Boost.Variant: variant
 
 ![Graphical Watch](images/graphical_watch.png)
 
@@ -127,10 +137,17 @@ where
 
 Watch window displaying plot representation of variables in a single image. Type of plot can be set in **Options**.
 
-Supported containers of values convertible to double:
+Supported containers of values convertible to double and containers of points:
+
   * STL: array, vector, deque, list
   * Boost.Array: array
   * Boost.Container: vector, static_vector
+
+where points can be of any supported point type (coordinate system is ignored):
+
+  * STL: complex, pair
+  * Boost.Geometry: point, point_xy
+  * Boost.Polygon: point_data
 
 ![Plot Watch](images/plot_watch.png)
 
