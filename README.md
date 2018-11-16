@@ -2,7 +2,7 @@
 
 This extension allows to display graphical representation of variables during debugging.
 
-![Themes](images/themes.png)
+![Themes](images/graphical_debugging.png)
 
 Currently it supports Boost.Geometry and Boost.Polygon models, Boost.Variant and STL/Boost containers of values. It contains:
 
