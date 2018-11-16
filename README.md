@@ -1,8 +1,8 @@
-# GraphicalDebugging extension for Visual Studio 2015 and 2017
+# Graphical Debugging extension for Visual Studio 2015 and 2017
 
 This extension allows to display graphical representation of variables during debugging.
 
-![Themes](images/graphical_debugging.png)
+![Graphical Debugging](images/graphical_debugging.png)
 
 Currently it supports Boost.Geometry and Boost.Polygon models, Boost.Variant and STL/Boost containers of values. It contains:
 
