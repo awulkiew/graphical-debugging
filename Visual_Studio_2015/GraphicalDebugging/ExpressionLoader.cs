@@ -26,7 +26,15 @@ namespace GraphicalDebugging
         private DebuggerEvents debuggerEvents;
         private Loaders loaders;
 
-        public enum Kind { Point = 0, Segment, Box, NSphere, Linestring, Ring, Polygon, MultiPoint, MultiLinestring, MultiPolygon, Container, Variant, Turn, TurnsContainer };
+        // Because containers of points (including c-arrays) are treated as MultiPoints
+        //   they have to be searched first (Loaders class traverses the list of kinds),
+        //   so put this kind at the beginning and the rest of containers too
+        public enum Kind
+        {
+            MultiPoint = 0, Container, TurnsContainer,
+            Point, Segment, Box, NSphere, Linestring, Ring, Polygon, MultiLinestring, MultiPolygon, Turn,
+            Variant
+        };
 
         private static ExpressionLoader Instance { get; set; }
 
@@ -48,6 +56,7 @@ namespace GraphicalDebugging
             this.debuggerEvents = this.dte.Events.DebuggerEvents;
 
             loaders = new Loaders();
+
             loaders.Add(new BGPoint());
             loaders.Add(new BGPointXY());
             loaders.Add(new BGSegment());
@@ -62,12 +71,18 @@ namespace GraphicalDebugging
             loaders.Add(new BGMultiPolygon());
             loaders.Add(new BGBufferedRing());
             loaders.Add(new BGBufferedRingCollection());
+
             loaders.Add(new BPPoint());
             loaders.Add(new BPSegment());
             loaders.Add(new BPBox());
             loaders.Add(new BPRing());
             loaders.Add(new BPPolygon());
-            loaders.Add(new CArray());
+
+            loaders.Add(new StdPairPoint());
+            loaders.Add(new StdComplexPoint());
+
+            loaders.Add(new BVariant());
+
             loaders.Add(new StdArray());
             loaders.Add(new BoostArray());
             loaders.Add(new BGVarray());
@@ -76,13 +91,10 @@ namespace GraphicalDebugging
             loaders.Add(new StdVector());
             loaders.Add(new StdDeque());
             loaders.Add(new StdList());
-            loaders.Add(new BVariant());
-            loaders.Add(new BGTurn("boost::geometry::detail::overlay::turn_info"));
-            loaders.Add(new BGTurn("boost::geometry::detail::overlay::traversal_turn_info"));
-            loaders.Add(new BGTurn("boost::geometry::detail::buffer::buffer_turn_info"));
-            loaders.Add(new BGTurnContainer("std::vector"));
-            loaders.Add(new BGTurnContainer("std::deque"));
-            loaders.Add(new StdPairPoint());
+
+            loaders.Add(new CArray());
+            loaders.Add(new PointCArray());
+
             loaders.Add(new PointContainer("std::array"));
             loaders.Add(new PointContainer("boost::array"));
             loaders.Add(new PointContainer("boost::geometry::index::detail::varray"));
@@ -91,7 +103,12 @@ namespace GraphicalDebugging
             loaders.Add(new PointContainer("std::vector"));
             loaders.Add(new PointContainer("std::deque"));
             loaders.Add(new PointContainer("std::list"));
-            loaders.Add(new StdComplexPoint());
+
+            loaders.Add(new BGTurn("boost::geometry::detail::overlay::turn_info"));
+            loaders.Add(new BGTurn("boost::geometry::detail::overlay::traversal_turn_info"));
+            loaders.Add(new BGTurn("boost::geometry::detail::buffer::buffer_turn_info"));
+            loaders.Add(new BGTurnContainer("std::vector"));
+            loaders.Add(new BGTurnContainer("std::deque"));
         }
 
         public static Debugger Debugger
@@ -1410,8 +1427,9 @@ namespace GraphicalDebugging
 
             public override bool MatchType(string type, string id)
             {
-                int size = 0;
-                return SizeFromType(type, out size);
+                string foo;
+                int bar;
+                return NameSizeFromType(type, out foo, out bar);
             }
 
             public override string ElementPtrName(string name)
@@ -1424,18 +1442,16 @@ namespace GraphicalDebugging
             // int * p = a; -> p,5
             public override string RandomAccessName(string name)
             {
-                int commaPos = name.LastIndexOf(',');
-                string rawName = name;
+                string result = name;
+                int commaPos = name.LastIndexOf(',');                
                 if (commaPos >= 0)
                 {
-                    string s = name.Substring(commaPos + 1);
-                    int size = 0;
-                    if (int.TryParse(s, out size))
-                    {
-                        rawName = name.Substring(0, commaPos);
-                    }
+                    string strSize = name.Substring(commaPos + 1);
+                    int size;
+                    if (int.TryParse(strSize, out size))
+                        result = name.Substring(0, commaPos);
                 }
-                return rawName;
+                return result;
             }
 
             public override bool ForEachMemoryBlock(Debugger debugger, string name,
@@ -1451,22 +1467,26 @@ namespace GraphicalDebugging
                 Expression expr = debugger.GetExpression(name);
                 if (!expr.IsValidValue)
                     return 0;
+                string dummy;
                 int size = 0;
-                SizeFromType(expr.Type, out size);
+                NameSizeFromType(expr.Type, out dummy, out size);
                 return size;
             }
 
-            public bool SizeFromType(string type, out int size)
+            // T[N]
+            static public bool NameSizeFromType(string type, out string name, out int size)
             {
+                name = "";
                 size = 0;
                 int end = type.LastIndexOf(']');
                 if (end + 1 != type.Length)
                     return false;
                 int begin = type.LastIndexOf('[');
-                if (begin < 0)
+                if (begin <= 0)
                     return false;
-                string n = type.Substring(begin + 1, end - begin - 1);
-                return int.TryParse(n, out size);
+                name = type.Substring(0, begin);
+                string strSize = type.Substring(begin + 1, end - begin - 1);
+                return int.TryParse(strSize, out size);
             }
         }
 
@@ -2065,6 +2085,78 @@ namespace GraphicalDebugging
             {}
 
             public override TypeConstraint Constraint() { return new TparamKindConstraint(0, ExpressionLoader.Kind.Point); }
+        }
+
+        class PointCArray : PointRange<ExpressionDrawer.MultiPoint>
+        {
+            public class PointKindConstraint : TypeConstraint
+            {
+                public override bool Ok(Loaders loaders, string type)
+                {
+                    string elementType;
+                    int size = 0;
+                    if (CArray.NameSizeFromType(type, out elementType, out size))
+                    {
+                        Loader loader = loaders.FindByType(elementType);
+                        if (loader != null)
+                            return loader.Kind() == ExpressionLoader.Kind.Point;
+                    }
+                    return false;
+                }
+            }
+
+            public PointCArray()
+                : base(ExpressionLoader.Kind.MultiPoint)
+            {}
+
+            public override TypeConstraint Constraint() { return new PointKindConstraint(); }
+
+            public override string Id() { return null; }
+
+            public override bool MatchType(string type, string id)
+            {
+                string dummy;
+                int size = 0;
+                return CArray.NameSizeFromType(type, out dummy, out size);
+            }
+
+            public override void Load(Loaders loaders, bool accessMemory,
+                                      Debugger debugger, string name, string type,
+                                      out Geometry.Traits traits,
+                                      out ExpressionDrawer.MultiPoint result)
+            {
+                traits = null;
+                result = null;
+
+                string pointType;
+                int size;
+                if (!CArray.NameSizeFromType(type, out pointType, out size))
+                    return;
+
+                PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point, pointType) as PointLoader;
+                if (pointLoader == null)
+                    return;
+
+                traits = pointLoader.LoadTraits(pointType);
+                if (traits == null)
+                    return;
+
+                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container, type) as ContainerLoader;
+                if (containerLoader == null)
+                    return;
+
+                if (accessMemory)
+                {
+                    result = LoadMemory(debugger, name, type,
+                                        pointType, pointLoader, containerLoader);
+                }
+
+                if (result == null)
+                {
+                    result = LoadParsed(accessMemory, debugger, name, type,
+                                        pointType, pointLoader, containerLoader);
+                }
+            }
         }
     }
 }
