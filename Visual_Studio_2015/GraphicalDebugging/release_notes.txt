@@ -1,3 +1,12 @@
+version 0.18
+
+additions:
+- vizualization of c-arrays of values or ooints
+- vizualization of pointers to elements with "size specifier" feature
+
+bugfixes:
+- fixed exception while debugging Boost.Variant holding non-supported type
+
 version 0.17
 
 additions:
