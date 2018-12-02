@@ -1841,6 +1841,9 @@ namespace GraphicalDebugging
                 string storedName = "(*(" + storedType + "*)" + name + ".storage_.data_.buf)";
 
                 Loader loader = loaders.FindByType(storedType);
+                if (loader == null)
+                    return;
+
                 loader.Load(loaders, accessMemory, debugger, storedName, storedType, out traits, out result);
             }
         }
