@@ -70,7 +70,8 @@ Watch window displaying graphical representation of variables in a single image.
 Supported:
 
 * Containers of points
-  * C-style array, pointer to elements with size specifier e.g.: `ptr,5`
+  * C-style array
+  * Pointer to elements with size specifier e.g.: `ptr,5`
   * STL: array, vector, deque, list
   * Boost.Array: array
   * Boost.Container: vector, static_vector
@@ -106,7 +107,8 @@ Watch window displaying graphical representations of variables in a list. Each v
 Supported:
 
 * Containers of elements convertible to double and containers of points
-  * C-style array, pointer to elements with size specifier e.g.: `ptr,5`
+  * C-style array
+  * Pointer to elements with size specifier e.g.: `ptr,5`
   * STL: array, vector, deque, list
   * Boost.Array: array
   * Boost.Container: vector, static_vector
@@ -141,7 +143,8 @@ Watch window displaying plot representation of variables in a single image. Type
 
 Supported containers of values convertible to double and containers of points:
 
-  * C-style array, pointer to elements with size specifier e.g.: `ptr,5`
+  * C-style array
+  * Pointer to elements with size specifier e.g.: `ptr,5`
   * STL: array, vector, deque, list
   * Boost.Array: array
   * Boost.Container: vector, static_vector
