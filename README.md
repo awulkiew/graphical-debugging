@@ -70,6 +70,7 @@ Watch window displaying graphical representation of variables in a single image.
 Supported:
 
 * Containers of points
+  * C-style array, pointer to elements with size specifier e.g.: `ptr,5`
   * STL: array, vector, deque, list
   * Boost.Array: array
   * Boost.Container: vector, static_vector
@@ -104,7 +105,8 @@ Watch window displaying graphical representations of variables in a list. Each v
 
 Supported:
 
-* Containers of elements convertible to double and containers of points 
+* Containers of elements convertible to double and containers of points
+  * C-style array, pointer to elements with size specifier e.g.: `ptr,5`
   * STL: array, vector, deque, list
   * Boost.Array: array
   * Boost.Container: vector, static_vector
@@ -139,6 +141,7 @@ Watch window displaying plot representation of variables in a single image. Type
 
 Supported containers of values convertible to double and containers of points:
 
+  * C-style array, pointer to elements with size specifier e.g.: `ptr,5`
   * STL: array, vector, deque, list
   * Boost.Array: array
   * Boost.Container: vector, static_vector
@@ -168,7 +171,8 @@ Options for each Watch can be found under **Tools**->**Options**->**Graphical De
 ##### Direct memory access
 
 The extension attempts to obtain data through direct memory access if possible. From this feature benefit all supported containers of fundamental numeric types and geometries using such coordinate types. E.g.:
-  * `std::array<float>`
+  * `int arr[5];
+  * `std::array<float, 5>`
   * `std::vector<double>`
   * `std::deque<std::pair<float> >`
   * `std::list<std::complex<double> >`
