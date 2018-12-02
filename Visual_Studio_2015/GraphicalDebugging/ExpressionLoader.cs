@@ -67,6 +67,7 @@ namespace GraphicalDebugging
             loaders.Add(new BPBox());
             loaders.Add(new BPRing());
             loaders.Add(new BPPolygon());
+            loaders.Add(new CArray());
             loaders.Add(new StdArray());
             loaders.Add(new BoostArray());
             loaders.Add(new BGVarray());
@@ -263,7 +264,7 @@ namespace GraphicalDebugging
                 foreach (Loader l in lists[(int)kind])
                 {
                     TypeConstraint tc = l.Constraint();
-                    if (id == l.Id() && (tc == null || tc.Ok(this, type)))
+                    if (l.MatchType(type, id) && (tc == null || tc.Ok(this, type)))
                         return l;
                 }
                 return null;
@@ -276,7 +277,7 @@ namespace GraphicalDebugging
                     foreach (Loader l in li)
                     {
                         TypeConstraint tc = l.Constraint();
-                        if (id == l.Id() && (tc == null || tc.Ok(this, type)))
+                        if (l.MatchType(type, id) && (tc == null || tc.Ok(this, type)))
                             return l;
                     }
                 return null;
@@ -326,6 +327,11 @@ namespace GraphicalDebugging
         abstract class Loader
         {
             abstract public string Id();
+            virtual public bool MatchType(string type, string id)
+            {
+                return id == Id();
+            }
+
             abstract public ExpressionLoader.Kind Kind();
             virtual public TypeConstraint Constraint()
             {
@@ -1365,13 +1371,19 @@ namespace GraphicalDebugging
             public override bool ForEachElement(Debugger debugger, string name, ElementPredicate elementPredicate)
             {
                 int size = this.LoadSize(debugger, name);
+                string rawName = this.RandomAccessName(name);
                 for (int i = 0; i < size; ++i)
                 {
-                    string elName = name + "[" + i + "]";
+                    string elName = rawName + "[" + i + "]";
                     if (!elementPredicate(elName))
                         return false;
                 }
                 return true;
+            }
+
+            virtual public string RandomAccessName(string name)
+            {
+                return name;
             }
         }
 
@@ -1389,6 +1401,72 @@ namespace GraphicalDebugging
                 if (!MemoryReader.Read(debugger, blockPtrName, values, blockConverter))
                     return false;
                 return memoryBlockPredicate(values);
+            }
+        }
+
+        class CArray : ContiguousContainer
+        {
+            public override string Id() { return null; }
+
+            public override bool MatchType(string type, string id)
+            {
+                int size = 0;
+                return SizeFromType(type, out size);
+            }
+
+            public override string ElementPtrName(string name)
+            {
+                // make raw pointer from the carray
+                return "(&(" + this.RandomAccessName(name) + "[0]))";
+            }
+
+            // int a[5];    -> a
+            // int * p = a; -> p,5
+            public override string RandomAccessName(string name)
+            {
+                int commaPos = name.LastIndexOf(',');
+                string rawName = name;
+                if (commaPos >= 0)
+                {
+                    string s = name.Substring(commaPos + 1);
+                    int size = 0;
+                    if (int.TryParse(s, out size))
+                    {
+                        rawName = name.Substring(0, commaPos);
+                    }
+                }
+                return rawName;
+            }
+
+            public override bool ForEachMemoryBlock(Debugger debugger, string name,
+                                                    MemoryReader.Converter<double> elementConverter,
+                                                    MemoryBlockPredicate memoryBlockPredicate)
+            {
+                return this.ForEachMemoryBlock(debugger, name, ElementPtrName(name),
+                                               elementConverter, memoryBlockPredicate);
+            }
+
+            public override int LoadSize(Debugger debugger, string name)
+            {
+                Expression expr = debugger.GetExpression(name);
+                if (!expr.IsValidValue)
+                    return 0;
+                int size = 0;
+                SizeFromType(expr.Type, out size);
+                return size;
+            }
+
+            public bool SizeFromType(string type, out int size)
+            {
+                size = 0;
+                int end = type.LastIndexOf(']');
+                if (end + 1 != type.Length)
+                    return false;
+                int begin = type.LastIndexOf('[');
+                if (begin < 0)
+                    return false;
+                string n = type.Substring(begin + 1, end - begin - 1);
+                return int.TryParse(n, out size);
             }
         }
 
