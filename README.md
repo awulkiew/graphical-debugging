@@ -174,7 +174,7 @@ Options for each Watch can be found under **Tools**->**Options**->**Graphical De
 ##### Direct memory access
 
 The extension attempts to obtain data through direct memory access if possible. From this feature benefit all supported containers of fundamental numeric types and geometries using such coordinate types. E.g.:
-  * `int arr[5];
+  * `int arr[5]`
   * `std::array<float, 5>`
   * `std::vector<double>`
   * `std::deque<std::pair<float> >`
