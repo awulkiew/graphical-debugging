@@ -1,7 +1,7 @@
 version 0.18
 
 additions:
-- vizualization of c-arrays of values or ooints
+- vizualization of c-arrays of values or points
 - vizualization of pointers to elements with "size specifier" feature
 
 bugfixes:
