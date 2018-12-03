@@ -6,7 +6,7 @@ This extension allows to display graphical representation of variables during de
 
 Currently it supports Boost.Geometry and Boost.Polygon models, Boost.Variant, STL/Boost containers of values and points as well as C-style arrays. The extension has the following components:
 
-* **Debugging visualizers** for Boost.Array, Boost.Container, Boost.Geometry, Boost.MPL, Boost.Polygon, Boost.Tuple and Boost.Variant
+* **Debugger visualizers** for Boost.Array, Boost.Container, Boost.Geometry, Boost.MPL, Boost.Polygon, Boost.Tuple and Boost.Variant
 * **Geometry Watch** tool window displaying geometries in a common coordinate system, e.g. Boost.Geometry or Boost.Polygon polygons
 * **Graphical Watch** tool window displaying graphical representation of variables, e.g. Boost.Geometry models or vectors of values
 * **Plot Watch** tool window displaying plot representation of variables, e.g. vector of doubles
@@ -45,7 +45,7 @@ This extension works with Visual Studio 2015 and 2017.
 
 #### Details
 
-##### Debugging vizualizers
+##### Debugger visualizers
 
 Supported:
 
