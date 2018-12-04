@@ -247,27 +247,29 @@ namespace GraphicalDebugging
 
         public interface IPeriodicDrawable
         {
-            void DrawOne(Drawer drawer, float translation, bool closed, bool fill, bool drawDirs, bool drawDots);
+            void DrawOne(Drawer drawer, float translation, bool fill, bool drawDirs, bool drawDots);
             bool Good();
 
             float minf { get; }
             float maxf { get; }
-            float periodf { get; }
-            float box_minf { get; }
-            float box_maxf { get; }
         }
 
         public class PeriodicDrawableRange : IPeriodicDrawable
         {
-            protected PeriodicDrawableRange() { }
-
-            public PeriodicDrawableRange(LocalCS cs, Geometry.IRandomAccessRange<Geometry.Point> points, Geometry.Box box, Geometry.Unit unit)
+            protected PeriodicDrawableRange(bool closed)
             {
+                this.closed = closed;
+            }
+
+            public PeriodicDrawableRange(LocalCS cs,
+                                         Geometry.IRandomAccessRange<Geometry.Point> points,
+                                         bool closed,
+                                         Geometry.Unit unit)
+            {
+                this.closed = closed;
+
                 if (points.Count < 2)
                     return;
-
-                double pi = Geometry.HalfAngle(unit);
-                periodf = cs.ConvertDimensionX(2 * pi);
 
                 xs_orig = new float[points.Count];
                 points_rel = new PointF[points.Count];
@@ -278,35 +280,36 @@ namespace GraphicalDebugging
                 minf = points_rel[0].X;
                 maxf = points_rel[0].X;
 
-                double x0 = Geometry.NormalizedAngle(points[0][0], unit);
-                double x0_prev = points[0][0];
+                double x_prev = points[0][0];
                 for (int i = 1; i < points.Count; ++i)
                 {
                     xs_orig[i] = cs.ConvertX(points[i][0]);
 
-                    double x1 = Geometry.NormalizedAngle(points[i][0], unit);
-                    double dist = x1 - x0; // [-2pi, 2pi]
-                    double distNorm = Geometry.NormalizedAngle(dist, unit); // [-pi, pi]
-
-                    double x0_curr = x0_prev + distNorm;
-                    points_rel[i] = new PointF(cs.ConvertX(x0_curr),
+                    double distNorm = Geometry.NormalizedAngleSigned(points[i][0] - points[i - 1][0], unit); // [-pi, pi]
+                    double x_curr = x_prev + distNorm;
+                    points_rel[i] = new PointF(cs.ConvertX(x_curr),
                                                cs.ConvertY(points[i][1]));
-
                     // expand relative box X
-                    if (points_rel[i].X < minf)
-                        minf = points_rel[i].X;
-                    if (points_rel[i].X > maxf)
-                        maxf = points_rel[i].X;
-
-                    x0_prev = x0_curr;
-                    x0 = x1;
+                    minf = Math.Min(minf, points_rel[i].X);
+                    maxf = Math.Max(maxf, points_rel[i].X);
+                    
+                    x_prev = x_curr;
                 }
-
-                box_minf = cs.ConvertX(box.Min[0]);
-                box_maxf = cs.ConvertX(box.Max[0]);
             }
 
-            public void DrawOne(Drawer drawer, float translation, bool closed, bool fill, bool drawDirs, bool drawDots)
+            /*private static PointF[] DensifyAndConvert(LocalCS cs, Geometry.Point p0, Geometry.Point p1, Geometry.Unit unit)
+            {
+                Geometry.Point[] densPts = Geometry.SphericalDensify(p0, p1, unit);
+                PointF[] result = new PointF[densPts.Length];
+                for (int i = 0; i < densPts.Length; ++i)
+                {
+                    result[i] = new PointF(cs.ConvertX(densPts[i][0]),
+                                           cs.ConvertY(densPts[i][1]));
+                }
+                return result;
+            }*/
+
+            public void DrawOne(Drawer drawer, float translation, bool fill, bool drawDirs, bool drawDots)
             {
                 if (!Good())
                     return;
@@ -329,18 +332,17 @@ namespace GraphicalDebugging
 
             public float minf { get; protected set; }
             public float maxf { get; protected set; }
-            public float periodf { get; protected set; }
-            public float box_minf { get; protected set; }
-            public float box_maxf { get; protected set; }
+
+            protected bool closed;
         }
 
         public class PeriodicDrawableBox : PeriodicDrawableRange
         {
-            public PeriodicDrawableBox(LocalCS cs, Geometry.IRandomAccessRange<Geometry.Point> points, Geometry.Box box, Geometry.Unit unit)
+            public PeriodicDrawableBox(LocalCS cs,
+                                       Geometry.IRandomAccessRange<Geometry.Point> points,
+                                       Geometry.Unit unit)
+                : base(true)
             {
-                double pi = Geometry.HalfAngle(unit);
-                periodf = cs.ConvertDimensionX(2 * pi);
-
                 xs_orig = new float[points.Count];
                 points_rel = new PointF[points.Count];
 
@@ -350,51 +352,36 @@ namespace GraphicalDebugging
                 minf = points_rel[0].X;
                 maxf = points_rel[0].X;
 
-                double x0 = Geometry.NormalizedAngle(points[0][0], unit);
                 for (int i = 1; i < points.Count; ++i)
                 {
                     xs_orig[i] = cs.ConvertX(points[i][0]);
 
-                    double x1 = Geometry.NormalizedAngle(points[i][0], unit);
-                    double dist = x1 - x0; // [-2pi, 2pi]
-                    double distNorm = Geometry.NormalizedAngle(dist, unit); // [-pi, pi]
-                    while (distNorm < 0)
-                        distNorm += 2 * Geometry.HalfAngle(unit); // [0, 2pi] - min is always lesser than max
+                    // always relative to p0
+                    double distNorm = Geometry.NormalizedAngleUnsigned(points[i][0] - points[0][0], unit); // [0, 2pi] - min is always lesser than max
 
-                    double x0_curr = points[0][0] + distNorm; // always relative to p0
-                    points_rel[i] = new PointF(cs.ConvertX(x0_curr),
+                    double x_curr = points[0][0] + distNorm; // always relative to p0
+                    points_rel[i] = new PointF(cs.ConvertX(x_curr),
                                                cs.ConvertY(points[i][1]));
 
                     // expand relative box X
-                    if (points_rel[i].X < minf)
-                        minf = points_rel[i].X;
-                    if (points_rel[i].X > maxf)
-                        maxf = points_rel[i].X;
+                    minf = Math.Min(minf, points_rel[i].X);
+                    maxf = Math.Max(maxf, points_rel[i].X);
                 }
-
-                box_minf = cs.ConvertX(box.Min[0]);
-                box_maxf = cs.ConvertX(box.Max[0]);
             }
         }
 
         public class PeriodicDrawableNSphere : IPeriodicDrawable
         {
-            public PeriodicDrawableNSphere(LocalCS cs, Geometry.NSphere nsphere, Geometry.Box box, Geometry.Unit unit)
+            public PeriodicDrawableNSphere(LocalCS cs, Geometry.NSphere nsphere, Geometry.Unit unit)
             {
-                double pi = Geometry.HalfAngle(unit);
-                periodf = cs.ConvertDimensionX(2 * pi);
-
                 c_rel = cs.Convert(nsphere.Center);
                 r = cs.ConvertDimensionX(nsphere.Radius);
 
                 minf = c_rel.X - r;
                 maxf = c_rel.X + r;
-
-                box_minf = cs.ConvertX(box.Min[0]);
-                box_maxf = cs.ConvertX(box.Max[0]);
             }
 
-            public void DrawOne(Drawer drawer, float translation, bool closed, bool fill, bool drawDirs, bool drawDots)
+            public void DrawOne(Drawer drawer, float translation, bool fill, bool drawDirs, bool drawDots)
             {
                 if (!Good())
                     return;
@@ -427,9 +414,6 @@ namespace GraphicalDebugging
 
             public float minf { get; protected set; }
             public float maxf { get; protected set; }
-            public float periodf { get; protected set; }
-            public float box_minf { get; protected set; }
-            public float box_maxf { get; protected set; }
         }
 
         public class PeriodicDrawablePolygon : IPeriodicDrawable
@@ -437,22 +421,18 @@ namespace GraphicalDebugging
             public PeriodicDrawablePolygon(LocalCS cs,
                                            Geometry.IRandomAccessRange<Geometry.Point> outer,
                                            IEnumerable<Geometry.IRandomAccessRange<Geometry.Point>> inners,
-                                           Geometry.Box box,
                                            Geometry.Unit unit)
             {
-                this.outer = new PeriodicDrawableRange(cs, outer, box, unit);
+                this.outer = new PeriodicDrawableRange(cs, outer, true, unit);
 
                 minf = this.outer.minf;
                 maxf = this.outer.maxf;
-                periodf = this.outer.periodf;
-                box_minf = this.outer.box_minf;
-                box_maxf = this.outer.box_maxf;
 
                 this.inners = new List<PeriodicDrawableRange>();
                 int i = 0;
                 foreach (var inner in inners)
                 {
-                    this.inners.Add(new PeriodicDrawableRange(cs, inner, box, unit));
+                    this.inners.Add(new PeriodicDrawableRange(cs, inner, true, unit));
 
                     // expand relative box X
                     if (this.inners[i].minf < minf)
@@ -462,12 +442,12 @@ namespace GraphicalDebugging
                 }
             }
 
-            public void DrawOne(Drawer drawer, float translation, bool closed, bool fill, bool drawDirs, bool drawDots)
+            public void DrawOne(Drawer drawer, float translation, bool fill, bool drawDirs, bool drawDots)
             {
                 if (!outer.Good())
                     return;
 
-                outer.DrawOne(drawer, translation, closed, false, drawDirs, drawDots);
+                outer.DrawOne(drawer, translation, false, drawDirs, drawDots);
 
                 GraphicsPath gp = new GraphicsPath();
                 if (fill && outer.points_rel != null)
@@ -482,7 +462,7 @@ namespace GraphicalDebugging
                 {
                     if (inner.Good())
                     {
-                        inner.DrawOne(drawer, translation, closed, false, drawDirs, drawDots);
+                        inner.DrawOne(drawer, translation, false, drawDirs, drawDots);
 
                         if (fill && inner.points_rel != null)
                         {
@@ -505,42 +485,47 @@ namespace GraphicalDebugging
 
             public float minf { get; }
             public float maxf { get; }
-            public float periodf { get; }
-            public float box_minf { get; }
-            public float box_maxf { get; }
         }
 
-        public void DrawPeriodic(IPeriodicDrawable pd, bool closed, bool fill, bool drawDirs, bool drawDots)
+        public void DrawPeriodic(LocalCS cs,
+                                 Geometry.Box box, Geometry.Unit unit,
+                                 IPeriodicDrawable pd,
+                                 bool fill, bool drawDirs, bool drawDots)
         {
             if (!pd.Good())
                 return;
 
-            if (pd.maxf >= pd.box_minf && pd.minf <= pd.box_maxf)
-                pd.DrawOne(this, 0, closed, fill, drawDirs, drawDots);
+            double pi = Geometry.HalfAngle(unit);
+            float periodf = cs.ConvertDimensionX(2 * pi);
+            float box_minf = cs.ConvertX(box.Min[0]);
+            float box_maxf = cs.ConvertX(box.Max[0]);
+
+            if (pd.maxf >= box_minf && pd.minf <= box_maxf)
+                pd.DrawOne(this, 0, fill, drawDirs, drawDots);
 
             // west
             float minf_i = pd.minf;
             float maxf_i = pd.maxf;
             float translationf = 0;
-            while (maxf_i >= pd.box_minf)
+            while (maxf_i >= box_minf)
             {
-                translationf -= pd.periodf;
-                minf_i -= pd.periodf;
-                maxf_i -= pd.periodf;
-                if (maxf_i >= pd.box_minf && minf_i <= pd.box_maxf)
-                    pd.DrawOne(this, translationf, closed, fill, drawDirs, drawDots);
+                translationf -= periodf;
+                minf_i -= periodf;
+                maxf_i -= periodf;
+                if (maxf_i >= box_minf && minf_i <= box_maxf)
+                    pd.DrawOne(this, translationf, fill, drawDirs, drawDots);
             }
             // east
             minf_i = pd.minf;
             maxf_i = pd.maxf;
             translationf = 0;
-            while (minf_i <= pd.box_maxf)
+            while (minf_i <= box_maxf)
             {
-                translationf += pd.periodf;
-                minf_i += pd.periodf;
-                maxf_i += pd.periodf;
-                if (maxf_i >= pd.box_minf && minf_i <= pd.box_maxf)
-                    pd.DrawOne(this, translationf, closed, fill, drawDirs, drawDots);
+                translationf += periodf;
+                minf_i += periodf;
+                maxf_i += periodf;
+                if (maxf_i >= box_minf && minf_i <= box_maxf)
+                    pd.DrawOne(this, translationf, fill, drawDirs, drawDots);
             }
         }
 
