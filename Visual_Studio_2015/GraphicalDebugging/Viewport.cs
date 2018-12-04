@@ -245,13 +245,31 @@ namespace GraphicalDebugging
             }
         }
 
-        public interface IPeriodicDrawable
+        public abstract class IPeriodicDrawable
         {
-            void DrawOne(Drawer drawer, float translation, bool fill, bool drawDirs, bool drawDots);
-            bool Good();
+            abstract public void DrawOne(Drawer drawer, float translation, bool fill, bool drawDirs, bool drawDots);
+            abstract public bool Good();
 
-            float minf { get; }
-            float maxf { get; }
+            public float MinF { get { return minf; } }
+            public float MaxF { get { return maxf; } }
+
+            protected void AssignMinMaxF(PointF[] points)
+            {
+                if (points.Length == 0)
+                    return;
+
+                minf = points[0].X;
+                maxf = points[0].X;
+
+                for (int i = 1; i < points.Length; ++i)
+                {
+                    minf = Math.Min(minf, points[i].X);
+                    maxf = Math.Max(maxf, points[i].X);
+                }
+            }
+
+            protected float minf;
+            protected float maxf;
         }
 
         public class PeriodicDrawableRange : IPeriodicDrawable
@@ -277,9 +295,6 @@ namespace GraphicalDebugging
                 xs_orig[0] = cs.ConvertX(points[0][0]);
                 points_rel[0] = cs.Convert(points[0]);
 
-                minf = points_rel[0].X;
-                maxf = points_rel[0].X;
-
                 double x_prev = points[0][0];
                 for (int i = 1; i < points.Count; ++i)
                 {
@@ -289,12 +304,12 @@ namespace GraphicalDebugging
                     double x_curr = x_prev + distNorm;
                     points_rel[i] = new PointF(cs.ConvertX(x_curr),
                                                cs.ConvertY(points[i][1]));
-                    // expand relative box X
-                    minf = Math.Min(minf, points_rel[i].X);
-                    maxf = Math.Max(maxf, points_rel[i].X);
-                    
+
                     x_prev = x_curr;
                 }
+
+                // calculate relative box X
+                AssignMinMaxF(points_rel);
             }
 
             /*private static PointF[] DensifyAndConvert(LocalCS cs, Geometry.Point p0, Geometry.Point p1, Geometry.Unit unit)
@@ -309,7 +324,7 @@ namespace GraphicalDebugging
                 return result;
             }*/
 
-            public void DrawOne(Drawer drawer, float translation, bool fill, bool drawDirs, bool drawDots)
+            public override void DrawOne(Drawer drawer, float translation, bool fill, bool drawDirs, bool drawDots)
             {
                 if (!Good())
                     return;
@@ -325,13 +340,10 @@ namespace GraphicalDebugging
                 }
             }
 
-            public bool Good() { return points_rel != null; }
+            public override bool Good() { return points_rel != null; }
 
             public PointF[] points_rel { get; protected set; }
             public float[] xs_orig { get; protected set; }
-
-            public float minf { get; protected set; }
-            public float maxf { get; protected set; }
 
             protected bool closed;
         }
@@ -348,10 +360,7 @@ namespace GraphicalDebugging
 
                 xs_orig[0] = cs.ConvertX(points[0][0]);
                 points_rel[0] = cs.Convert(points[0]);
-
-                minf = points_rel[0].X;
-                maxf = points_rel[0].X;
-
+                
                 for (int i = 1; i < points.Count; ++i)
                 {
                     xs_orig[i] = cs.ConvertX(points[i][0]);
@@ -362,11 +371,10 @@ namespace GraphicalDebugging
                     double x_curr = points[0][0] + distNorm; // always relative to p0
                     points_rel[i] = new PointF(cs.ConvertX(x_curr),
                                                cs.ConvertY(points[i][1]));
-
-                    // expand relative box X
-                    minf = Math.Min(minf, points_rel[i].X);
-                    maxf = Math.Max(maxf, points_rel[i].X);
                 }
+
+                // calculate relative box X
+                AssignMinMaxF(points_rel);
             }
         }
 
@@ -377,11 +385,13 @@ namespace GraphicalDebugging
                 c_rel = cs.Convert(nsphere.Center);
                 r = cs.ConvertDimensionX(nsphere.Radius);
 
+                // NOTE: The radius is always in the units of the CS which is technically wrong
+
                 minf = c_rel.X - r;
                 maxf = c_rel.X + r;
             }
 
-            public void DrawOne(Drawer drawer, float translation, bool fill, bool drawDirs, bool drawDots)
+            public override void DrawOne(Drawer drawer, float translation, bool fill, bool drawDirs, bool drawDots)
             {
                 if (!Good())
                     return;
@@ -407,13 +417,10 @@ namespace GraphicalDebugging
                 }
             }
 
-            public bool Good() { return r >= 0; }
+            public override bool Good() { return r >= 0; }
 
             protected PointF c_rel { get; set; }
             protected float r { get; set; }
-
-            public float minf { get; protected set; }
-            public float maxf { get; protected set; }
         }
 
         public class PeriodicDrawablePolygon : IPeriodicDrawable
@@ -425,8 +432,8 @@ namespace GraphicalDebugging
             {
                 this.outer = new PeriodicDrawableRange(cs, outer, true, unit);
 
-                minf = this.outer.minf;
-                maxf = this.outer.maxf;
+                minf = this.outer.MinF;
+                maxf = this.outer.MaxF;
 
                 this.inners = new List<PeriodicDrawableRange>();
                 int i = 0;
@@ -435,14 +442,12 @@ namespace GraphicalDebugging
                     this.inners.Add(new PeriodicDrawableRange(cs, inner, true, unit));
 
                     // expand relative box X
-                    if (this.inners[i].minf < minf)
-                        minf = this.inners[i].minf;
-                    if (this.inners[i].maxf > maxf)
-                        maxf = this.inners[i].maxf;
+                    minf = Math.Min(minf, this.inners[i].MinF);
+                    maxf = Math.Max(maxf, this.inners[i].MaxF);
                 }
             }
 
-            public void DrawOne(Drawer drawer, float translation, bool fill, bool drawDirs, bool drawDots)
+            public override void DrawOne(Drawer drawer, float translation, bool fill, bool drawDirs, bool drawDots)
             {
                 if (!outer.Good())
                     return;
@@ -478,13 +483,10 @@ namespace GraphicalDebugging
                     drawer.graphics.FillPath(drawer.brush, gp);
             }
 
-            public bool Good() { return outer.Good(); }
+            public override bool Good() { return outer.Good(); }
 
             private PeriodicDrawableRange outer;
             private List<PeriodicDrawableRange> inners;
-
-            public float minf { get; }
-            public float maxf { get; }
         }
 
         public void DrawPeriodic(LocalCS cs,
@@ -500,12 +502,12 @@ namespace GraphicalDebugging
             float box_minf = cs.ConvertX(box.Min[0]);
             float box_maxf = cs.ConvertX(box.Max[0]);
 
-            if (pd.maxf >= box_minf && pd.minf <= box_maxf)
+            if (pd.MaxF >= box_minf && pd.MinF <= box_maxf)
                 pd.DrawOne(this, 0, fill, drawDirs, drawDots);
 
             // west
-            float minf_i = pd.minf;
-            float maxf_i = pd.maxf;
+            float minf_i = pd.MinF;
+            float maxf_i = pd.MaxF;
             float translationf = 0;
             while (maxf_i >= box_minf)
             {
@@ -516,8 +518,8 @@ namespace GraphicalDebugging
                     pd.DrawOne(this, translationf, fill, drawDirs, drawDots);
             }
             // east
-            minf_i = pd.minf;
-            maxf_i = pd.maxf;
+            minf_i = pd.MinF;
+            maxf_i = pd.MaxF;
             translationf = 0;
             while (minf_i <= box_maxf)
             {
