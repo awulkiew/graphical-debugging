@@ -436,14 +436,14 @@ namespace GraphicalDebugging
                 maxf = this.outer.MaxF;
 
                 this.inners = new List<PeriodicDrawableRange>();
-                int i = 0;
                 foreach (var inner in inners)
                 {
-                    this.inners.Add(new PeriodicDrawableRange(cs, inner, true, unit));
+                    PeriodicDrawableRange pd = new PeriodicDrawableRange(cs, inner, true, unit);
+                    this.inners.Add(pd);
 
                     // expand relative box X
-                    minf = Math.Min(minf, this.inners[i].MinF);
-                    maxf = Math.Max(maxf, this.inners[i].MaxF);
+                    minf = Math.Min(minf, pd.MinF);
+                    maxf = Math.Max(maxf, pd.MaxF);
                 }
             }
 
