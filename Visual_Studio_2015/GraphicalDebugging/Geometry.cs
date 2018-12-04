@@ -72,6 +72,11 @@ namespace GraphicalDebugging
                 set { coords[i] = value; }
             }
 
+            public int Dimension
+            {
+                get { return coords.Length; }
+            }
+
             public object Clone()
             {
                 Point res = new Point();
@@ -341,8 +346,8 @@ namespace GraphicalDebugging
             }
             else
             {
-                double x1 = NormalizedAngle(p1[0], unit);
-                double x2 = NormalizedAngle(p2[0], unit);
+                double x1 = NormalizedAngleSigned(p1[0], unit);
+                double x2 = NormalizedAngleSigned(p2[0], unit);
                 double dist = x2 - x1;
                 double pi = HalfAngle(unit);
                 return dist < -pi || pi < dist;
@@ -406,7 +411,7 @@ namespace GraphicalDebugging
         {
             Point p0 = Normalized(p0_, unit);
             Point p1 = Normalized(p1_, unit);
-            double distNorm = NormalizedAngle(p1[0] - p0[0], unit); // [-pi, pi]
+            double distNorm = NormalizedAngleSigned(p1[0] - p0[0], unit); // [-pi, pi]
             if (distNorm < 0)
                 p0[0] = p1[0] - distNorm;
             else
@@ -518,18 +523,18 @@ namespace GraphicalDebugging
         }
         public static void ExpandAngle(Box box, Box b, Unit unit)
         {
-            double xmin1 = NormalizedAngle(box.Min[0], unit);
-            double xmax1 = NormalizedAngle(box.Max[0], unit);
-            double xmin2 = NormalizedAngle(b.Min[0], unit);
-            double xmax2 = NormalizedAngle(b.Max[0], unit);
+            double xmin1 = NormalizedAngleSigned(box.Min[0], unit);
+            double xmax1 = NormalizedAngleSigned(box.Max[0], unit);
+            double xmin2 = NormalizedAngleSigned(b.Min[0], unit);
+            double xmax2 = NormalizedAngleSigned(b.Max[0], unit);
             if (xmax1 < xmin1)
                 xmax1 += 2 * HalfAngle(unit);
             if (xmax2 < xmin2)
                 xmax2 += 2 * HalfAngle(unit);
 
             double twoPi = 2 * HalfAngle(unit);
-            double left_dist = NormalizedAngle(xmin1 - xmin2, unit);
-            double right_dist = NormalizedAngle(xmax2 - xmax1, unit);
+            double left_dist = NormalizedAngleSigned(xmin1 - xmin2, unit);
+            double right_dist = NormalizedAngleSigned(xmax2 - xmax1, unit);
             if (left_dist >= 0 && right_dist >= 0)
             {
                 if (left_dist < right_dist)
@@ -580,25 +585,38 @@ namespace GraphicalDebugging
         public static void Normalize(Point p, Traits traits)
         {
             if (traits.Unit != Unit.None)
-                NormalizeAngle(p, traits.Unit);
+                Normalize(p, traits.Unit);
         }
-        private static void NormalizeAngle(Point p, Unit unit)
+        private static void Normalize(Point p, Unit unit)
         {
-            p[0] = NormalizedAngle(p[0], unit);
+            p[0] = NormalizedAngleSigned(p[0], unit);
         }
 
         public static Point Normalized(Point p, Unit unit)
         {
-            return new Point(NormalizedAngle(p[0], unit), p[1]);
+            return new Point(NormalizedAngleSigned(p[0], unit), p[1]);
         }
 
-        public static double NormalizedAngle(double x, Unit unit)
+        public static double NormalizedAngleSigned(double x, Unit unit)
         {
             double pi = HalfAngle(unit);
             while (x < -pi) x += 2 * pi;
             while (x > pi) x -= 2 * pi;
             return x;
         }
+
+        public static double NormalizedAngleUnsigned(double x, Unit unit)
+        {
+            double pi = HalfAngle(unit);
+            while (x < 0) x += 2 * pi;
+            while (x > 2 * pi) x -= 2 * pi;
+            return x;
+        }
+
+        /*public static double NormalizedAngle(double x, Unit unit)
+        {
+            return NormalizedAngleSigned(x, unit);
+        }*/
 
         /*public static void Normalize(Box b, Traits traits)
         {
@@ -616,6 +634,154 @@ namespace GraphicalDebugging
         public static double HalfAngle(Unit unit)
         {
             return unit == Unit.Degree ? 180 : Math.PI;
+        }
+
+        public static double ToRadian(double angle, Unit unit)
+        {
+            return unit == Unit.Degree ? (angle * Math.PI / 180.0) : angle;
+        }
+
+        public static double FromRadian(double angle, Unit unit)
+        {
+            return unit == Unit.Degree ? (angle / Math.PI * 180.0) : angle;
+        }
+
+        public static Point SphToCart3d(Point p, Unit unit)
+        {
+            double lon = ToRadian(p[0], unit);
+            double lat = ToRadian(p[1], unit);
+            double cosLat = Math.Cos(lat);
+            return new Point(cosLat * Math.Cos(lon),
+                             cosLat * Math.Sin(lon),
+                             Math.Sin(lat));
+        }
+
+        public static Point Cart3dToSph(Point p, Unit unit)
+        {
+            double lon = Math.Atan2(p[1], p[0]);
+            double lat = Math.Asin(p[2]);
+            return new Point(FromRadian(lon, unit),
+                             FromRadian(lat, unit));
+        }
+
+        public static double Dot(Point p0, Point p1)
+        {
+            Debug.Assert(p0.Dimension == p1.Dimension);
+            double result = 0;
+            for (int i = 0; i < p0.Dimension; ++i)
+                result += p0[i] * p1[i];
+            return result;
+        }
+
+        public static Point Cross(Point p0, Point p1)
+        {
+            Debug.Assert(p0.Dimension == 3 && p1.Dimension == 3);
+            double x = p0[1] * p1[2] - p0[2] * p1[1];
+            double y = p0[2] * p1[0] - p0[0] * p1[2];
+            double z = p0[0] * p1[1] - p0[1] * p1[0];
+            return new Point(x, y, z);
+        }
+
+        public static void Add(Point p, Point p2)
+        {
+            Debug.Assert(p.Dimension == p2.Dimension);
+            for (int i = 0; i < p.Dimension; ++i)
+                p[i] += p2[i];
+        }
+
+        public static void Div(Point p, double v)
+        {
+            for (int i = 0; i < p.Dimension; ++i)
+                p[i] /= v;
+        }
+
+        public static void Mul(Point p, double v)
+        {
+            for (int i = 0; i < p.Dimension; ++i)
+                p[i] *= v;
+        }
+
+        public static bool VecNormalize(Point p)
+        {
+            double l = Math.Sqrt(Dot(p, p));
+
+            if (Equals(l, 0.0))
+                return false;
+
+            Div(p, l);
+
+            return true;
+        }
+
+        public static bool Equals(double a, double b)
+        {
+            return Math.Abs(a - b) < double.Epsilon;
+        }
+
+        public static Point[] SphericalDensify(Point p0, Point p1, Unit unit)
+        {
+            Point xyz0 = SphToCart3d(p0, unit);
+            Point xyz1 = SphToCart3d(p1, unit);
+
+            double dot01 = Dot(xyz0, xyz1);
+            double angle01 = Math.Acos(dot01);
+            double threshold = ToRadian(10, Unit.Degree);
+
+            int n = (int)(angle01 / threshold);
+
+            if (n < 1)
+                return new Point[0];
+
+            Point axis;
+            double pi = HalfAngle(unit);
+            if (!Equals(angle01, pi))
+            {
+                axis = Cross(xyz0, xyz1);
+                VecNormalize(axis);
+            }
+            else
+            {
+                double halfPi = pi / 2;
+                if (Equals(p0[1], halfPi))
+                    axis = new Point(0, 1, 0);
+                else if (Equals(p0[1], -halfPi))
+                    axis = new Point(0, -1, 0);
+                else
+                {
+                    double lon = ToRadian(p0[0], unit);
+                    axis = new Point(Math.Sin(lon), -Math.Cos(lon), 0);
+                }
+            }
+
+            double step = angle01 / (n + 1);
+
+            Point[] result = new Point[n];
+
+            double a = step;
+            for (int i = 0; i < n; ++i, a += step)
+            {
+                // Axis-Angle rotation
+                // see: https://en.wikipedia.org/wiki/Axis-angle_representation
+                double cos_a = Math.Cos(a);
+                double sin_a = Math.Sin(a);
+                // cos_a * v
+                Point s1 = xyz0.Clone() as Point;
+                Mul(s1, cos_a);
+                // sin_a * (n x v)
+                Point s2 = Cross(axis, xyz0);
+                Mul(s2, sin_a);
+                // (1 - cos_a)(n.v) * n
+                Point s3 = axis.Clone() as Point;
+                Mul(s3, (1.0 - cos_a) * Dot(axis, xyz0));
+                // v_rot = cos_a * v + sin_a * (n x v) + (1 - cos_a)(n.v) * e
+                Point v_rot = s1.Clone() as Point;
+                Add(v_rot, s2);
+                Add(v_rot, s3);
+
+                result[i] = Cart3dToSph(v_rot, unit);
+            }
+
+            return result;
         }
     }
 }
