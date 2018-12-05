@@ -297,7 +297,7 @@ namespace GraphicalDebugging
                 }
                 else // Radian, Degree
                 {
-                    Drawer.PeriodicDrawableRange pd = new Drawer.PeriodicDrawableRange(cs, this, false, traits.Unit);
+                    Drawer.PeriodicDrawableLinestring pd = new Drawer.PeriodicDrawableLinestring(cs, this, traits.Unit);
                     Geometry.Interval interval = RelativeEnvelopeLon(this, traits.Unit);
                     drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, false, settings.showDir, true);
                 }
@@ -327,7 +327,7 @@ namespace GraphicalDebugging
             }
             else // Radian, Degree
             {
-                Drawer.PeriodicDrawableRange pd = new Drawer.PeriodicDrawableRange(cs, linestring, false, traits.Unit);
+                Drawer.PeriodicDrawableLinestring pd = new Drawer.PeriodicDrawableLinestring(cs, linestring, traits.Unit);
                 Geometry.Interval interval = RelativeEnvelopeLon(linestring, traits.Unit);
                 drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, false, settings.showDir, true);
             }
@@ -378,7 +378,7 @@ namespace GraphicalDebugging
                 }
                 else
                 {
-                    Drawer.PeriodicDrawableRange pd = new Drawer.PeriodicDrawableRange(cs, this, true, traits.Unit);
+                    Drawer.PeriodicDrawableRing pd = new Drawer.PeriodicDrawableRing(cs, this, traits.Unit);
                     Geometry.Interval interval = RelativeEnvelopeLon(this, traits.Unit);
                     drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, true, settings.showDir, true);
                     

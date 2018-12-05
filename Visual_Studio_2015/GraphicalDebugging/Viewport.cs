@@ -257,10 +257,10 @@ namespace GraphicalDebugging
                 this.closed = closed;
             }
 
-            public PeriodicDrawableRange(LocalCS cs,
-                                         Geometry.IRandomAccessRange<Geometry.Point> points,
-                                         bool closed,
-                                         Geometry.Unit unit)
+            protected PeriodicDrawableRange(LocalCS cs,
+                                            Geometry.IRandomAccessRange<Geometry.Point> points,
+                                            bool closed,
+                                            Geometry.Unit unit)
             {
                 this.closed = closed;
 
@@ -392,6 +392,24 @@ namespace GraphicalDebugging
             protected float r;
         }
 
+        public class PeriodicDrawableLinestring : PeriodicDrawableRange
+        {
+            public PeriodicDrawableLinestring(LocalCS cs,
+                                              Geometry.IRandomAccessRange<Geometry.Point> points,
+                                              Geometry.Unit unit)
+                : base(cs, points, false, unit)
+            { }
+        }
+
+        public class PeriodicDrawableRing : PeriodicDrawableRange
+        {
+            public PeriodicDrawableRing(LocalCS cs,
+                                        Geometry.IRandomAccessRange<Geometry.Point> points,
+                                        Geometry.Unit unit)
+                : base(cs, points, true, unit)
+            { }
+        }
+
         public class PeriodicDrawablePolygon : IPeriodicDrawable
         {
             public PeriodicDrawablePolygon(LocalCS cs,
@@ -399,12 +417,12 @@ namespace GraphicalDebugging
                                            IEnumerable<Geometry.IRandomAccessRange<Geometry.Point>> inners,
                                            Geometry.Unit unit)
             {
-                this.outer = new PeriodicDrawableRange(cs, outer, true, unit);
+                this.outer = new PeriodicDrawableRing(cs, outer, unit);
 
                 this.inners = new List<PeriodicDrawableRange>();
                 foreach (var inner in inners)
                 {
-                    PeriodicDrawableRange pd = new PeriodicDrawableRange(cs, inner, true, unit);
+                    PeriodicDrawableRing pd = new PeriodicDrawableRing(cs, inner, unit);
                     this.inners.Add(pd);
                 }
             }
@@ -415,7 +433,12 @@ namespace GraphicalDebugging
                 if (outer.PointsF == null || outer.PointsF.Length < 2)
                     return;
 
-                outer.DrawOne(drawer, translation, false, drawDirs, drawDots);
+                bool exteriorOnly = (inners.Count == 0);
+
+                outer.DrawOne(drawer, translation, exteriorOnly, drawDirs, drawDots);
+
+                if (exteriorOnly)
+                    return;
 
                 GraphicsPath gp = new GraphicsPath();
                 if (fill && outer.PointsF != null)
@@ -447,7 +470,7 @@ namespace GraphicalDebugging
                     drawer.graphics.FillPath(drawer.brush, gp);
             }
 
-            private PeriodicDrawableRange outer;
+            private PeriodicDrawableRing outer;
             private List<PeriodicDrawableRange> inners;
         }
 
