@@ -248,7 +248,6 @@ namespace GraphicalDebugging
         public abstract class IPeriodicDrawable
         {
             abstract public void DrawOne(Drawer drawer, float translation, bool fill, bool drawDirs, bool drawDots);
-            abstract public bool Good();
         }
 
         public class PeriodicDrawableRange : IPeriodicDrawable
@@ -304,7 +303,8 @@ namespace GraphicalDebugging
 
             public override void DrawOne(Drawer drawer, float translation, bool fill, bool drawDirs, bool drawDots)
             {
-                if (!Good())
+                // TODO: Draw invalid ranges differently
+                if (points_rel == null || points_rel.Length < 2)
                     return;
 
                 drawer.DrawLines(points_rel, translation, xs_orig, closed, drawDirs, drawDots);
@@ -317,8 +317,6 @@ namespace GraphicalDebugging
                     drawer.graphics.FillPolygon(drawer.brush, points);
                 }
             }
-
-            public override bool Good() { return points_rel != null; }
 
             public PointF[] PointsF { get { return points_rel; } }
 
@@ -360,12 +358,13 @@ namespace GraphicalDebugging
             {
                 // NOTE: The radius is always in the units of the CS which is technically wrong
                 c_rel = cs.Convert(nsphere.Center);
-                r = cs.ConvertDimensionX(Math.Abs(nsphere.Radius));
+                r = cs.ConvertDimensionX(nsphere.Radius);
             }
 
             public override void DrawOne(Drawer drawer, float translation, bool fill, bool drawDirs, bool drawDots)
             {
-                if (!Good())
+                // TODO: Instead draw invalid nsphere in a different way
+                if (r >= 0)
                     return;
 
                 float cx = c_rel.X - r + translation;
@@ -388,8 +387,6 @@ namespace GraphicalDebugging
                     drawer.graphics.FillEllipse(drawer.brush, cx, cy, d, d);
                 }
             }
-
-            public override bool Good() { return r >= 0; }
 
             protected PointF c_rel;
             protected float r;
@@ -414,7 +411,8 @@ namespace GraphicalDebugging
 
             public override void DrawOne(Drawer drawer, float translation, bool fill, bool drawDirs, bool drawDots)
             {
-                if (!outer.Good())
+                // TODO: Draw invalid rings differently
+                if (outer.PointsF == null || outer.PointsF.Length < 2)
                     return;
 
                 outer.DrawOne(drawer, translation, false, drawDirs, drawDots);
@@ -430,25 +428,24 @@ namespace GraphicalDebugging
 
                 foreach (var inner in inners)
                 {
-                    if (inner.Good())
-                    {
-                        inner.DrawOne(drawer, translation, false, drawDirs, drawDots);
+                    // TODO: Draw invalid rings differently
+                    if (outer.PointsF == null || inner.PointsF.Length < 2)
+                        continue;
 
-                        if (fill && inner.PointsF != null)
-                        {
-                            PointF[] points = new PointF[inner.PointsF.Length];
-                            for (int i = 0; i < inner.PointsF.Length; ++i)
-                                points[i] = new PointF(inner.PointsF[i].X + translation, inner.PointsF[i].Y);
-                            gp.AddPolygon(points);
-                        }
+                    inner.DrawOne(drawer, translation, false, drawDirs, drawDots);
+
+                    if (fill && inner.PointsF != null)
+                    {
+                        PointF[] points = new PointF[inner.PointsF.Length];
+                        for (int i = 0; i < inner.PointsF.Length; ++i)
+                            points[i] = new PointF(inner.PointsF[i].X + translation, inner.PointsF[i].Y);
+                        gp.AddPolygon(points);
                     }
                 }
 
                 if (fill)
                     drawer.graphics.FillPath(drawer.brush, gp);
             }
-
-            public override bool Good() { return outer.Good(); }
 
             private PeriodicDrawableRange outer;
             private List<PeriodicDrawableRange> inners;
@@ -459,9 +456,6 @@ namespace GraphicalDebugging
                                  IPeriodicDrawable drawer,
                                  bool fill, bool drawDirs, bool drawDots)
         {
-            if (!drawer.Good())
-                return;
-
             double pi = Geometry.HalfAngle(unit);
             float periodf = cs.ConvertDimensionX(2 * pi);
             float box_minf = cs.ConvertX(box.Min[0]);
