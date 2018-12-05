@@ -284,7 +284,8 @@ namespace GraphicalDebugging
                     bool sameP0 = Math.Abs(p0.X - xs_orig[i - 1]) < 0.001;
                     bool sameP1 = Math.Abs(p1.X - xs_orig[i]) < 0.001;
 
-                    if (dens_points_rel[i - 1].Length > 0)
+                    if ( dens_points_rel != null
+                      && dens_points_rel[i - 1].Length > 0 )
                     {
                         int midJ = dens_points_rel[i - 1].Length / 2;
                         for (int j = 0; j < dens_points_rel[i - 1].Length + 1; ++j)
@@ -339,8 +340,11 @@ namespace GraphicalDebugging
             public PointF[] TranslatedPointsF(float translation_x)
             {
                 int count = points_rel.Length;
-                for (int j = 0; j < dens_points_rel.Length; ++j)
-                    count += dens_points_rel[j].Length;
+                if (dens_points_rel != null)
+                {
+                    for (int j = 0; j < dens_points_rel.Length; ++j)
+                        count += dens_points_rel[j].Length;
+                }
 
                 // NOTE: additional point is at the end of the range for closed geometries
                 // it may be different than the first point if the geometry goes around a pole
@@ -350,8 +354,8 @@ namespace GraphicalDebugging
                 for (int i = 0; i < points_rel.Length; ++i)
                 {
                     result[o++] = Translated(points_rel[i], translation_x);
-                    // TEMP condition
-                    if (i < dens_points_rel.Length)
+                    if ( dens_points_rel != null
+                      && i < dens_points_rel.Length )
                     {
                         for (int j = 0; j < dens_points_rel[i].Length; ++j)
                         {
@@ -381,8 +385,9 @@ namespace GraphicalDebugging
                                        Geometry.Unit unit)
                 : base(true)
             {
-                xs_orig = new float[points.Count];
-                points_rel = new PointF[points.Count];
+                int count = points.Count + 1;
+                xs_orig = new float[count];
+                points_rel = new PointF[count];
 
                 xs_orig[0] = cs.ConvertX(points[0][0]);
                 points_rel[0] = cs.Convert(points[0]);
@@ -398,6 +403,10 @@ namespace GraphicalDebugging
                     points_rel[i] = new PointF(cs.ConvertX(x_curr),
                                                cs.ConvertY(points[i][1]));
                 }
+
+                // close
+                xs_orig[points.Count] = xs_orig[0];
+                points_rel[points.Count] = points_rel[0];
             }
         }
 
