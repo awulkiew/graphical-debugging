@@ -314,7 +314,7 @@ namespace GraphicalDebugging
 
                 if (fill)
                 {
-                    PointF[] points = TranslatedPointsF(translation_x);
+                    PointF[] points = AreaPointsF(translation_x);
                     drawer.graphics.FillPolygon(drawer.brush, points);
                 }
             }
@@ -337,7 +337,9 @@ namespace GraphicalDebugging
                 return result;
             }
 
-            public PointF[] TranslatedPointsF(float translation_x)
+            // NOTE: This method assumes that the geometry is closed
+            //   It's suitable only for areal geometries
+            public PointF[] AreaPointsF(float translation_x)
             {
                 int count = points_rel.Length;
                 if (dens_points_rel != null)
@@ -345,6 +347,10 @@ namespace GraphicalDebugging
                     for (int j = 0; j < dens_points_rel.Length; ++j)
                         count += dens_points_rel[j].Length;
                 }
+
+                // Add 2 points in case the geometry contains a pole
+                //   and area points has to be added later
+                count += 2;
 
                 // NOTE: additional point is at the end of the range for closed geometries
                 // it may be different than the first point if the geometry goes around a pole
@@ -362,6 +368,22 @@ namespace GraphicalDebugging
                             result[o++] = Translated(dens_points_rel[i][j], translation_x);
                         }
                     }
+                }
+
+                // Add 2 potentially dummy points by copying both endpoints
+                result[o] = result[o-1];
+                result[o+1] = result[0];
+
+                // If the endpoints doesn't match the geometry goes around pole
+                if ( result.Length > 0
+                  && Math.Abs(result[0].X - result[o-1].X) > 0.1 )
+                {
+                    // TODO: Check towards which pole it has to be expanded
+
+
+                    // expand it
+                    result[o].Y = 0;
+                    result[o+1].Y = 0;
                 }
 
                 return result;
@@ -422,7 +444,7 @@ namespace GraphicalDebugging
             public override void DrawOne(Drawer drawer, float translation, bool fill, bool drawDirs, bool drawDots)
             {
                 // TODO: Instead draw invalid nsphere in a different way
-                if (r >= 0)
+                if (r < 0)
                     return;
 
                 float cx = c_rel.X - r + translation;
@@ -481,7 +503,7 @@ namespace GraphicalDebugging
                 GraphicsPath gp = new GraphicsPath();
                 if (fill && outer.IsInitialized())
                 {
-                    PointF[] points = outer.TranslatedPointsF(translation);
+                    PointF[] points = outer.AreaPointsF(translation);
                     gp.AddPolygon(points);
                 }
 
@@ -495,7 +517,7 @@ namespace GraphicalDebugging
 
                     if (fill)
                     {
-                        PointF[] points = inner.TranslatedPointsF(translation);
+                        PointF[] points = inner.AreaPointsF(translation);
                         gp.AddPolygon(points);
                     }
                 }
