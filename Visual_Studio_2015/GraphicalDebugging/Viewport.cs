@@ -19,25 +19,31 @@ namespace GraphicalDebugging
     {
         private Graphics graphics;
         private Pen pen;
+        private Pen penDot;
         private SolidBrush brush;
 
         public Drawer(Graphics graphics, Color color)
         {
             this.graphics = graphics;
+
             pen = new Pen(Color.FromArgb(112, color), 2);
             pen.LineJoin = LineJoin.Round;
             pen.EndCap = LineCap.Round;
+
+            penDot = pen.Clone() as Pen;
+            penDot.DashStyle = DashStyle.Dot;
+
             brush = new SolidBrush(Color.FromArgb(64, color));
         }
 
-        public bool DrawDir(PointF p0, PointF p1)
+        public bool DrawDir(PointF p0, PointF p1, PointF p0Ref, PointF p1Ref)
         {
-            PointF v = SubF(p1, p0);
-            float distSqr = DotF(v, v);
-
-            if (distSqr < 49.0f) // (1+5+1)^2
+            PointF vRef = SubF(p1Ref, p0Ref);
+            float distRefSqr = DotF(vRef, vRef);
+            if (distRefSqr < 49.0f) // (1+5+1)^2
                 return false;
 
+            PointF v = SubF(p1, p0);
             PointF ph = AddF(p0, MulF(v, 0.5f));
             float a = AngleF(v);
             PointF ps = AddF(ph, RotF(new PointF(-1.25f, -2.5f), a));
@@ -47,6 +53,11 @@ namespace GraphicalDebugging
             graphics.DrawLine(pen, pm, pe);
 
             return true;
+        }
+
+        public bool DrawDir(PointF p0, PointF p1)
+        {
+            return DrawDir(p0, p1, p0, p1);
         }
 
         public void DrawDirs(PointF[] points, bool closed)
@@ -113,68 +124,31 @@ namespace GraphicalDebugging
                 DrawLine(points[i], points[i + 1]);
         }
 
-        public void DrawLine(PointF p0, PointF p1, bool drawDir)
-        {
-            DrawLine(p0, p1);
-            if (drawDir)
-                DrawDir(p0, p1);
-        }
-
-        public void DrawLines(PointF[] points, bool closed, bool drawDir)
+        public void DrawLines(PointF[] points, bool closed)
         {
             DrawLines(points);
             if (closed && points.Length > 1)
                 DrawLine(points[points.Length - 1], points[0]);
-            if (drawDir)
-                DrawDirs(points, closed);
         }
 
-        public void DrawLine(PointF p0, PointF p1, float x0_orig, float x1_orig, bool drawDir, bool drawDots)
+        public void DrawLine(PointF p0, PointF p1, bool dotP0, bool dotP1)
         {
-            bool sameP0 = Math.Abs(p0.X - x0_orig) < 0.001;
-            bool sameP1 = Math.Abs(p1.X - x1_orig) < 0.001;
-            //bool sameP0 = p0.X == x0_orig;
-            //bool sameP1 = p1.X == x1_orig;
-            if (!drawDots || sameP0 && sameP1)
+            if (!dotP0 && !dotP1)
             {
-                DrawLine(p0, p1, drawDir);
+                DrawLine(p0, p1);
             }
             else
             {
-                Pen pend = (Pen)pen.Clone();
-                pend.DashStyle = DashStyle.Dot;
-
-                if (sameP0 || sameP1)
+                if (dotP0 && dotP1)
                 {
-                    PointF ph = AddF(p0, DivF(SubF(p1, p0), 2));
-                    DrawLine(sameP0 ? pen : pend, p0, ph);
-                    DrawLine(sameP1 ? pen : pend, ph, p1);
+                    DrawLine(penDot, p0, p1);
                 }
                 else
                 {
-                    DrawLine(pend, p0, p1);
+                    PointF ph = AddF(p0, DivF(SubF(p1, p0), 2));
+                    DrawLine(dotP0 ? penDot : pen, p0, ph);
+                    DrawLine(dotP1 ? penDot : pen, ph, p1);
                 }
-
-                if (drawDir)
-                    DrawDir(p0, p1);
-            }
-        }
-
-        public void DrawLines(PointF[] points_rel, float translation_x, float[] xs_orig, bool closed, bool drawDir, bool drawDots)
-        {
-            for (int i = 1; i < points_rel.Length; ++i)
-            {
-                int i_1 = i - 1;
-                PointF p0 = new PointF(points_rel[i_1].X + translation_x, points_rel[i_1].Y);
-                PointF p1 = new PointF(points_rel[i].X + translation_x, points_rel[i].Y);
-                DrawLine(p0, p1, xs_orig[i_1], xs_orig[i], drawDir, drawDots);
-            }
-            if (closed && points_rel.Length > 1)
-            {
-                int i_1 = points_rel.Length - 1;
-                PointF p0 = new PointF(points_rel[i_1].X + translation_x, points_rel[i_1].Y);
-                PointF p1 = new PointF(points_rel[0].X + translation_x, points_rel[0].Y);
-                DrawLine(p0, p1, xs_orig[i_1], xs_orig[0], drawDir, drawDots);
             }
         }
 
@@ -223,9 +197,6 @@ namespace GraphicalDebugging
             PointF p = cs.Convert(point);
             DrawPoint(p);
 
-            Pen penDot = (Pen)pen.Clone();
-            penDot.DashStyle = DashStyle.Dot;
-
             double pi2 = 2 * Geometry.HalfAngle(unit);
             // draw points on the west
             double x_tmp = point[0] - pi2;
@@ -257,26 +228,34 @@ namespace GraphicalDebugging
                 this.closed = closed;
             }
 
-            protected PeriodicDrawableRange(LocalCS cs,
-                                            Geometry.IRandomAccessRange<Geometry.Point> points,
-                                            bool closed,
-                                            Geometry.Unit unit)
+            public PeriodicDrawableRange(LocalCS cs,
+                                         Geometry.IRandomAccessRange<Geometry.Point> points,
+                                         bool closed,
+                                         Geometry.Unit unit)
             {
                 this.closed = closed;
 
                 if (points.Count < 2)
                     return;
 
-                xs_orig = new float[points.Count];
-                points_rel = new PointF[points.Count];
+                // approx. length of densified segments
+                /*double densLength = Math.Min(cs.InverseConvertDimensionX(20),
+                                             cs.InverseConvertDimensionY(20));*/
+                double densLength = Geometry.FromDegree(5, unit);
+
+                int count = points.Count + (closed ? 1 : 0);
+
+                xs_orig = new float[count];
+                points_rel = new PointF[count];
+                dens_points_rel = new PointF[points.Count][];
 
                 xs_orig[0] = cs.ConvertX(points[0][0]);
                 points_rel[0] = cs.Convert(points[0]);
 
                 Geometry.Point p0 = points[0].Clone();
-                for (int i = 1; i < points.Count; ++i)
+                for (int i = 1; i < count; ++i)
                 {
-                    Geometry.Point p1 = points[i].Clone();
+                    Geometry.Point p1 = points[i % points.Count].Clone();
 
                     xs_orig[i] = cs.ConvertX(p1[0]);
 
@@ -284,13 +263,69 @@ namespace GraphicalDebugging
                     p1[0] = p0[0] + distNorm;
                     points_rel[i] = cs.Convert(p1);
 
+                    dens_points_rel[i-1] = DensifyAndConvert(cs, p0, p1, densLength, unit);
+
                     p0 = p1;
                 }
             }
 
-            private static PointF[] DensifyAndConvert(LocalCS cs, Geometry.Point p0, Geometry.Point p1, Geometry.Unit unit)
+            public override void DrawOne(Drawer drawer, float translation_x, bool fill, bool drawDirs, bool drawDots)
             {
-                Geometry.Point[] densPoints = Geometry.SphericalDensify(p0, p1, unit);
+                // TODO: Draw invalid ranges differently
+                if (!IsInitialized())
+                    return;
+
+                // NOTE: additional point is at the end of the range for closed geometries
+                // it may be different than the first point if the geometry goes around a pole
+                for (int i = 1; i < points_rel.Length; ++i)
+                {
+                    PointF p0 = Translated(points_rel[i - 1], translation_x);
+                    PointF p1 = Translated(points_rel[i], translation_x);
+                    bool sameP0 = Math.Abs(p0.X - xs_orig[i - 1]) < 0.001;
+                    bool sameP1 = Math.Abs(p1.X - xs_orig[i]) < 0.001;
+
+                    if (dens_points_rel[i - 1].Length > 0)
+                    {
+                        int midJ = dens_points_rel[i - 1].Length / 2;
+                        for (int j = 0; j < dens_points_rel[i - 1].Length + 1; ++j)
+                        {
+                            PointF dp0 = j == 0
+                                       ? p0
+                                       : Translated(dens_points_rel[i - 1][j - 1], translation_x);
+                            PointF dp1 = j == dens_points_rel[i - 1].Length
+                                       ? p1
+                                       : Translated(dens_points_rel[i - 1][j], translation_x);
+                            bool sameDP0 = j <= midJ ? sameP0 : sameP1;
+                            bool sameDP1 = j >= midJ ? sameP1 : sameP0;
+
+                            drawer.DrawLine(dp0, dp1, !sameDP0, !sameDP1);
+                            if (drawDirs && j == midJ)
+                                drawer.DrawDir(dp0, dp1, p0, p1);
+                        }
+                    }
+                    else
+                    {
+                        drawer.DrawLine(p0, p1, !sameP0, !sameP1);
+                        if (drawDirs)
+                            drawer.DrawDir(p0, p1);
+                    }
+                }
+
+                if (fill)
+                {
+                    PointF[] points = TranslatedPointsF(translation_x);
+                    drawer.graphics.FillPolygon(drawer.brush, points);
+                }
+            }
+
+            private static PointF Translated(PointF p, float translation_x)
+            {
+                return new PointF(p.X + translation_x, p.Y);
+            }
+
+            private static PointF[] DensifyAndConvert(LocalCS cs, Geometry.Point p0, Geometry.Point p1, double length, Geometry.Unit unit)
+            {
+                Geometry.Point[] densPoints = Geometry.SphericalDensify(p0, p1, length, unit);
                 PointF[] result = new PointF[densPoints.Length];
                 for (int j = 0; j < densPoints.Length; ++j)
                 {
@@ -301,26 +336,40 @@ namespace GraphicalDebugging
                 return result;
             }
 
-            public override void DrawOne(Drawer drawer, float translation, bool fill, bool drawDirs, bool drawDots)
+            public PointF[] TranslatedPointsF(float translation_x)
             {
-                // TODO: Draw invalid ranges differently
-                if (points_rel == null || points_rel.Length < 2)
-                    return;
+                int count = points_rel.Length;
+                for (int j = 0; j < dens_points_rel.Length; ++j)
+                    count += dens_points_rel[j].Length;
 
-                drawer.DrawLines(points_rel, translation, xs_orig, closed, drawDirs, drawDots);
+                // NOTE: additional point is at the end of the range for closed geometries
+                // it may be different than the first point if the geometry goes around a pole
 
-                if (fill)
+                PointF[] result = new PointF[count];
+                int o = 0;
+                for (int i = 0; i < points_rel.Length; ++i)
                 {
-                    PointF[] points = new PointF[points_rel.Length];
-                    for (int i = 0; i < points_rel.Length; ++i)
-                        points[i] = new PointF(points_rel[i].X + translation, points_rel[i].Y);
-                    drawer.graphics.FillPolygon(drawer.brush, points);
+                    result[o++] = Translated(points_rel[i], translation_x);
+                    // TEMP condition
+                    if (i < dens_points_rel.Length)
+                    {
+                        for (int j = 0; j < dens_points_rel[i].Length; ++j)
+                        {
+                            result[o++] = Translated(dens_points_rel[i][j], translation_x);
+                        }
+                    }
                 }
+
+                return result;
             }
 
-            public PointF[] PointsF { get { return points_rel; } }
+            public bool IsInitialized()
+            {
+                return points_rel != null;
+            }
 
             protected PointF[] points_rel;
+            protected PointF[][] dens_points_rel;
             protected float[] xs_orig;
             protected bool closed;
         }
@@ -377,9 +426,7 @@ namespace GraphicalDebugging
                 }
                 else
                 {
-                    Pen pend = (Pen)drawer.pen.Clone();
-                    pend.DashStyle = DashStyle.Dot;
-                    drawer.graphics.DrawEllipse(pend, cx, cy, d, d);
+                    drawer.graphics.DrawEllipse(drawer.penDot, cx, cy, d, d);
                 }
 
                 if (fill)
@@ -392,24 +439,6 @@ namespace GraphicalDebugging
             protected float r;
         }
 
-        public class PeriodicDrawableLinestring : PeriodicDrawableRange
-        {
-            public PeriodicDrawableLinestring(LocalCS cs,
-                                              Geometry.IRandomAccessRange<Geometry.Point> points,
-                                              Geometry.Unit unit)
-                : base(cs, points, false, unit)
-            { }
-        }
-
-        public class PeriodicDrawableRing : PeriodicDrawableRange
-        {
-            public PeriodicDrawableRing(LocalCS cs,
-                                        Geometry.IRandomAccessRange<Geometry.Point> points,
-                                        Geometry.Unit unit)
-                : base(cs, points, true, unit)
-            { }
-        }
-
         public class PeriodicDrawablePolygon : IPeriodicDrawable
         {
             public PeriodicDrawablePolygon(LocalCS cs,
@@ -417,12 +446,12 @@ namespace GraphicalDebugging
                                            IEnumerable<Geometry.IRandomAccessRange<Geometry.Point>> inners,
                                            Geometry.Unit unit)
             {
-                this.outer = new PeriodicDrawableRing(cs, outer, unit);
+                this.outer = new PeriodicDrawableRange(cs, outer, true, unit);
 
                 this.inners = new List<PeriodicDrawableRange>();
                 foreach (var inner in inners)
                 {
-                    PeriodicDrawableRing pd = new PeriodicDrawableRing(cs, inner, unit);
+                    PeriodicDrawableRange pd = new PeriodicDrawableRange(cs, inner, true, unit);
                     this.inners.Add(pd);
                 }
             }
@@ -430,7 +459,7 @@ namespace GraphicalDebugging
             public override void DrawOne(Drawer drawer, float translation, bool fill, bool drawDirs, bool drawDots)
             {
                 // TODO: Draw invalid rings differently
-                if (outer.PointsF == null || outer.PointsF.Length < 2)
+                if (!outer.IsInitialized())
                     return;
 
                 bool exteriorOnly = (inners.Count == 0);
@@ -441,27 +470,23 @@ namespace GraphicalDebugging
                     return;
 
                 GraphicsPath gp = new GraphicsPath();
-                if (fill && outer.PointsF != null)
+                if (fill && outer.IsInitialized())
                 {
-                    PointF[] points = new PointF[outer.PointsF.Length];
-                    for (int i = 0; i < outer.PointsF.Length; ++i)
-                        points[i] = new PointF(outer.PointsF[i].X + translation, outer.PointsF[i].Y);
+                    PointF[] points = outer.TranslatedPointsF(translation);
                     gp.AddPolygon(points);
                 }
 
                 foreach (var inner in inners)
                 {
                     // TODO: Draw invalid rings differently
-                    if (outer.PointsF == null || inner.PointsF.Length < 2)
+                    if (!inner.IsInitialized())
                         continue;
 
                     inner.DrawOne(drawer, translation, false, drawDirs, drawDots);
 
-                    if (fill && inner.PointsF != null)
+                    if (fill)
                     {
-                        PointF[] points = new PointF[inner.PointsF.Length];
-                        for (int i = 0; i < inner.PointsF.Length; ++i)
-                            points[i] = new PointF(inner.PointsF[i].X + translation, inner.PointsF[i].Y);
+                        PointF[] points = inner.TranslatedPointsF(translation);
                         gp.AddPolygon(points);
                     }
                 }
@@ -470,7 +495,7 @@ namespace GraphicalDebugging
                     drawer.graphics.FillPath(drawer.brush, gp);
             }
 
-            private PeriodicDrawableRing outer;
+            private PeriodicDrawableRange outer;
             private List<PeriodicDrawableRange> inners;
         }
 
@@ -981,6 +1006,16 @@ namespace GraphicalDebugging
         public float ConvertDimensionY(double src)
         {
             return (float)(src * scale_y);
+        }
+
+        public double InverseConvertDimensionX(float dst)
+        {
+            return dst / scale_x;
+        }
+
+        public double InverseConvertDimensionY(float dst)
+        {
+            return dst / scale_y;
         }
 
         public PointF Convert(Geometry.Point p)

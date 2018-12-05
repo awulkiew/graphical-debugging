@@ -686,6 +686,11 @@ namespace GraphicalDebugging
             return unit == Unit.Degree ? (angle / Math.PI * 180.0) : angle;
         }
 
+        public static double FromDegree(double angle, Unit unit)
+        {
+            return unit == Unit.Degree ? angle : (angle / 180.0 * Math.PI);
+        }
+
         public static Point SphToCart3d(Point p, Unit unit)
         {
             double lon = ToRadian(p[0], unit);
@@ -758,19 +763,25 @@ namespace GraphicalDebugging
             return Math.Abs(a - b) < double.Epsilon;
         }
 
-        public static Point[] SphericalDensify(Point p0, Point p1, Unit unit)
+        public static Point[] SphericalDensify(Point p0, Point p1, double length, Unit unit)
         {
             Point xyz0 = SphToCart3d(p0, unit);
             Point xyz1 = SphToCart3d(p1, unit);
 
             double dot01 = Dot(xyz0, xyz1);
             double angle01 = Math.Acos(dot01);
-            double threshold = ToRadian(10, Unit.Degree);
+            double threshold = ToRadian(length, unit);
 
             int n = (int)(angle01 / threshold);
 
             if (n < 1)
                 return new Point[0];
+
+            // make sure the number of additional points is even
+            // this way there will always be a segment in the middle
+            // and something may be drawn there
+            if (n % 2 != 0)
+                ++n;
 
             Point axis;
             double pi = HalfAngle(unit);
