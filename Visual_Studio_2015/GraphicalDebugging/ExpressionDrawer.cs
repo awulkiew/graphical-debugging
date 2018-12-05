@@ -61,6 +61,45 @@ namespace GraphicalDebugging
         }
 
         // -------------------------------------------------
+        // Util
+        // -------------------------------------------------
+
+        private static Geometry.Interval RelativeEnvelopeLon(Geometry.IRandomAccessRange<Geometry.Point> points, Geometry.Unit unit)
+        {
+            double x0 = points[0][0];
+            Geometry.Interval result = new Geometry.Interval(x0);
+            for (int i = 1; i < points.Count; ++i)
+            {
+                double xi = points[i][0];
+                double distNorm = Geometry.NormalizedAngleSigned(xi - x0, unit); // [-pi, pi]
+                double x1 = x0 + distNorm;
+                result.Expand(x1);
+                x0 = x1;
+            }
+            return result;
+        }
+
+        public static Geometry.Interval RelativeEnvelopeLon(NSphere nsphere, Geometry.Unit unit)
+        {
+            double cx = nsphere.Center[0];
+            double r = Math.Abs(nsphere.Radius);
+            // NOTE: The radius is always in the units of the CS which is technically wrong
+            return new Geometry.Interval(cx - r, cx + r);
+        }
+
+        public static Geometry.Interval RelativeEnvelopeLon(Geometry.IRandomAccessRange<Geometry.Point> outer,
+                                                            IEnumerable<Geometry.IRandomAccessRange<Geometry.Point>> inners,
+                                                            Geometry.Unit unit)
+        {
+            Geometry.Interval result = RelativeEnvelopeLon(outer, unit);
+            foreach (var inner in inners)
+            {
+                result.Expand(RelativeEnvelopeLon(inner, unit));
+            }
+            return result;
+        }
+
+        // -------------------------------------------------
         // Drawables and drawing
         // -------------------------------------------------
 
@@ -157,8 +196,10 @@ namespace GraphicalDebugging
                         drawer.DrawPeriodicPoint(cs, Min, box, traits.Unit);
                     else if (rw == 0 || rh == 0)
                     {
-                        Drawer.PeriodicDrawableBox pd = new Drawer.PeriodicDrawableBox(cs, new Geometry.Segment(Min, Max), traits.Unit);
-                        drawer.DrawPeriodic(cs, box, traits.Unit, pd, false, false, true);
+                        Geometry.Segment seg = new Geometry.Segment(Min, Max);
+                        Drawer.PeriodicDrawableBox pd = new Drawer.PeriodicDrawableBox(cs, seg, traits.Unit);
+                        Geometry.Interval interval = RelativeEnvelopeLon(seg, traits.Unit);
+                        drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, false, false, true);
                     }
                     else
                     {
@@ -168,7 +209,8 @@ namespace GraphicalDebugging
                         ring.Add(new Geometry.Point(Max[0], Max[1]));
                         ring.Add(new Geometry.Point(Min[0], Max[1]));
                         Drawer.PeriodicDrawableBox pd = new Drawer.PeriodicDrawableBox(cs, ring, traits.Unit);
-                        drawer.DrawPeriodic(cs, box, traits.Unit, pd, true, false, true);
+                        Geometry.Interval interval = RelativeEnvelopeLon(ring, traits.Unit);
+                        drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, true, false, true);
                     }
                 }
             }
@@ -220,7 +262,8 @@ namespace GraphicalDebugging
                     else
                     {
                         Drawer.PeriodicDrawableNSphere pd = new Drawer.PeriodicDrawableNSphere(cs, this, traits.Unit);
-                        drawer.DrawPeriodic(cs, box, traits.Unit, pd, true, false, true);
+                        Geometry.Interval interval = RelativeEnvelopeLon(this, traits.Unit);
+                        drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, true, false, true);
                     }
                 }
             }
@@ -255,7 +298,8 @@ namespace GraphicalDebugging
                 else // Radian, Degree
                 {
                     Drawer.PeriodicDrawableRange pd = new Drawer.PeriodicDrawableRange(cs, this, false, traits.Unit);
-                    drawer.DrawPeriodic(cs, box, traits.Unit, pd, false, settings.showDir, true);
+                    Geometry.Interval interval = RelativeEnvelopeLon(this, traits.Unit);
+                    drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, false, settings.showDir, true);
                 }
             }
 
@@ -284,7 +328,8 @@ namespace GraphicalDebugging
             else // Radian, Degree
             {
                 Drawer.PeriodicDrawableRange pd = new Drawer.PeriodicDrawableRange(cs, linestring, false, traits.Unit);
-                drawer.DrawPeriodic(cs, box, traits.Unit, pd, false, settings.showDir, true);
+                Geometry.Interval interval = RelativeEnvelopeLon(linestring, traits.Unit);
+                drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, false, settings.showDir, true);
             }
         }
 
@@ -334,7 +379,8 @@ namespace GraphicalDebugging
                 else
                 {
                     Drawer.PeriodicDrawableRange pd = new Drawer.PeriodicDrawableRange(cs, this, true, traits.Unit);
-                    drawer.DrawPeriodic(cs, box, traits.Unit, pd, true, settings.showDir, true);
+                    Geometry.Interval interval = RelativeEnvelopeLon(this, traits.Unit);
+                    drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, true, settings.showDir, true);
                     
                     if (settings.showDir && this.Count > 0)
                         drawer.DrawPeriodicPoint(cs, this[0], box, traits.Unit);
@@ -388,7 +434,8 @@ namespace GraphicalDebugging
             else
             {
                 Drawer.PeriodicDrawablePolygon pd = new Drawer.PeriodicDrawablePolygon(cs, polygon.Outer, polygon.Inners, traits.Unit);
-                drawer.DrawPeriodic(cs, box, traits.Unit, pd, true, settings.showDir, true);
+                Geometry.Interval interval = RelativeEnvelopeLon(polygon.Outer, polygon.Inners, traits.Unit);
+                drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, true, settings.showDir, true);
 
                 if (settings.showDir)
                 {

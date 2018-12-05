@@ -249,27 +249,6 @@ namespace GraphicalDebugging
         {
             abstract public void DrawOne(Drawer drawer, float translation, bool fill, bool drawDirs, bool drawDots);
             abstract public bool Good();
-
-            public float MinF { get { return minf; } }
-            public float MaxF { get { return maxf; } }
-
-            protected void AssignMinMaxF(PointF[] points)
-            {
-                if (points.Length == 0)
-                    return;
-
-                minf = points[0].X;
-                maxf = points[0].X;
-
-                for (int i = 1; i < points.Length; ++i)
-                {
-                    minf = Math.Min(minf, points[i].X);
-                    maxf = Math.Max(maxf, points[i].X);
-                }
-            }
-
-            protected float minf;
-            protected float maxf;
         }
 
         public class PeriodicDrawableRange : IPeriodicDrawable
@@ -295,34 +274,33 @@ namespace GraphicalDebugging
                 xs_orig[0] = cs.ConvertX(points[0][0]);
                 points_rel[0] = cs.Convert(points[0]);
 
-                double x_prev = points[0][0];
+                Geometry.Point p0 = points[0].Clone();
                 for (int i = 1; i < points.Count; ++i)
                 {
-                    xs_orig[i] = cs.ConvertX(points[i][0]);
+                    Geometry.Point p1 = points[i].Clone();
 
-                    double distNorm = Geometry.NormalizedAngleSigned(points[i][0] - points[i - 1][0], unit); // [-pi, pi]
-                    double x_curr = x_prev + distNorm;
-                    points_rel[i] = new PointF(cs.ConvertX(x_curr),
-                                               cs.ConvertY(points[i][1]));
+                    xs_orig[i] = cs.ConvertX(p1[0]);
 
-                    x_prev = x_curr;
+                    double distNorm = Geometry.NormalizedAngleSigned(p1[0] - p0[0], unit); // [-pi, pi]
+                    p1[0] = p0[0] + distNorm;
+                    points_rel[i] = cs.Convert(p1);
+
+                    p0 = p1;
                 }
-
-                // calculate relative box X
-                AssignMinMaxF(points_rel);
             }
 
-            /*private static PointF[] DensifyAndConvert(LocalCS cs, Geometry.Point p0, Geometry.Point p1, Geometry.Unit unit)
+            private static PointF[] DensifyAndConvert(LocalCS cs, Geometry.Point p0, Geometry.Point p1, Geometry.Unit unit)
             {
-                Geometry.Point[] densPts = Geometry.SphericalDensify(p0, p1, unit);
-                PointF[] result = new PointF[densPts.Length];
-                for (int i = 0; i < densPts.Length; ++i)
+                Geometry.Point[] densPoints = Geometry.SphericalDensify(p0, p1, unit);
+                PointF[] result = new PointF[densPoints.Length];
+                for (int j = 0; j < densPoints.Length; ++j)
                 {
-                    result[i] = new PointF(cs.ConvertX(densPts[i][0]),
-                                           cs.ConvertY(densPts[i][1]));
+                    double densDistNorm = Geometry.NormalizedAngleSigned(densPoints[j][0] - p0[0], unit);
+                    densPoints[j][0] = p0[0] + densDistNorm;
+                    result[j] = cs.Convert(densPoints[j]);
                 }
                 return result;
-            }*/
+            }
 
             public override void DrawOne(Drawer drawer, float translation, bool fill, bool drawDirs, bool drawDots)
             {
@@ -342,9 +320,10 @@ namespace GraphicalDebugging
 
             public override bool Good() { return points_rel != null; }
 
-            public PointF[] points_rel { get; protected set; }
-            public float[] xs_orig { get; protected set; }
+            public PointF[] PointsF { get { return points_rel; } }
 
+            protected PointF[] points_rel;
+            protected float[] xs_orig;
             protected bool closed;
         }
 
@@ -372,9 +351,6 @@ namespace GraphicalDebugging
                     points_rel[i] = new PointF(cs.ConvertX(x_curr),
                                                cs.ConvertY(points[i][1]));
                 }
-
-                // calculate relative box X
-                AssignMinMaxF(points_rel);
             }
         }
 
@@ -382,13 +358,9 @@ namespace GraphicalDebugging
         {
             public PeriodicDrawableNSphere(LocalCS cs, Geometry.NSphere nsphere, Geometry.Unit unit)
             {
-                c_rel = cs.Convert(nsphere.Center);
-                r = cs.ConvertDimensionX(nsphere.Radius);
-
                 // NOTE: The radius is always in the units of the CS which is technically wrong
-
-                minf = c_rel.X - r;
-                maxf = c_rel.X + r;
+                c_rel = cs.Convert(nsphere.Center);
+                r = cs.ConvertDimensionX(Math.Abs(nsphere.Radius));
             }
 
             public override void DrawOne(Drawer drawer, float translation, bool fill, bool drawDirs, bool drawDots)
@@ -419,8 +391,8 @@ namespace GraphicalDebugging
 
             public override bool Good() { return r >= 0; }
 
-            protected PointF c_rel { get; set; }
-            protected float r { get; set; }
+            protected PointF c_rel;
+            protected float r;
         }
 
         public class PeriodicDrawablePolygon : IPeriodicDrawable
@@ -432,18 +404,11 @@ namespace GraphicalDebugging
             {
                 this.outer = new PeriodicDrawableRange(cs, outer, true, unit);
 
-                minf = this.outer.MinF;
-                maxf = this.outer.MaxF;
-
                 this.inners = new List<PeriodicDrawableRange>();
                 foreach (var inner in inners)
                 {
                     PeriodicDrawableRange pd = new PeriodicDrawableRange(cs, inner, true, unit);
                     this.inners.Add(pd);
-
-                    // expand relative box X
-                    minf = Math.Min(minf, pd.MinF);
-                    maxf = Math.Max(maxf, pd.MaxF);
                 }
             }
 
@@ -455,11 +420,11 @@ namespace GraphicalDebugging
                 outer.DrawOne(drawer, translation, false, drawDirs, drawDots);
 
                 GraphicsPath gp = new GraphicsPath();
-                if (fill && outer.points_rel != null)
+                if (fill && outer.PointsF != null)
                 {
-                    PointF[] points = new PointF[outer.points_rel.Length];
-                    for (int i = 0; i < outer.points_rel.Length; ++i)
-                        points[i] = new PointF(outer.points_rel[i].X + translation, outer.points_rel[i].Y);
+                    PointF[] points = new PointF[outer.PointsF.Length];
+                    for (int i = 0; i < outer.PointsF.Length; ++i)
+                        points[i] = new PointF(outer.PointsF[i].X + translation, outer.PointsF[i].Y);
                     gp.AddPolygon(points);
                 }
 
@@ -469,11 +434,11 @@ namespace GraphicalDebugging
                     {
                         inner.DrawOne(drawer, translation, false, drawDirs, drawDots);
 
-                        if (fill && inner.points_rel != null)
+                        if (fill && inner.PointsF != null)
                         {
-                            PointF[] points = new PointF[inner.points_rel.Length];
-                            for (int i = 0; i < inner.points_rel.Length; ++i)
-                                points[i] = new PointF(inner.points_rel[i].X + translation, inner.points_rel[i].Y);
+                            PointF[] points = new PointF[inner.PointsF.Length];
+                            for (int i = 0; i < inner.PointsF.Length; ++i)
+                                points[i] = new PointF(inner.PointsF[i].X + translation, inner.PointsF[i].Y);
                             gp.AddPolygon(points);
                         }
                     }
@@ -490,11 +455,11 @@ namespace GraphicalDebugging
         }
 
         public void DrawPeriodic(LocalCS cs,
-                                 Geometry.Box box, Geometry.Unit unit,
-                                 IPeriodicDrawable pd,
+                                 Geometry.Box box, Geometry.Interval interval, Geometry.Unit unit,
+                                 IPeriodicDrawable drawer,
                                  bool fill, bool drawDirs, bool drawDots)
         {
-            if (!pd.Good())
+            if (!drawer.Good())
                 return;
 
             double pi = Geometry.HalfAngle(unit);
@@ -502,12 +467,15 @@ namespace GraphicalDebugging
             float box_minf = cs.ConvertX(box.Min[0]);
             float box_maxf = cs.ConvertX(box.Max[0]);
 
-            if (pd.MaxF >= box_minf && pd.MinF <= box_maxf)
-                pd.DrawOne(this, 0, fill, drawDirs, drawDots);
+            float minf = cs.ConvertX(interval.Min);
+            float maxf = cs.ConvertX(interval.Max);
+
+            if (maxf >= box_minf && minf <= box_maxf)
+                drawer.DrawOne(this, 0, fill, drawDirs, drawDots);
 
             // west
-            float minf_i = pd.MinF;
-            float maxf_i = pd.MaxF;
+            float minf_i = minf;
+            float maxf_i = maxf;
             float translationf = 0;
             while (maxf_i >= box_minf)
             {
@@ -515,11 +483,11 @@ namespace GraphicalDebugging
                 minf_i -= periodf;
                 maxf_i -= periodf;
                 if (maxf_i >= box_minf && minf_i <= box_maxf)
-                    pd.DrawOne(this, translationf, fill, drawDirs, drawDots);
+                    drawer.DrawOne(this, translationf, fill, drawDirs, drawDots);
             }
             // east
-            minf_i = pd.MinF;
-            maxf_i = pd.MaxF;
+            minf_i = minf;
+            maxf_i = maxf;
             translationf = 0;
             while (minf_i <= box_maxf)
             {
@@ -527,7 +495,7 @@ namespace GraphicalDebugging
                 minf_i += periodf;
                 maxf_i += periodf;
                 if (maxf_i >= box_minf && minf_i <= box_maxf)
-                    pd.DrawOne(this, translationf, fill, drawDirs, drawDots);
+                    drawer.DrawOne(this, translationf, fill, drawDirs, drawDots);
             }
         }
 

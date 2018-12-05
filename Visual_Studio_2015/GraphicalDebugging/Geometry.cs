@@ -77,11 +77,16 @@ namespace GraphicalDebugging
                 get { return coords.Length; }
             }
 
-            public object Clone()
+            public Point Clone()
             {
                 Point res = new Point();
                 res.coords = (double[])coords.Clone();
                 return res;
+            }
+
+            object ICloneable.Clone()
+            {
+                return this.Clone();
             }
 
             public override string ToString()
@@ -102,6 +107,36 @@ namespace GraphicalDebugging
             protected double[] coords;
         }
 
+        public class Interval
+        {
+            public Interval(double v)
+            {
+                Min = v;
+                Max = v;
+            }
+
+            public Interval(double mi, double ma)
+            {
+                Min = mi;
+                Max = ma;
+            }
+
+            public void Expand(double v)
+            {
+                Min = Math.Min(Min, v);
+                Max = Math.Max(Max, v);
+            }
+
+            public void Expand(Interval i)
+            {
+                Min = Math.Min(Min, i.Min);
+                Max = Math.Max(Max, i.Max);
+            }
+
+            public double Min;
+            public double Max;
+        }
+
         public class Box : ICloneable
         {
             public Box()
@@ -117,9 +152,14 @@ namespace GraphicalDebugging
 
             public double Dim(int i) { return Max[i] - Min[i]; }
 
-            public object Clone()
+            public Box Clone()
             {
-                return new Box((Point)Min.Clone(), (Point)Max.Clone());
+                return new Box(Min.Clone(), Max.Clone());
+            }
+
+            object ICloneable.Clone()
+            {
+                return this.Clone();
             }
 
             public override string ToString()
@@ -765,16 +805,16 @@ namespace GraphicalDebugging
                 double cos_a = Math.Cos(a);
                 double sin_a = Math.Sin(a);
                 // cos_a * v
-                Point s1 = xyz0.Clone() as Point;
+                Point s1 = xyz0.Clone();
                 Mul(s1, cos_a);
                 // sin_a * (n x v)
                 Point s2 = Cross(axis, xyz0);
                 Mul(s2, sin_a);
                 // (1 - cos_a)(n.v) * n
-                Point s3 = axis.Clone() as Point;
+                Point s3 = axis.Clone();
                 Mul(s3, (1.0 - cos_a) * Dot(axis, xyz0));
                 // v_rot = cos_a * v + sin_a * (n x v) + (1 - cos_a)(n.v) * e
-                Point v_rot = s1.Clone() as Point;
+                Point v_rot = s1.Clone();
                 Add(v_rot, s2);
                 Add(v_rot, s3);
 
