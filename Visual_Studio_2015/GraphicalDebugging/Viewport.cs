@@ -192,18 +192,19 @@ namespace GraphicalDebugging
             graphics.FillPath(brush, path);
         }
 
-        public void DrawPeriodicPoint(LocalCS cs, Geometry.Point point, Geometry.Box box, Geometry.Unit unit)
+        public void DrawPeriodicPoint(LocalCS cs, Geometry.Point point, Geometry.Box box, Geometry.Unit unit, bool drawDots)
         {
             PointF p = cs.Convert(point);
             DrawPoint(p);
 
             double pi2 = 2 * Geometry.HalfAngle(unit);
+            Pen pen = drawDots ? this.penDot : this.pen;
             // draw points on the west
             double x_tmp = point[0] - pi2;
             while (x_tmp >= box.Min[0])
             {
                 p.X = cs.ConvertX(x_tmp);
-                DrawPoint(p, penDot);
+                DrawPoint(p, pen);
                 x_tmp -= pi2;
             }
             // draw points on the east
@@ -211,7 +212,7 @@ namespace GraphicalDebugging
             while (x_tmp <= box.Max[0])
             {
                 p.X = cs.ConvertX(x_tmp);
-                DrawPoint(p, penDot);
+                DrawPoint(p, pen);
                 x_tmp += pi2;
             }
         }
@@ -303,8 +304,13 @@ namespace GraphicalDebugging
                 {
                     PointF p0 = Translated(points_rel[i - 1], translation_x);
                     PointF p1 = Translated(points_rel[i], translation_x);
-                    bool sameP0 = Math.Abs(p0.X - xs_orig[i - 1]) < 0.001;
-                    bool sameP1 = Math.Abs(p1.X - xs_orig[i]) < 0.001;
+                    bool sameP0 = true;
+                    bool sameP1 = true;
+                    if (drawDots)
+                    {
+                        sameP0 = Math.Abs(p0.X - xs_orig[i - 1]) < 0.001;
+                        sameP1 = Math.Abs(p1.X - xs_orig[i]) < 0.001;
+                    }
 
                     if ( dens_points_rel != null
                       && dens_points_rel[i - 1].Length > 0 )

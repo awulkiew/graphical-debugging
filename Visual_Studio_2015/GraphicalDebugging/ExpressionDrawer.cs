@@ -53,6 +53,7 @@ namespace GraphicalDebugging
             public Color color = Color.Empty;
             public bool showDir = true;
             public bool showLabels = true;
+            public bool showDots = true;
             public bool valuePlot_enableBars = true;
             public bool valuePlot_enableLines = false;
             public bool valuePlot_enablePoints = false;
@@ -123,7 +124,7 @@ namespace GraphicalDebugging
             }
             else // Radian, Degree
             {
-                drawer.DrawPeriodicPoint(cs, point, box, traits.Unit);
+                drawer.DrawPeriodicPoint(cs, point, box, traits.Unit, settings.showDots);
             }
         }
 
@@ -195,13 +196,13 @@ namespace GraphicalDebugging
                 else // Radian, Degree
                 {
                     if (rw == 0 && rh == 0)
-                        drawer.DrawPeriodicPoint(cs, Min, box, traits.Unit);
+                        drawer.DrawPeriodicPoint(cs, Min, box, traits.Unit, settings.showDots);
                     else if (rw == 0 || rh == 0)
                     {
                         Geometry.Segment seg = new Geometry.Segment(Min, Max);
                         Drawer.PeriodicDrawableBox pd = new Drawer.PeriodicDrawableBox(cs, seg, traits.Unit);
                         Geometry.Interval interval = RelativeEnvelopeLon(seg, false, traits.Unit);
-                        drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, false, false, true);
+                        drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, false, false, settings.showDots);
                     }
                     else
                     {
@@ -212,7 +213,7 @@ namespace GraphicalDebugging
                         ring.Add(new Geometry.Point(Min[0], Max[1]));
                         Drawer.PeriodicDrawableBox pd = new Drawer.PeriodicDrawableBox(cs, ring, traits.Unit);
                         Geometry.Interval interval = RelativeEnvelopeLon(ring, true, traits.Unit);
-                        drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, true, false, true);
+                        drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, true, false, settings.showDots);
                     }
                 }
             }
@@ -260,12 +261,12 @@ namespace GraphicalDebugging
                 else // Radian, Degree
                 {
                     if (rx == 0 || ry == 0)
-                        drawer.DrawPeriodicPoint(cs, Center, box, traits.Unit);
+                        drawer.DrawPeriodicPoint(cs, Center, box, traits.Unit, settings.showDots);
                     else
                     {
                         Drawer.PeriodicDrawableNSphere pd = new Drawer.PeriodicDrawableNSphere(cs, this, traits.Unit);
                         Geometry.Interval interval = RelativeEnvelopeLon(this, traits.Unit);
-                        drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, true, false, true);
+                        drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, true, false, settings.showDots);
                     }
                 }
             }
@@ -303,7 +304,7 @@ namespace GraphicalDebugging
                 {
                     Drawer.PeriodicDrawableRange pd = new Drawer.PeriodicDrawableRange(cs, this, false, traits.Unit);
                     Geometry.Interval interval = RelativeEnvelopeLon(this, false, traits.Unit);
-                    drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, false, settings.showDir, true);
+                    drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, false, settings.showDir, settings.showDots);
                 }
             }
 
@@ -335,7 +336,7 @@ namespace GraphicalDebugging
             {
                 Drawer.PeriodicDrawableRange pd = new Drawer.PeriodicDrawableRange(cs, linestring, false, traits.Unit);
                 Geometry.Interval interval = RelativeEnvelopeLon(linestring, false, traits.Unit);
-                drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, false, settings.showDir, true);
+                drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, false, settings.showDir, settings.showDots);
             }
         }
 
@@ -386,10 +387,10 @@ namespace GraphicalDebugging
                 {
                     Drawer.PeriodicDrawableRange pd = new Drawer.PeriodicDrawableRange(cs, this, true, traits.Unit);
                     Geometry.Interval interval = RelativeEnvelopeLon(this, true, traits.Unit);
-                    drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, true, settings.showDir, true);
+                    drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, true, settings.showDir, settings.showDots);
                     
                     if (settings.showDir && this.Count > 0)
-                        drawer.DrawPeriodicPoint(cs, this[0], box, traits.Unit);
+                        drawer.DrawPeriodicPoint(cs, this[0], box, traits.Unit, settings.showDots);
                 }
             }
 
@@ -441,16 +442,16 @@ namespace GraphicalDebugging
             {
                 Drawer.PeriodicDrawablePolygon pd = new Drawer.PeriodicDrawablePolygon(cs, polygon.Outer, polygon.Inners, traits.Unit);
                 Geometry.Interval interval = RelativeEnvelopeLon(polygon.Outer, polygon.Inners, traits.Unit);
-                drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, true, settings.showDir, true);
+                drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, true, settings.showDir, settings.showDots);
 
                 if (settings.showDir)
                 {
                     if (settings.showDir && polygon.Outer.Count > 0)
-                        drawer.DrawPeriodicPoint(cs, polygon.Outer[0], box, traits.Unit);
+                        drawer.DrawPeriodicPoint(cs, polygon.Outer[0], box, traits.Unit, settings.showDots);
 
                     foreach (Ring inner in polygon.Inners)
                         if (inner.Count > 0)
-                            drawer.DrawPeriodicPoint(cs, inner[0], box, traits.Unit);
+                            drawer.DrawPeriodicPoint(cs, inner[0], box, traits.Unit, settings.showDots);
                 }
             }
         }

@@ -226,6 +226,7 @@ namespace GraphicalDebugging
                 {
                     referenceSettings.showDir = optionPage.EnableDirections;
                     referenceSettings.showLabels = optionPage.EnableLabels;
+                    referenceSettings.showDots = true;
                 }
 
                 // TODO: Names are redundant

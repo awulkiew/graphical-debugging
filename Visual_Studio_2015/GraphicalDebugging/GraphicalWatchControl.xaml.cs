@@ -161,6 +161,7 @@ namespace GraphicalDebugging
                 ExpressionDrawer.Settings settings = new ExpressionDrawer.Settings();
                 settings.showDir = false;
                 settings.showLabels = false;
+                settings.showDots = false;
                 // Other settings
                 int imageWidth = 100;
                 int imageHeight = 100;
@@ -182,6 +183,7 @@ namespace GraphicalDebugging
                     }
                     settings.showDir = optionPage.EnableDirections;
                     settings.showLabels = optionPage.EnableLabels;
+                    settings.showDots = false;
                     imageHeight = Math.Max(optionPage.ImageHeight, 20);
                     imageWidth = Math.Max(optionPage.ImageWidth, 20);                    
                     displayMultiPointsAsPlots = optionPage.MultiPointDisplayMode == GraphicalWatchOptionPage.MultiPointDisplayModeValue.PointPlot;
