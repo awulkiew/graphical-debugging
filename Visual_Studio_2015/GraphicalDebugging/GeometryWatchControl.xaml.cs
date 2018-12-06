@@ -224,6 +224,7 @@ namespace GraphicalDebugging
                 GeometryWatchOptionPage optionPage = Util.GetDialogPage<GeometryWatchOptionPage>();
                 if (optionPage != null)
                 {
+                    referenceSettings.densify = optionPage.Densify;
                     referenceSettings.showDir = optionPage.EnableDirections;
                     referenceSettings.showLabels = optionPage.EnableLabels;
                     referenceSettings.showDots = true;

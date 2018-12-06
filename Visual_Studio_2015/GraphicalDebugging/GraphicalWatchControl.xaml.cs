@@ -159,6 +159,7 @@ namespace GraphicalDebugging
             {
                 // Empty color - use default
                 ExpressionDrawer.Settings settings = new ExpressionDrawer.Settings();
+                settings.densify = true;
                 settings.showDir = false;
                 settings.showLabels = false;
                 settings.showDots = false;
@@ -181,6 +182,7 @@ namespace GraphicalDebugging
                         settings.pointPlot_enableLines = optionPage.PointPlot_EnableLines;
                         settings.pointPlot_enablePoints = optionPage.PointPlot_EnablePoints;
                     }
+                    settings.densify = optionPage.Densify;
                     settings.showDir = optionPage.EnableDirections;
                     settings.showLabels = optionPage.EnableLabels;
                     settings.showDots = false;

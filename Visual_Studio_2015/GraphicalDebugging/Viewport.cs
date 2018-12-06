@@ -232,7 +232,8 @@ namespace GraphicalDebugging
             public PeriodicDrawableRange(LocalCS cs,
                                          Geometry.IRandomAccessRange<Geometry.Point> points,
                                          bool closed,
-                                         Geometry.Unit unit)
+                                         Geometry.Unit unit,
+                                         bool densify)
             {
                 this.closed = closed;
                 this.containsPole = ContainsPole.No;
@@ -249,7 +250,8 @@ namespace GraphicalDebugging
 
                 xs_orig = new float[count];
                 points_rel = new PointF[count];
-                dens_points_rel = new PointF[points.Count][];
+                if (densify)
+                    dens_points_rel = new PointF[points.Count][];
 
                 xs_orig[0] = cs.ConvertX(points[0][0]);
                 points_rel[0] = cs.Convert(points[0]);
@@ -265,7 +267,8 @@ namespace GraphicalDebugging
                     p1[0] = p0[0] + distNorm;
                     points_rel[i] = cs.Convert(p1);
 
-                    dens_points_rel[i-1] = DensifyAndConvert(cs, p0, p1, densLength, unit);
+                    if (dens_points_rel != null)
+                        dens_points_rel[i-1] = DensifyAndConvert(cs, p0, p1, densLength, unit);
 
                     p0 = p1;
                 }
@@ -509,14 +512,15 @@ namespace GraphicalDebugging
             public PeriodicDrawablePolygon(LocalCS cs,
                                            Geometry.IRandomAccessRange<Geometry.Point> outer,
                                            IEnumerable<Geometry.IRandomAccessRange<Geometry.Point>> inners,
-                                           Geometry.Unit unit)
+                                           Geometry.Unit unit,
+                                           bool densify)
             {
-                this.outer = new PeriodicDrawableRange(cs, outer, true, unit);
+                this.outer = new PeriodicDrawableRange(cs, outer, true, unit, densify);
 
                 this.inners = new List<PeriodicDrawableRange>();
                 foreach (var inner in inners)
                 {
-                    PeriodicDrawableRange pd = new PeriodicDrawableRange(cs, inner, true, unit);
+                    PeriodicDrawableRange pd = new PeriodicDrawableRange(cs, inner, true, unit, densify);
                     this.inners.Add(pd);
                 }
             }

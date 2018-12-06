@@ -12,6 +12,7 @@ namespace GraphicalDebugging
 {
     public class GraphicalWatchOptionPage : DialogPage
     {
+        private bool densify = true;
         private bool enableDirs = false;
         private bool enableLabels = false;
         private int imageHeight = 100;
@@ -32,6 +33,15 @@ namespace GraphicalDebugging
             [Description("Point Plot")]
             PointPlot
         };
+
+        [Category("Display")]
+        [DisplayName("Densify Non-Cartesian Geometries")]
+        [Description("Enable/disable densification to reflect curvature of the globe.")]
+        public bool Densify
+        {
+            get { return densify; }
+            set { densify = value; }
+        }
 
         [Category("Display")]
         [DisplayName("Enable Directions")]

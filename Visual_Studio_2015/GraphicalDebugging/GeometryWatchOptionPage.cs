@@ -11,8 +11,18 @@ namespace GraphicalDebugging
 {
     public class GeometryWatchOptionPage : DialogPage
     {
+        private bool densify = true;
         private bool enableDirs = true;
         private bool enableLabels = true;
+
+        [Category("Display")]
+        [DisplayName("Densify Non-Cartesian Geometries")]
+        [Description("Enable/disable densification to reflect curvature of the globe.")]
+        public bool Densify
+        {
+            get { return densify; }
+            set { densify = value; }
+        }
 
         [Category("Display")]
         [DisplayName("Enable Directions")]
