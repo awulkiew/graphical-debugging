@@ -784,15 +784,14 @@ namespace GraphicalDebugging
                 ++n;
 
             Point axis;
-            double pi = HalfAngle(unit);
-            if (!Equals(angle01, pi))
+            if (!Equals(angle01, Math.PI))
             {
                 axis = Cross(xyz0, xyz1);
                 VecNormalize(axis);
             }
             else
             {
-                double halfPi = pi / 2;
+                double halfPi = HalfAngle(unit) / 2;
                 if (Equals(p0[1], halfPi))
                     axis = new Point(0, 1, 0);
                 else if (Equals(p0[1], -halfPi))

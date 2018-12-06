@@ -357,15 +357,51 @@ namespace GraphicalDebugging
 
             private static PointF[] DensifyAndConvert(LocalCS cs, Geometry.Point p0, Geometry.Point p1, double length, Geometry.Unit unit)
             {
+                double distNorm = Geometry.NormalizedAngleSigned(p1[0] - p0[0], unit);
+                bool intersPole = IsAntipodal(distNorm, unit);
+                double halfPi = Geometry.HalfAngle(unit) / 2;
+                double poleLat = p1[1] - p0[1] >= 0 ? halfPi : -halfPi;
+                int intersPoleIndex = -1;
+
                 Geometry.Point[] densPoints = Geometry.SphericalDensify(p0, p1, length, unit);
-                PointF[] result = new PointF[densPoints.Length];
-                for (int j = 0; j < densPoints.Length; ++j)
+                PointF[] result = new PointF[densPoints.Length + (intersPole ? 2 : 0)];
+                int k = 0;
+                for (int j = 0; j < densPoints.Length; ++j, ++k)
                 {
                     double densDistNorm = Geometry.NormalizedAngleSigned(densPoints[j][0] - p0[0], unit);
                     densPoints[j][0] = p0[0] + densDistNorm;
-                    result[j] = cs.Convert(densPoints[j]);
+
+                    if (intersPole
+                        && intersPoleIndex == -1
+                        && Math.Abs(densDistNorm) > halfPi)
+                    {
+                        intersPoleIndex = j;
+                        Geometry.Point p = j == 0 ? p0 : densPoints[j - 1];
+                        float poleF = cs.ConvertY(poleLat);
+                        result[k++] = new PointF(cs.ConvertX(p[0]), poleF);
+                        result[k++] = new PointF(cs.ConvertX(densPoints[j][0]), poleF);
+                    }
+
+                    result[k] = cs.Convert(densPoints[j]);
                 }
+
+                // last segment
+                if (intersPole && intersPoleIndex == -1)
+                {
+                    int j = densPoints.Length;
+                    intersPoleIndex = j;
+                    float poleF = cs.ConvertY(poleLat);
+                    result[j] = new PointF(cs.ConvertX(densPoints[j - 1][0]), poleF);
+                    result[j + 1] = new PointF(cs.ConvertX(p1[0]), poleF);
+                }
+
                 return result;
+            }
+
+            public static bool IsAntipodal(double distNorm, Geometry.Unit unit)
+            {
+                double pi = Geometry.HalfAngle(unit);
+                return Math.Abs(Math.Abs(distNorm) - pi) < double.Epsilon * pi;
             }
 
             // NOTE: This method assumes that the geometry is closed
