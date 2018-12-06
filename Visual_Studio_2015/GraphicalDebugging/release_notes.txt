@@ -3,6 +3,9 @@ version 0.19
 additions:
 - segments of non-cartesian geometries are now densified and drawn as curves in order to reflect the curvature of the globe
 
+bugfixes:
+- various fixes for displaying of non-cartesian geometries
+
 version 0.18
 
 additions:
