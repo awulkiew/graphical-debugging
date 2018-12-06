@@ -341,11 +341,11 @@ namespace GraphicalDebugging
             }
         }
 
-        private static Geometry.Box AabbRange(Geometry.IRandomAccessRange<Geometry.Point> rng, Geometry.Traits traits, bool calculateEnvelope)
+        private static Geometry.Box AabbRange(Geometry.IRandomAccessRange<Geometry.Point> rng, bool closed, Geometry.Traits traits, bool calculateEnvelope)
         {
             return calculateEnvelope
-                 ? Geometry.Envelope(rng, traits)
-                 : Geometry.Aabb(rng, traits.Unit);
+                 ? Geometry.Envelope(rng, closed, traits)
+                 : Geometry.Aabb(rng, closed, traits.Unit);
         }
 
         public class Linestring : Geometry.Linestring, IDrawable
@@ -357,7 +357,7 @@ namespace GraphicalDebugging
 
             public Geometry.Box Aabb(Geometry.Traits traits, bool calculateEnvelope)
             {
-                return AabbRange(this, traits, calculateEnvelope);
+                return AabbRange(this, false, traits, calculateEnvelope);
             }
         }
 
@@ -397,7 +397,7 @@ namespace GraphicalDebugging
 
             public Geometry.Box Aabb(Geometry.Traits traits, bool calculateEnvelope)
             {
-                return AabbRange(this, traits, calculateEnvelope);
+                return AabbRange(this, true, traits, calculateEnvelope);
             }
         }
 
@@ -459,11 +459,11 @@ namespace GraphicalDebugging
 
         private static Geometry.Box AabbPolygon(Geometry.Polygon poly, Geometry.Traits traits, bool calculateEnvelope)
         {
-            Geometry.Box result = AabbRange(poly.Outer, traits, calculateEnvelope);
+            Geometry.Box result = AabbRange(poly.Outer, true, traits, calculateEnvelope);
 
             foreach (Geometry.Ring inner in poly.Inners)
             {
-                Geometry.Box aabb = AabbRange(inner, traits, calculateEnvelope);
+                Geometry.Box aabb = AabbRange(inner, true, traits, calculateEnvelope);
                 if (calculateEnvelope)
                     Geometry.Expand(result, aabb, traits);
                 else
@@ -556,7 +556,7 @@ namespace GraphicalDebugging
 
                 for (int i = 0; i < this.Count; ++i)
                 {
-                    Geometry.Box ls_box = AabbRange(this[i], traits, calculateEnvelope);
+                    Geometry.Box ls_box = AabbRange(this[i], false, traits, calculateEnvelope);
 
                     if (box == null)
                         box = ls_box;

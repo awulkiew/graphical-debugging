@@ -316,7 +316,7 @@ namespace GraphicalDebugging
             return result;
         }
 
-        public static Box Aabb(IRandomAccessRange<Point> points, Unit unit)
+        public static Box Aabb(IRandomAccessRange<Point> points, bool closed, Unit unit)
         {
             Box result = new Box();
 
@@ -335,13 +335,12 @@ namespace GraphicalDebugging
             }
             Point p2 = points[1];
 
-            // NOTE: This does not take into account the closing segment
-
             result = Aabb(p1, p2, unit);
-            for (int i = 2; i < points.Count; ++i)
+            int count = points.Count + (closed ? 1 : 0);
+            for (int i = 2; i < count; ++i)
             {
                 p1 = p2;
-                p2 = points[i];
+                p2 = points[i % points.Count];
                 Box b = Aabb(p1, p2, unit);
                 Expand(result, b);
             }
@@ -365,7 +364,7 @@ namespace GraphicalDebugging
         }
         public static Box Aabb(Linestring linestring, Traits traits)
         {
-            return Aabb(linestring, traits.Unit);
+            return Aabb(linestring, false, traits.Unit);
         }
 
         public static bool IntersectsX(Box box, double x)
@@ -523,7 +522,7 @@ namespace GraphicalDebugging
             if (p[1] > box.Max[1]) box.Max[1] = p[1];
         }*/
 
-        public static Box Envelope(IRandomAccessRange<Point> range, Traits traits)
+        public static Box Envelope(IRandomAccessRange<Point> range, bool closed, Traits traits)
         {
             if (range.Count <= 0)
             {
@@ -537,10 +536,11 @@ namespace GraphicalDebugging
             }
             else
             {
+                int count = range.Count + (closed ? 1 : 0);
                 Box result = Envelope(range[0], range[1], traits);
-                for (int i = 2; i < range.Count; ++i)
+                for (int i = 2; i < count; ++i)
                 {
-                    Box b = Envelope(range[i], range[i - 1], traits);
+                    Box b = Envelope(range[i % range.Count], range[i - 1], traits);
                     Expand(result, b, traits);
                 }
                 return result;
@@ -578,14 +578,14 @@ namespace GraphicalDebugging
             if (left_dist >= 0 && right_dist >= 0)
             {
                 if (left_dist < right_dist)
-                    box.Min[0] = xmin2;
+                    box.Min[0] -= left_dist;
                 else
-                    box.Max[0] = xmax2;
+                    box.Max[0] += right_dist;
             }
             else if (left_dist >= 0)
-                box.Min[0] = xmin2;
+                box.Min[0] -= left_dist;
             else if (right_dist >= 0)
-                box.Max[0] = xmax2;
+                box.Max[0] += right_dist;
 
             if (box.Max[0] < box.Min[0])
                 box.Max[0] += twoPi;
