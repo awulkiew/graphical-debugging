@@ -4,7 +4,7 @@ additions:
 - segments of non-cartesian geometries are now densified and drawn as curves in order to reflect the curvature of the globe
 
 bugfixes:
-- various fixes for displaying of non-cartesian geometries
+- various fixes for non-cartesian geometries, incl. handling of geometries going around the globe and segments going through poles
 
 version 0.18
 
