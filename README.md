@@ -90,6 +90,8 @@ Supported:
 
 Geometries in spherical_equatorial and geographic coordinate systems are displayed in a way allowing to see what coordinates were used to define a geometry. Note that various libraries may require coordinates in a certain range. This extension tries to display any coordinates as good as possible.
 
+Segments may be densified in order to reflect the curvature of the globe. This behavior is enabled by default but can be disabled in **Tools**->**Options**->**Graphical Debugging**->**Geometry Watch**.
+
 ![Geometry Watch Spherical](images/geometry_watch_sph.png)
 
 where
@@ -126,6 +128,8 @@ Supported:
 ![Graphical Watch](images/graphical_watch.png)
 
 Geometries in spherical_equatorial and geographic coordinate systems are displayed in a convenient, compact way.
+
+Segments may be densified in order to reflect the curvature of the globe. This behavior is enabled by default but can be disabled in **Tools**->**Options**->**Graphical Debugging**->**Graphical Watch**.
 
 ![Graphical Watch Spherical](images/graphical_watch_sph.png)
 
