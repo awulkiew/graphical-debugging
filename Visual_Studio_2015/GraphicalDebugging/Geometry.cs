@@ -834,5 +834,15 @@ namespace GraphicalDebugging
 
             return result;
         }
+
+        public static double SphericalTrapezoidArea(Point p0, Point p1, Unit unit)
+        {
+            double tanLat0 = Math.Tan(ToRadian(p0[1], unit) / 2.0);
+            double tanLat1 = Math.Tan(ToRadian(p1[1], unit) / 2.0);
+            return 2.0 * Math.Atan(
+                            (tanLat0 + tanLat1) / (1 + tanLat0 * tanLat1)
+                          * Math.Tan((ToRadian(p1[0], unit) - ToRadian(p0[0], unit)) / 2)
+                         );
+        }
     }
 }

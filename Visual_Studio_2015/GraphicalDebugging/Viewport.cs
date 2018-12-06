@@ -234,6 +234,7 @@ namespace GraphicalDebugging
                                          Geometry.Unit unit)
             {
                 this.closed = closed;
+                this.containsPole = ContainsPole.No;
 
                 if (points.Count < 2)
                     return;
@@ -266,6 +267,27 @@ namespace GraphicalDebugging
                     dens_points_rel[i-1] = DensifyAndConvert(cs, p0, p1, densLength, unit);
 
                     p0 = p1;
+                }
+
+                if (closed && Math.Abs(points_rel[0].X - points_rel[points.Count].X) > 0.1)
+                {
+                    // Check which pole
+                    double area = 0;
+                    p0 = points[0].Clone();
+                    for (int i = 1; i < count; ++i)
+                    {
+                        Geometry.Point p1 = points[i % points.Count].Clone();
+                        double distNorm = Geometry.NormalizedAngleSigned(p1[0] - p0[0], unit); // [-pi, pi]
+                        p1[0] = p0[0] + distNorm;
+                        area += Geometry.SphericalTrapezoidArea(p0, p1, unit);
+                        p0 = p1;
+                    }
+
+                    int areaSign = Math.Sign(area);
+                    int dirSign = Math.Sign(points_rel[points.Count].X - points_rel[0].X);
+                    this.containsPole = (areaSign * dirSign >= 0)
+                                      ? ContainsPole.North
+                                      : ContainsPole.South;
                 }
             }
 
@@ -314,7 +336,7 @@ namespace GraphicalDebugging
 
                 if (fill)
                 {
-                    PointF[] points = AreaPointsF(translation_x);
+                    PointF[] points = AreaPointsF(drawer, translation_x);
                     drawer.graphics.FillPolygon(drawer.brush, points);
                 }
             }
@@ -339,7 +361,7 @@ namespace GraphicalDebugging
 
             // NOTE: This method assumes that the geometry is closed
             //   It's suitable only for areal geometries
-            public PointF[] AreaPointsF(float translation_x)
+            public PointF[] AreaPointsF(Drawer drawer, float translation_x)
             {
                 int count = points_rel.Length;
                 if (dens_points_rel != null)
@@ -375,15 +397,19 @@ namespace GraphicalDebugging
                 result[o+1] = result[0];
 
                 // If the endpoints doesn't match the geometry goes around pole
-                if ( result.Length > 0
-                  && Math.Abs(result[0].X - result[o-1].X) > 0.1 )
+                if (containsPole != ContainsPole.No)
                 {
-                    // TODO: Check towards which pole it has to be expanded
-
-
                     // expand it
-                    result[o].Y = 0;
-                    result[o+1].Y = 0;
+                    if (containsPole == ContainsPole.South)
+                    {
+                        result[o].Y = drawer.graphics.VisibleClipBounds.Height;
+                        result[o + 1].Y = drawer.graphics.VisibleClipBounds.Height;
+                    }
+                    else
+                    {
+                        result[o].Y = 0;
+                        result[o + 1].Y = 0;
+                    }
                 }
 
                 return result;
@@ -398,6 +424,8 @@ namespace GraphicalDebugging
             protected PointF[][] dens_points_rel;
             protected float[] xs_orig;
             protected bool closed;
+            protected enum ContainsPole { No, North, South };
+            ContainsPole containsPole;
         }
 
         public class PeriodicDrawableBox : PeriodicDrawableRange
@@ -503,7 +531,7 @@ namespace GraphicalDebugging
                 GraphicsPath gp = new GraphicsPath();
                 if (fill && outer.IsInitialized())
                 {
-                    PointF[] points = outer.AreaPointsF(translation);
+                    PointF[] points = outer.AreaPointsF(drawer, translation);
                     gp.AddPolygon(points);
                 }
 
@@ -517,7 +545,7 @@ namespace GraphicalDebugging
 
                     if (fill)
                     {
-                        PointF[] points = inner.AreaPointsF(translation);
+                        PointF[] points = inner.AreaPointsF(drawer, translation);
                         gp.AddPolygon(points);
                     }
                 }
