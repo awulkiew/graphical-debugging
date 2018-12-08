@@ -81,12 +81,10 @@ namespace GraphicalDebugging
         /// Initializes the singleton instance of the command.
         /// </summary>
         /// <param name="package">Owner package, not null.</param>
-        public static async Task InitializeAsync(AsyncPackage package, CancellationToken cancellationToken)
+        public static void Initialize(GraphicalWatchPackage package)
         {
-            OleMenuCommandService commandService = await package.GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
-
-            await package.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
-
+            OleMenuCommandService commandService = package.GetService(typeof(IMenuCommandService)) as OleMenuCommandService;
+            
             Instance = new GeometryWatchCommand(package, commandService);
         }
 

@@ -155,7 +155,7 @@ namespace GraphicalDebugging
         public static T GetDialogPage<T>()
             where T : DialogPage
         {
-            Package package = GraphicalWatchPackage.Instance;
+            GraphicalWatchPackage package = GraphicalWatchPackage.Instance;
             if (package == null)
                 return default(T);
 

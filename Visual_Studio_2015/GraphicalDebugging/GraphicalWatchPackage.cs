@@ -30,7 +30,7 @@ namespace GraphicalDebugging
     /// To get loaded into VS, the package must be referred by &lt;Asset Type="Microsoft.VisualStudio.VsPackage" ...&gt; in .vsixmanifest file.
     /// </para>
     /// </remarks>
-    [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
+    [PackageRegistration(UseManagedResourcesOnly = true)]
     [InstalledProductRegistration("#110", "#112", "1.0", IconResourceID = 400)] // Info on this package for Help/About
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [Guid(GraphicalWatchPackage.PackageGuidString)]
@@ -42,7 +42,7 @@ namespace GraphicalDebugging
     [ProvideOptionPage(typeof(GeometryWatchOptionPage), "Graphical Debugging", "Geometry Watch", 0, 0, true)]
     [ProvideOptionPage(typeof(GraphicalWatchOptionPage), "Graphical Debugging", "Graphical Watch", 0, 0, true)]
     [ProvideOptionPage(typeof(PlotWatchOptionPage), "Graphical Debugging", "Plot Watch", 0, 0, true)]
-    public sealed class GraphicalWatchPackage : AsyncPackage
+    public sealed class GraphicalWatchPackage : Package
     {
         /// <summary>
         /// GraphicalWatchPackage GUID string.
@@ -71,17 +71,27 @@ namespace GraphicalDebugging
         /// Initialization of the package; this method is called right after the package is sited, so this is the place
         /// where you can put all the initialization code that rely on services provided by VisualStudio.
         /// </summary>
-        protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
+        protected override void Initialize()
         {
             Instance = this;
 
-            await base.InitializeAsync(cancellationToken, progress);
+            base.Initialize();
 
-            await ExpressionLoader.InitializeAsync(this, cancellationToken);
+            ExpressionLoader.Initialize(this);
 
-            await GeometryWatchCommand.InitializeAsync(this, cancellationToken);
-            await GraphicalWatchCommand.InitializeAsync(this, cancellationToken);
-            await PlotWatchCommand.InitializeAsync(this, cancellationToken);
+            GeometryWatchCommand.Initialize(this);
+            GraphicalWatchCommand.Initialize(this);
+            PlotWatchCommand.Initialize(this);
+        }
+
+        public new object GetService(Type serviceType)
+        {
+            return base.GetService(serviceType);
+        }
+
+        public new DialogPage GetDialogPage(Type dialogPageType)
+        {
+            return base.GetDialogPage(dialogPageType);
         }
 
         #endregion

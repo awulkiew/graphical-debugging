@@ -38,12 +38,10 @@ namespace GraphicalDebugging
 
         private static ExpressionLoader Instance { get; set; }
 
-        public static async Task InitializeAsync(AsyncPackage package, CancellationToken cancellationToken)
+        public static void Initialize(GraphicalWatchPackage package)
         {
-            DTE2 dte = await package.GetServiceAsync(typeof(DTE)) as DTE2;
-
-            await package.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
-
+            DTE2 dte = package.GetService(typeof(DTE)) as DTE2;
+            
             Instance = new ExpressionLoader(dte);
         }
 
