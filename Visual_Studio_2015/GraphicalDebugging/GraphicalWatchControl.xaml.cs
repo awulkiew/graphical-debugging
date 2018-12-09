@@ -121,10 +121,18 @@ namespace GraphicalDebugging
                     return;
 
                 int selectIndex = -1;
-                Util.RemoveDataGridItems(dataGrid,
-                                         Variables,
-                                         delegate (GraphicalItem variable) { },
-                                         out selectIndex);
+                bool removed = Util.RemoveDataGridItems(dataGrid,
+                                                        Variables,
+                                                        delegate (GraphicalItem variable) { },
+                                                        out selectIndex);
+
+                if (removed)
+                {
+                    if (selectIndex >= 0 && selectIndex == Variables.Count - 1)
+                    {
+                        ResetAt(new GraphicalItem(), selectIndex);
+                    }
+                }
 
                 Util.SelectDataGridItem(dataGrid, selectIndex);
             }
