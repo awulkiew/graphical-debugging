@@ -1396,28 +1396,36 @@ namespace GraphicalDebugging
         
         abstract class ValuesContainer : ContainerLoader
         {
+            virtual public string ElementType(string type)
+            {
+                List<string> tparams = Util.Tparams(type);
+                return tparams.Count > 0 ? tparams[0] : "";
+            }
+
             public override void Load(Loaders loaders, bool accessMemory,
                                       Debugger debugger, string name, string type,
-                                      out Geometry.Traits traits, out ExpressionDrawer.ValuesContainer result)
+                                      out Geometry.Traits traits,
+                                      out ExpressionDrawer.ValuesContainer result)
             {
                 traits = null;
                 result = null;
 
                 if (accessMemory)
-                    LoadMemory(debugger, name, out result);
+                    LoadMemory(debugger, name, type, out result);
 
                 if (result == null)
                     LoadParsed(debugger, name, out result);
             }
 
-            protected void LoadMemory(Debugger debugger, string name, out ExpressionDrawer.ValuesContainer result)
+            protected void LoadMemory(Debugger debugger, string name, string type,
+                                      out ExpressionDrawer.ValuesContainer result)
             {
                 result = null;
 
+                string ptrName = "((" + this.ElementType(type) + "*)" + this.ElementPtrName(name) + ")";
+
                 MemoryReader.ValueConverter<double>
-                    valueConverter = MemoryReader.GetNumericConverter(debugger,
-                                                                      this.ElementPtrName(name),
-                                                                      null);
+                    valueConverter = MemoryReader.GetNumericConverter(debugger, ptrName, null);
                 if (valueConverter == null)
                     return;
 
@@ -1506,6 +1514,14 @@ namespace GraphicalDebugging
                 string foo;
                 int bar;
                 return NameSizeFromType(type, out foo, out bar);
+            }
+
+            public override string ElementType(string type)
+            {
+                string elemType;
+                int size;
+                NameSizeFromType(type, out elemType, out size);
+                return elemType;
             }
 
             public override string ElementPtrName(string name)
@@ -1656,7 +1672,7 @@ namespace GraphicalDebugging
                                                     MemoryReader.Converter<double> elementConverter,
                                                     MemoryBlockPredicate memoryBlockPredicate)
             {
-                return this.ForEachMemoryBlock(debugger, name, name + ".m_holder.storage.data",
+                return this.ForEachMemoryBlock(debugger, name, this.ElementPtrName(name),
                                                elementConverter, memoryBlockPredicate);
             }
         }
