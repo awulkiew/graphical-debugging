@@ -173,7 +173,7 @@ namespace GraphicalDebugging
             if (!expr.IsValidValue)
                 return;
 
-            Loader loader = Instance.loaders.FindByType(expr.Type);
+            Loader loader = Instance.loaders.FindByType(expr.Name, expr.Type);
             if (loader == null)
                 return;
 
@@ -256,44 +256,56 @@ namespace GraphicalDebugging
                     lists[i].Add(loader);
             }
 
-            public Loader FindById(Kind kind, string id)
+            public Loader FindById(Kind kind, string name, string id)
             {
                 foreach (Loader l in lists[(int)kind])
                     if (id == l.Id())
+                    {
+                        l.Initialize(ExpressionLoader.Instance.debugger, name);
                         return l;
+                    }
                 return null;
             }
 
-            public Loader FindById(string id)
+            public Loader FindById(string name, string id)
             {
                 foreach (List<Loader> li in lists)
                     foreach (Loader l in li)
                         if (id == l.Id())
+                        {
+                            l.Initialize(ExpressionLoader.Instance.debugger, name);
                             return l;
+                        }
                 return null;
             }
 
-            public Loader FindByType(Kind kind, string type)
+            public Loader FindByType(Kind kind, string name, string type)
             {
                 string id = Util.BaseType(type);
                 foreach (Loader l in lists[(int)kind])
                 {
                     TypeConstraint tc = l.Constraint();
-                    if (l.MatchType(type, id) && (tc == null || tc.Ok(this, type)))
+                    if (l.MatchType(type, id) && (tc == null || tc.Ok(this, name, type)))
+                    {
+                        l.Initialize(ExpressionLoader.Instance.debugger, name);
                         return l;
+                    }
                 }
                 return null;
             }
 
-            public Loader FindByType(string type)
+            public Loader FindByType(string name, string type)
             {
                 string id = Util.BaseType(type);
                 foreach (List<Loader> li in lists)
                     foreach (Loader l in li)
                     {
                         TypeConstraint tc = l.Constraint();
-                        if (l.MatchType(type, id) && (tc == null || tc.Ok(this, type)))
+                        if (l.MatchType(type, id) && (tc == null || tc.Ok(this, name, type)))
+                        {
+                            l.Initialize(ExpressionLoader.Instance.debugger, name);
                             return l;
+                        }
                     }
                 return null;
             }
@@ -303,16 +315,16 @@ namespace GraphicalDebugging
 
         abstract class TypeConstraint
         {
-            abstract public bool Ok(Loaders loaders, string type);
+            abstract public bool Ok(Loaders loaders, string name, string type);
         }
 
         abstract class TparamConstraint : TypeConstraint
         {
-            abstract public bool Ok(Loaders loaders, List<string> tparams);
+            abstract public bool Ok(Loaders loaders, string name, List<string> tparams);
 
-            public override bool Ok(Loaders loaders, string type)
+            public override bool Ok(Loaders loaders, string name, string type)
             {
-                return Ok(loaders, Util.Tparams(type));
+                return Ok(loaders, name, Util.Tparams(type));
             }
         }
 
@@ -324,11 +336,11 @@ namespace GraphicalDebugging
                 this.kind = kind;
             }
 
-            public override bool Ok(Loaders loaders, List<string> tparams)
+            public override bool Ok(Loaders loaders, string name, List<string> tparams)
             {
                 if (i < tparams.Count)
                 {
-                    Loader loader = loaders.FindByType(tparams[i]);
+                    Loader loader = loaders.FindByType(name, tparams[i]);
                     if (loader != null)
                         return loader.Kind() == kind;
                 }
@@ -352,6 +364,9 @@ namespace GraphicalDebugging
             {
                 return null;
             }
+
+            virtual public void Initialize(Debugger debugger, string name)
+            { }
 
             abstract public void Load(Loaders loaders, bool accessMemory,
                                       Debugger debugger, string name, string type,
@@ -464,6 +479,11 @@ namespace GraphicalDebugging
             abstract public string ElementPtrName(string name);
             public delegate bool MemoryBlockPredicate(double[] values);
             abstract public bool ForEachMemoryBlock(Debugger debugger, string name, MemoryReader.Converter<double> elementConverter, MemoryBlockPredicate memoryBlockPredicate);
+
+            virtual public string ElementName(string name)
+            {
+                return "(*(" + this.ElementPtrName(name) + "))";
+            }
         }
 
         abstract class BXPoint : PointLoader
@@ -652,8 +672,13 @@ namespace GraphicalDebugging
                 if (tparams.Count < 1)
                     return;
 
+                string m_min_corner = name + ".m_min_corner";
+                string m_max_corner = name + ".m_max_corner";
+
                 string pointType = tparams[0];
-                PointLoader pointLoader = (PointLoader)loaders.FindByType(ExpressionLoader.Kind.Point, pointType);
+                PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
+                                                             m_min_corner,
+                                                             pointType) as PointLoader;
                 if (pointLoader == null)
                     return;
 
@@ -661,8 +686,8 @@ namespace GraphicalDebugging
                 if (traits == null)
                     return;
 
-                Geometry.Point fp = pointLoader.LoadPoint(accessMemory, debugger, name + ".m_min_corner", pointType);
-                Geometry.Point sp = pointLoader.LoadPoint(accessMemory, debugger, name + ".m_max_corner", pointType);
+                Geometry.Point fp = pointLoader.LoadPoint(accessMemory, debugger, m_min_corner, pointType);
+                Geometry.Point sp = pointLoader.LoadPoint(accessMemory, debugger, m_max_corner, pointType);
 
                 result = IsOk(fp, sp)
                        ? new ExpressionDrawer.Box(fp, sp)
@@ -695,8 +720,13 @@ namespace GraphicalDebugging
                 if (tparams.Count < 1)
                     return;
 
+                string first = name + ".first";
+                string second = name + ".second";
+
                 string pointType = tparams[0];
-                PointLoader pointLoader = (PointLoader)loaders.FindByType(ExpressionLoader.Kind.Point, pointType);
+                PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
+                                                             first,
+                                                             pointType) as PointLoader;
                 if (pointLoader == null)
                     return;
 
@@ -704,8 +734,8 @@ namespace GraphicalDebugging
                 if (traits == null)
                     return;
 
-                Geometry.Point fp = pointLoader.LoadPoint(accessMemory, debugger, name + ".first", pointType);
-                Geometry.Point sp = pointLoader.LoadPoint(accessMemory, debugger, name + ".second", pointType);
+                Geometry.Point fp = pointLoader.LoadPoint(accessMemory, debugger, first, pointType);
+                Geometry.Point sp = pointLoader.LoadPoint(accessMemory, debugger, second, pointType);
 
                 segment = IsOk(fp, sp)
                         ? new ExpressionDrawer.Segment(fp, sp)
@@ -738,8 +768,12 @@ namespace GraphicalDebugging
                 if (tparams.Count < 1)
                     return;
 
+                string m_center = name + ".m_center";
+                string m_radius = name + ".m_radius";
+
                 string pointType = tparams[0];
-                PointLoader pointLoader = (PointLoader)loaders.FindByType(ExpressionLoader.Kind.Point, pointType);
+                PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
+                                                             m_center, pointType) as PointLoader;
                 if (pointLoader == null)
                     return;
 
@@ -747,9 +781,10 @@ namespace GraphicalDebugging
                 if (traits == null)
                     return;
 
-                Geometry.Point center = pointLoader.LoadPoint(accessMemory, debugger, name + ".m_center", pointType);
+                Geometry.Point center = pointLoader.LoadPoint(accessMemory, debugger,
+                                                              m_center, pointType);
                 bool ok = false;
-                double radius = LoadAsDouble(debugger, name + ".m_radius", out ok);
+                double radius = LoadAsDouble(debugger, m_radius, out ok);
 
                 result = IsOk(center, ok)
                        ? new ExpressionDrawer.NSphere(center, radius)
@@ -858,20 +893,22 @@ namespace GraphicalDebugging
                 if (tparams.Count <= Math.Max(pointTIndex, containerTIndex))
                     return;
 
+                // TODO: This is not fully correct since the tparam may be an id, not a type
+                // however since FindByType() internaly uses the id/base-type it will work for both
+                string containerType = containerTIndex >= 0 ? tparams[containerTIndex] : type;
+                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container, name, containerType) as ContainerLoader;
+                if (containerLoader == null)
+                    return;
+
                 string pointType = tparams[pointTIndex];
-                PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point, pointType) as PointLoader;
+                PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
+                                                             containerLoader.ElementName(name),
+                                                             pointType) as PointLoader;
                 if (pointLoader == null)
                     return;
 
                 traits = pointLoader.LoadTraits(pointType);
                 if (traits == null)
-                    return;
-
-                // TODO: This is not fully correct since the tparam may be an id, not a type
-                // however since FindByType() internaly uses the id/base-type it will work for both
-                string containerType = containerTIndex >= 0 ? tparams[containerTIndex] : type;
-                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container, containerType) as ContainerLoader;
-                if (containerLoader == null)
                     return;
 
                 if (accessMemory)
@@ -917,14 +954,19 @@ namespace GraphicalDebugging
                 if (tparams.Count < 2)
                     return;
 
-                string lsType = tparams[0];
-                RangeLoader<ExpressionDrawer.Linestring> lsLoader = loaders.FindByType(ExpressionLoader.Kind.Linestring, lsType) as RangeLoader<ExpressionDrawer.Linestring>;
-                if (lsLoader == null)
+                string containerType = tparams[1];
+                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
+                                                                     name,
+                                                                     containerType) as ContainerLoader;
+                if (containerLoader == null)
                     return;
 
-                string containerType = tparams[1];
-                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container, containerType) as ContainerLoader;
-                if (containerLoader == null)
+                string lsType = tparams[0];
+                RangeLoader<ExpressionDrawer.Linestring>
+                    lsLoader = loaders.FindByType(ExpressionLoader.Kind.Linestring,
+                                                  containerLoader.ElementName(name),
+                                                  lsType) as RangeLoader<ExpressionDrawer.Linestring>;
+                if (lsLoader == null)
                     return;
 
                 Geometry.Traits t = null;
@@ -979,12 +1021,14 @@ namespace GraphicalDebugging
                 Expression innersExpr = debugger.GetExpression(innersName);
 
                 string outerType = outerExpr.Type;
-                BGRing outerLoader = loaders.FindByType(ExpressionLoader.Kind.Ring, outerType) as BGRing;
+                BGRing outerLoader = loaders.FindByType(ExpressionLoader.Kind.Ring,
+                                                        outerName, outerType) as BGRing;
                 if (outerLoader == null)
                     return;
 
                 string innersType = innersExpr.Type;
-                ContainerLoader innersLoader = loaders.FindByType(ExpressionLoader.Kind.Container, innersType) as ContainerLoader;
+                ContainerLoader innersLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
+                                                                  innersName, innersType) as ContainerLoader;
                 if (innersLoader == null)
                     return;
 
@@ -1000,7 +1044,7 @@ namespace GraphicalDebugging
                     ExpressionDrawer.Ring inner = null;
                     outerLoader.Load(loaders, accessMemory, debugger, elName, outerExpr.Type, out t, out inner);
                     if (inner == null)
-                        return false;
+                        return false;                    
                     inners.Add(inner);
                     return true;
                 });
@@ -1031,14 +1075,18 @@ namespace GraphicalDebugging
                 if (tparams.Count < 2)
                     return;
 
-                string polyType = tparams[0];
-                PolygonLoader polyLoader = loaders.FindByType(ExpressionLoader.Kind.Polygon, polyType) as PolygonLoader;
-                if (polyLoader == null)
+                string containerType = tparams[1];
+                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
+                                                                     name,
+                                                                     containerType) as ContainerLoader;
+                if (containerLoader == null)
                     return;
 
-                string containerType = tparams[1];
-                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container, containerType) as ContainerLoader;
-                if (containerLoader == null)
+                string polyType = tparams[0];
+                PolygonLoader polyLoader = loaders.FindByType(ExpressionLoader.Kind.Polygon,
+                                                              containerLoader.ElementName(name),
+                                                              polyType) as PolygonLoader;
+                if (polyLoader == null)
                     return;
 
                 Geometry.Traits t = null;
@@ -1079,7 +1127,9 @@ namespace GraphicalDebugging
                     return;
 
                 string ringType = tparams[0];
-                RangeLoader<ExpressionDrawer.Ring> ringLoader = loaders.FindByType(ExpressionLoader.Kind.Ring, ringType) as RangeLoader<ExpressionDrawer.Ring>;
+                RangeLoader<ExpressionDrawer.Ring> ringLoader = loaders.FindByType(ExpressionLoader.Kind.Ring,
+                                                                                   name,
+                                                                                   ringType) as RangeLoader<ExpressionDrawer.Ring>;
                 if (ringLoader == null)
                     return;
 
@@ -1106,15 +1156,20 @@ namespace GraphicalDebugging
                 if (tparams.Count < 1)
                     return;
 
-                string ringType = tparams[0];
-                RangeLoader<ExpressionDrawer.Ring> ringLoader = loaders.FindByType(ExpressionLoader.Kind.Ring, ringType) as RangeLoader<ExpressionDrawer.Ring>;
-                if (ringLoader == null)
-                    return;
-
-                ContainerLoader containerLoader = loaders.FindById(ExpressionLoader.Kind.Container, "std::vector") as ContainerLoader;
+                ContainerLoader containerLoader = loaders.FindById(ExpressionLoader.Kind.Container,
+                                                                   name,
+                                                                   "std::vector") as ContainerLoader;
                 if (containerLoader == null)
                     return;
 
+                string ringType = tparams[0];
+                RangeLoader<ExpressionDrawer.Ring>
+                    ringLoader = loaders.FindByType(ExpressionLoader.Kind.Ring,
+                                                    containerLoader.ElementName(name),
+                                                    ringType) as RangeLoader<ExpressionDrawer.Ring>;
+                if (ringLoader == null)
+                    return;
+                
                 Geometry.Traits t = null;
                 ExpressionDrawer.MultiPolygon mpoly = new ExpressionDrawer.MultiPolygon();
                 bool ok = containerLoader.ForEachElement(debugger, name, delegate (string elName)
@@ -1234,12 +1289,16 @@ namespace GraphicalDebugging
                 traits = new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
                 result = null;
 
-                BPPoint pointLoader = loaders.FindById(ExpressionLoader.Kind.Point, "boost::polygon::point_data") as BPPoint;
-                if (pointLoader == null)
+                ContainerLoader containerLoader = loaders.FindById(ExpressionLoader.Kind.Container,
+                                                                   name,
+                                                                   "std::vector") as ContainerLoader;
+                if (containerLoader == null)
                     return;
 
-                ContainerLoader containerLoader = loaders.FindById(ExpressionLoader.Kind.Container, "std::vector") as ContainerLoader;
-                if (containerLoader == null)
+                BPPoint pointLoader = loaders.FindById(ExpressionLoader.Kind.Point,
+                                                       containerLoader.ElementName(name),
+                                                       "boost::polygon::point_data") as BPPoint;
+                if (pointLoader == null)
                     return;
 
                 List<string> tparams = Util.Tparams(type);
@@ -1277,35 +1336,47 @@ namespace GraphicalDebugging
                 traits = new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
                 result = null;
 
-                PointLoader pointLoader = loaders.FindById(ExpressionLoader.Kind.Point, "boost::polygon::point_data") as PointLoader;
-                if (pointLoader == null)
-                    return;
-
-                BPRing outerLoader = loaders.FindById(ExpressionLoader.Kind.Ring, "boost::polygon::polygon_data") as BPRing;
-                if (outerLoader == null)
-                    return;
-
-                ContainerLoader holesLoader = loaders.FindById(ExpressionLoader.Kind.Container, "std::list") as ContainerLoader;
-                if (holesLoader == null)
-                    return;
-
                 List<string> tparams = Util.Tparams(type);
                 if (tparams.Count < 1)
                     return;
 
                 string tparam = tparams[0].EndsWith(">") ? tparams[0] + ' ' : tparams[0];
+                string pointType = "boost::polygon::point_data<" + tparam + ">";
                 string polygonType = "boost::polygon::polygon_data<" + tparam + ">";
+
+                string member_self_ = name + ".self_";
+                string member_holes_ = name + ".holes_";
+
+                PointLoader pointLoader = loaders.FindById(ExpressionLoader.Kind.Point,
+                                                           // NOTE: use default ctor,
+                                                           // initialization is not done for BPPoint anyway
+                                                           pointType + "()",
+                                                           "boost::polygon::point_data") as PointLoader;
+                if (pointLoader == null)
+                    return;
+
+                BPRing outerLoader = loaders.FindById(ExpressionLoader.Kind.Ring,
+                                                      member_self_,
+                                                      "boost::polygon::polygon_data") as BPRing;
+                if (outerLoader == null)
+                    return;
+
+                ContainerLoader holesLoader = loaders.FindById(ExpressionLoader.Kind.Container,
+                                                               member_holes_,
+                                                               "std::list") as ContainerLoader;
+                if (holesLoader == null)
+                    return;
 
                 ExpressionDrawer.Ring outer = null;
                 outerLoader.Load(loaders, accessMemory,
-                                 debugger, name + ".self_", polygonType,
+                                 debugger, member_self_, polygonType,
                                  out traits, out outer);
                 if (outer == null)
                     return;
 
                 Geometry.Traits t = null;
                 List<Geometry.Ring> holes = new List<Geometry.Ring>();
-                bool ok = holesLoader.ForEachElement(debugger, name + ".holes_", delegate (string elName)
+                bool ok = holesLoader.ForEachElement(debugger, member_holes_, delegate (string elName)
                 {
                     ExpressionDrawer.Ring hole = null;
                     outerLoader.Load(loaders, accessMemory, debugger, elName, polygonType, out t, out hole);
@@ -1344,7 +1415,9 @@ namespace GraphicalDebugging
                 result = null;
 
                 MemoryReader.ValueConverter<double>
-                    valueConverter = MemoryReader.GetNumericConverter(debugger, this.ElementPtrName(name), null);
+                    valueConverter = MemoryReader.GetNumericConverter(debugger,
+                                                                      this.ElementPtrName(name),
+                                                                      null);
                 if (valueConverter == null)
                     return;
 
@@ -1389,7 +1462,7 @@ namespace GraphicalDebugging
                 string rawName = this.RandomAccessName(name);
                 for (int i = 0; i < size; ++i)
                 {
-                    string elName = rawName + "[" + i + "]";
+                    string elName = this.RandomAccessElementName(rawName, i);
                     if (!elementPredicate(elName))
                         return false;
                 }
@@ -1399,6 +1472,11 @@ namespace GraphicalDebugging
             virtual public string RandomAccessName(string name)
             {
                 return name;
+            }
+
+            virtual public string RandomAccessElementName(string rawName, int i)
+            {
+                return rawName + "[" + i + "]";
             }
         }
 
@@ -1436,27 +1514,18 @@ namespace GraphicalDebugging
                 return "(&(" + this.RandomAccessName(name) + "[0]))";
             }
 
-            // int a[5];    -> a
-            // int * p = a; -> p,5
             public override string RandomAccessName(string name)
             {
-                string result = name;
-                int commaPos = name.LastIndexOf(',');                
-                if (commaPos >= 0)
-                {
-                    string strSize = name.Substring(commaPos + 1);
-                    int size;
-                    if (int.TryParse(strSize, out size))
-                        result = name.Substring(0, commaPos);
-                }
-                return result;
+                return RawNameFromName(name);
             }
 
             public override bool ForEachMemoryBlock(Debugger debugger, string name,
                                                     MemoryReader.Converter<double> elementConverter,
                                                     MemoryBlockPredicate memoryBlockPredicate)
             {
-                return this.ForEachMemoryBlock(debugger, name, ElementPtrName(name),
+                return this.ForEachMemoryBlock(debugger,
+                                               name,
+                                               ElementPtrName(name),
                                                elementConverter, memoryBlockPredicate);
             }
 
@@ -1485,6 +1554,22 @@ namespace GraphicalDebugging
                 name = type.Substring(0, begin);
                 string strSize = type.Substring(begin + 1, end - begin - 1);
                 return int.TryParse(strSize, out size);
+            }
+
+            // int a[5];    -> a
+            // int * p = a; -> p,5
+            static public string RawNameFromName(string name)
+            {
+                string result = name;
+                int commaPos = name.LastIndexOf(',');
+                if (commaPos >= 0)
+                {
+                    string strSize = name.Substring(commaPos + 1);
+                    int size;
+                    if (int.TryParse(strSize, out size))
+                        result = name.Substring(0, commaPos);
+                }
+                return result;
             }
         }
 
@@ -1606,26 +1691,57 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "std::vector"; }
 
+            public override string RandomAccessElementName(string rawName, int i)
+            {
+                return FirstStr(rawName) + "[" + i + "]";
+            }
+
             public override string ElementPtrName(string name)
             {
-                return name + "._Mypair._Myval2._Myfirst";
+                return FirstStr(name);
             }
 
             public override bool ForEachMemoryBlock(Debugger debugger, string name,
                                                     MemoryReader.Converter<double> elementConverter,
                                                     MemoryBlockPredicate memoryBlockPredicate)
             {
-                return this.ForEachMemoryBlock(debugger, name, name + "._Mypair._Myval2._Myfirst",
+                return this.ForEachMemoryBlock(debugger, name,
+                                               ElementPtrName(name),
                                                elementConverter, memoryBlockPredicate);
             }
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                Expression expr = debugger.GetExpression(name + "._Mypair._Myval2._Mylast-" + name + "._Mypair._Myval2._Myfirst");
+                Expression expr = debugger.GetExpression(SizeStr(name));
                 return expr.IsValidValue
                      ? Math.Max(ParseInt(expr.Value), 0)
                      : 0;
             }
+
+            private string FirstStr(string name)
+            {
+                return version == Version.Msvc12
+                     ? name + "._Myfirst"
+                     : name + "._Mypair._Myval2._Myfirst";
+            }
+
+            private string SizeStr(string name)
+            {
+                return version == Version.Msvc12
+                     ? name + "._Mylast-" + name + "._Myfirst"
+                     : name + "._Mypair._Myval2._Mylast-" + name + "._Mypair._Myval2._Myfirst";
+            }
+
+            public override void Initialize(Debugger debugger, string name)
+            {
+                string name12 = name + "._Myfirst";
+                //string name14_15 = name + "._Mypair._Myval2._Myfirst";
+
+                if (debugger.GetExpression(name12).IsValidValue)
+                    version = Version.Msvc12;
+            }
+            private enum Version { Unknown, Msvc12, Msvc14_15 };
+            private Version version = Version.Msvc14_15;
         }
 
         class StdDeque : RandomAccessContainer
@@ -1634,13 +1750,7 @@ namespace GraphicalDebugging
 
             public override string ElementPtrName(string name)
             {
-                return "(&(" + ElementName(name, 0) + "))";
-            }
-
-            private string ElementName(string name, int index)
-            {
-                string id = index.ToString();
-                return name + "._Mypair._Myval2._Map[((" + id + " + " + name + "._Mypair._Myval2._Myoff) / " + name + "._EEN_DS) % " + name + "._Mypair._Myval2._Mapsize][(" + id + " + " + name + "._Mypair._Myval2._Myoff) % " + name + "._EEN_DS]";
+                return "(&(" + ElementStr(name, 0) + "))";
             }
 
             public override bool ForEachMemoryBlock(Debugger debugger, string name,
@@ -1651,29 +1761,25 @@ namespace GraphicalDebugging
                 if (size == 0)
                     return true;
 
-                // Map size
-                string mapSizeName = name + "._Mypair._Myval2._Mapsize";
-                Expression mapSizeExpr = debugger.GetExpression(mapSizeName);
+                // Map size                
+                Expression mapSizeExpr = debugger.GetExpression(MapSizeStr(name));
                 if (!mapSizeExpr.IsValidValue)
                     return false;
                 int mapSize = int.Parse(mapSizeExpr.Value);
 
-                // Map - array of pointers
-                string mapName = name + "._Mypair._Myval2._Map";
+                // Map - array of pointers                
                 ulong[] pointers = new ulong[mapSize];
-                if (! MemoryReader.ReadPointerArray(debugger, mapName, pointers))
+                if (! MemoryReader.ReadPointerArray(debugger, MapStr(name), pointers))
                     return false;
 
                 // Block size
-                string dequeSizeName = "((int)" + name + "._EEN_DS)";
-                Expression dequeSizeExpr = debugger.GetExpression(dequeSizeName);
+                Expression dequeSizeExpr = debugger.GetExpression("((int)" + name + "._EEN_DS)");
                 if (!dequeSizeExpr.IsValidValue)
                     return false;
                 int dequeSize = int.Parse(dequeSizeExpr.Value);
 
                 // Offset
-                string offsetName = name + "._Mypair._Myval2._Myoff";
-                Expression offsetExpr = debugger.GetExpression(offsetName);
+                Expression offsetExpr = debugger.GetExpression(OffsetStr(name));
                 if (!offsetExpr.IsValidValue)
                     return false;
                 int offset = int.Parse(offsetExpr.Value);
@@ -1728,11 +1834,57 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                Expression expr = debugger.GetExpression(name + "._Mypair._Myval2._Mysize");
+                Expression expr = debugger.GetExpression(SizeStr(name));
                 return expr.IsValidValue
                      ? Math.Max(ParseInt(expr.Value), 0)
                      : 0;
             }
+
+            private string MapSizeStr(string name)
+            {
+                return version == Version.Msvc12
+                     ? name + "._Mapsize"
+                     : name + "._Mypair._Myval2._Mapsize";
+            }
+
+            private string MapStr(string name)
+            {
+                return version == Version.Msvc12
+                     ? name + "._Map"
+                     : name + "._Mypair._Myval2._Map";
+            }
+
+            private string OffsetStr(string name)
+            {
+                return version == Version.Msvc12
+                     ? name + "._Myoff"
+                     : name + "._Mypair._Myval2._Myoff";
+            }
+
+            private string ElementStr(string name, int i)
+            {
+                return version == Version.Msvc12
+                     ? name + "._Map[((" + i + " + " + name + "._Myoff) / " + name + "._EEN_DS) % " + name + "._Mapsize][(" + i + " + " + name + "._Myoff) % " + name + "._EEN_DS]"
+                     : name + "._Mypair._Myval2._Map[((" + i + " + " + name + "._Mypair._Myval2._Myoff) / " + name + "._EEN_DS) % " + name + "._Mypair._Myval2._Mapsize][(" + i + " + " + name + "._Mypair._Myval2._Myoff) % " + name + "._EEN_DS]";
+            }
+
+            private string SizeStr(string name)
+            {
+                return version == Version.Msvc12
+                     ? name + "._Mysize"
+                     : name + "._Mypair._Myval2._Mysize";
+            }
+
+            public override void Initialize(Debugger debugger, string name)
+            {
+                string name12 = name + "._Mysize";
+                //string name14_15 = name + "._Mypair._Myval2._Mysize";
+
+                if (debugger.GetExpression(name12).IsValidValue)
+                    version = Version.Msvc12;
+            }
+            private enum Version { Unknown, Msvc12, Msvc14_15 };
+            private Version version = Version.Msvc14_15;
         }
 
         class StdList : ValuesContainer
@@ -1741,7 +1893,7 @@ namespace GraphicalDebugging
 
             public override string ElementPtrName(string name)
             {
-                return "(&" + name + "._Mypair._Myval2._Myhead->_Next->_Myval)";
+                return "(&" + HeadStr(name) + "->_Next->_Myval" + ")";
             }
 
             public override bool ForEachMemoryBlock(Debugger debugger, string name,
@@ -1752,9 +1904,9 @@ namespace GraphicalDebugging
                 if (size <= 0)
                     return true;
 
-                string nextName = name + "._Mypair._Myval2._Myhead->_Next";
-                string nextNextPtrName = "(&" + name + "._Mypair._Myval2._Myhead->_Next->_Next)";
-                string nextValPtrName = "(&" + name + "._Mypair._Myval2._Myhead->_Next->_Myval)";
+                string nextName = HeadStr(name) + "->_Next";
+                string nextNextPtrName = "(&" + HeadStr(name) + "->_Next->_Next)";
+                string nextValPtrName = "(&" + HeadStr(name) + "->_Next->_Myval)";
 
                 string nextPtrName = "(&" + nextName + ")";
                 MemoryReader.ValueConverter<ulong> nextConverter = MemoryReader.GetPointerConverter(debugger, nextPtrName, null);
@@ -1793,7 +1945,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                Expression expr = debugger.GetExpression(name + "._Mypair._Myval2._Mysize");
+                Expression expr = debugger.GetExpression(SizeStr(name));
                 return expr.IsValidValue
                      ? Math.Max(ParseInt(expr.Value), 0)
                      : 0;
@@ -1802,7 +1954,8 @@ namespace GraphicalDebugging
             public override bool ForEachElement(Debugger debugger, string name, ElementPredicate elementPredicate)
             {
                 int size = this.LoadSize(debugger, name);
-                string nodeName = name + "._Mypair._Myval2._Myhead->_Next";
+                
+                string nodeName = HeadStr(name) + "->_Next";
                 for (int i = 0; i < size; ++i, nodeName += "->_Next")
                 {
                     string elName = nodeName + "->_Myval";
@@ -1811,6 +1964,31 @@ namespace GraphicalDebugging
                 }
                 return true;
             }
+
+            private string HeadStr(string name)
+            {
+                return version == Version.Msvc12
+                     ? name + "._Myhead"
+                     : name + "._Mypair._Myval2._Myhead";
+            }
+
+            private string SizeStr(string name)
+            {
+                return version == Version.Msvc12
+                     ? name + "._Mysize"
+                     : name + "._Mypair._Myval2._Mysize";
+            }
+
+            public override void Initialize(Debugger debugger, string name)
+            {
+                string name12 = name + "._Mysize";
+                //string name14_15 = name + "._Mypair._Myval2._Mysize";
+
+                if (debugger.GetExpression(name12).IsValidValue)
+                    version = Version.Msvc12;
+            }
+            private enum Version { Unknown, Msvc12, Msvc14_15 };
+            private Version version = Version.Msvc14_15;
         }
 
         class BVariant : Loader
@@ -1838,7 +2016,7 @@ namespace GraphicalDebugging
                 string storedType = tparams[which];
                 string storedName = "(*(" + storedType + "*)" + name + ".storage_.data_.buf)";
 
-                Loader loader = loaders.FindByType(storedType);
+                Loader loader = loaders.FindByType(storedName, storedType);
                 if (loader == null)
                     return;
 
@@ -1869,7 +2047,9 @@ namespace GraphicalDebugging
                     return;
 
                 string pointType = tparams[0];
-                PointLoader pointLoader = (PointLoader)loaders.FindByType(ExpressionLoader.Kind.Point, pointType);
+                PointLoader pointLoader = (PointLoader)loaders.FindByType(ExpressionLoader.Kind.Point,
+                                                                          name + ".point",
+                                                                          pointType);
                 if (pointLoader == null)
                     return;
 
@@ -1948,7 +2128,9 @@ namespace GraphicalDebugging
                 traits = null;
                 result = null;
 
-                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container, type) as ContainerLoader;
+                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
+                                                                     name,
+                                                                     type) as ContainerLoader;
                 if (containerLoader == null)
                     return;
 
@@ -1958,7 +2140,9 @@ namespace GraphicalDebugging
 
                 // TODO: Get element type from ContainerLoader instead?
                 string turnType = tparams[0];
-                BGTurn turnLoader = loaders.FindByType(ExpressionLoader.Kind.Turn, turnType) as BGTurn;
+                BGTurn turnLoader = loaders.FindByType(ExpressionLoader.Kind.Turn,
+                                                       containerLoader.ElementName(name),
+                                                       turnType) as BGTurn;
                 if (turnLoader == null)
                     return;
 
@@ -2092,13 +2276,14 @@ namespace GraphicalDebugging
         {
             public class PointKindConstraint : TypeConstraint
             {
-                public override bool Ok(Loaders loaders, string type)
+                public override bool Ok(Loaders loaders, string name, string type)
                 {
                     string elementType;
                     int size = 0;
                     if (CArray.NameSizeFromType(type, out elementType, out size))
                     {
-                        Loader loader = loaders.FindByType(elementType);
+                        Loader loader = loaders.FindByType("(*(" + CArray.RawNameFromName(name) + "))",
+                                                           elementType);
                         if (loader != null)
                             return loader.Kind() == ExpressionLoader.Kind.Point;
                     }
@@ -2134,7 +2319,11 @@ namespace GraphicalDebugging
                 if (!CArray.NameSizeFromType(type, out pointType, out size))
                     return;
 
-                PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point, pointType) as PointLoader;
+                string pointName = "(*(" + CArray.RawNameFromName(name) + "))";
+
+                PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
+                                                             pointName,
+                                                             pointType) as PointLoader;
                 if (pointLoader == null)
                     return;
 
@@ -2142,7 +2331,9 @@ namespace GraphicalDebugging
                 if (traits == null)
                     return;
 
-                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container, type) as ContainerLoader;
+                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
+                                                                     name,
+                                                                     type) as ContainerLoader;
                 if (containerLoader == null)
                     return;
 
