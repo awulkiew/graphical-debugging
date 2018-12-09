@@ -68,8 +68,18 @@ namespace GraphicalDebugging
 
         private static Geometry.Interval RelativeEnvelopeLon(Geometry.IRandomAccessRange<Geometry.Point> points, bool closed, Geometry.Unit unit)
         {
+            Geometry.Interval result = null;
+
+            if (points.Count < 1)
+            {
+                result = new Geometry.Interval();
+                Geometry.AssignInverse(result);
+                return result;
+            }
+
             double x0 = points[0][0];
-            Geometry.Interval result = new Geometry.Interval(x0);
+            result = new Geometry.Interval(x0);
+
             int count = points.Count + (closed ? 1 : 0);
             for (int ii = 1; ii < count; ++ii)
             {

@@ -109,6 +109,9 @@ namespace GraphicalDebugging
 
         public class Interval
         {
+            public Interval()
+            { }
+
             public Interval(double v)
             {
                 Min = v;
@@ -291,6 +294,12 @@ namespace GraphicalDebugging
         {
             b.Min = new Point(double.MaxValue, double.MaxValue);
             b.Max = new Point(double.MinValue, double.MinValue);
+        }
+
+        public static void AssignInverse(Interval i)
+        {
+            i.Min = double.MaxValue;
+            i.Max = double.MinValue;
         }
 
         public static Box Aabb(Point p1, Point p2, Unit unit)
