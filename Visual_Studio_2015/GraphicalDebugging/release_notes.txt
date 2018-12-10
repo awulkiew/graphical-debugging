@@ -1,3 +1,11 @@
+version 0.20
+
+additions:
+- support for Visual Studio 2013
+
+bugfixes:
+- fixed Graphical Watch variables list unresponding after removing elements
+
 version 0.19
 
 additions:
