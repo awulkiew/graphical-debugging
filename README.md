@@ -1,4 +1,4 @@
-# Graphical Debugging extension for Visual Studio 2013, 2015 and 2017
+# Graphical Debugging extension for Visual Studio 2013, 2015, 2017 and 2019
 
 This extension allows to display graphical representation of variables during debugging.
 
@@ -31,7 +31,7 @@ You need Microsoft Visual Studio 2015 Update 3, .NET Framework 4.5.2 and Visual 
 
 To install after building double-click the *.vsix file from bin/Debug or bin/Relase directory.
 
-This extension works with Visual Studio 2013, 2015 and 2017.
+This extension works with Visual Studio 2013, 2015, 2017 and 2019.
 
 ###### Use
 
