@@ -254,13 +254,13 @@ namespace GraphicalDebugging
 
                     if (geometry.Name != null && geometry.Name != "")
                     {
-                        var expression = updateRequred
-                                       ? ExpressionLoader.Debugger.GetExpression(geometry.Name)
+                        var expressions = updateRequred
+                                       ? ExpressionLoader.GetExpressions(geometry.Name)
                                        : null;
-                        if (expression == null || expression.IsValidValue)
+                        if (expressions == null || ExpressionLoader.AllValidValues(expressions))
                         {
-                            if (expression != null)
-                                type = expression.Type;
+                            if (expressions != null)
+                                type = ExpressionLoader.TypeFromExpressions(expressions);
 
                             names[index] = geometry.Name;
 

@@ -119,6 +119,53 @@ namespace GraphicalDebugging
             get { return Instance.debuggerEvents; }
         }
 
+        public static Expression[] GetExpressions(string name, char separator = ';')
+        {
+            var expr = Debugger.GetExpression(name);
+            if (expr.IsValidValue)
+                return new Expression[] { expr };
+
+            string[] subnames = name.Split(separator);
+            Expression[] exprs = new Expression[subnames.Length];
+            for (int i = 0; i < subnames.Length; ++i)
+            {
+                exprs[i] = Debugger.GetExpression(subnames[i]);
+            }
+
+            return exprs;
+        }
+
+        public static bool AllValidValues(Expression[] exprs)
+        {
+            foreach(Expression e in exprs)
+                if (!e.IsValidValue)
+                    return false;
+            return true;
+        }
+
+        public static bool AnyValidValue(Expression[] exprs)
+        {
+            foreach (Expression e in exprs)
+                if (e.IsValidValue)
+                    return true;
+            return false;
+        }
+
+        public static string TypeFromExpressions(Expression[] exprs)
+        {
+            string result = "";
+            bool first = true;
+            foreach (Expression e in exprs)
+            {
+                if (first)
+                    first = false;
+                else
+                    result += " ; ";
+                result += e.Type;
+            }
+            return result;
+        }
+
         public interface KindConstraint
         {
             bool Check(Kind kind);
@@ -157,7 +204,6 @@ namespace GraphicalDebugging
                                 out Geometry.Traits traits,
                                 out ExpressionDrawer.IDrawable result)
         {
-
             Load(name, AllKinds, out traits, out result);
         }
 
@@ -169,27 +215,40 @@ namespace GraphicalDebugging
             traits = null;
             result = null;
 
-            Expression expr = Instance.debugger.GetExpression(name);
-            if (!expr.IsValidValue)
+            Expression[] exprs = GetExpressions(name);
+            if (exprs.Length < 1 || ! AllValidValues(exprs))
                 return;
-
-            Loader loader = Instance.loaders.FindByType(expr.Name, expr.Type);
-            if (loader == null)
-                return;
-
-            if (!kindConstraint.Check(loader.Kind()))
-                return;
-
-            GeneralOptionPage optionPage = Util.GetDialogPage<GeneralOptionPage>();
-            bool accessMemory = true;
-            if (optionPage != null)
+            
+            if (exprs.Length == 1)
             {
-                accessMemory = optionPage.EnableDirectMemoryAccess;
-            }
+                Loader loader = Instance.loaders.FindByType(exprs[0].Name, exprs[0].Type);
+                if (loader == null)
+                    return;
 
-            loader.Load(Instance.loaders, accessMemory,
-                        Instance.debugger, expr.Name, expr.Type,
-                        out traits, out result);
+                if (!kindConstraint.Check(loader.Kind()))
+                    return;
+
+                loader.Load(Instance.loaders, IsMemoryAccessEnabled(),
+                            Instance.debugger, exprs[0].Name, exprs[0].Type,
+                            out traits, out result);
+            }
+            else //if (exprs.Length > 1)
+            {
+                // For now there is only one loader which can handle this case
+                CoordinatesContainers loader = new CoordinatesContainers();
+
+                loader.Load(Instance.loaders, IsMemoryAccessEnabled(),
+                            Instance.debugger, exprs,
+                            out traits, out result);
+            }
+        }
+
+        static bool IsMemoryAccessEnabled()
+        {
+            GeneralOptionPage optionPage = Util.GetDialogPage<GeneralOptionPage>();
+            return optionPage != null
+                 ? optionPage.EnableDirectMemoryAccess
+                 : true; // default
         }
 
         static int ParseInt(string s)
@@ -1410,6 +1469,21 @@ namespace GraphicalDebugging
                 traits = null;
                 result = null;
 
+                List<double> values = null;
+                Load(loaders, accessMemory, debugger, name, type, out traits, out values);
+
+                if (values != null)
+                    result = new ExpressionDrawer.ValuesContainer(values);
+            }
+
+            public void Load(Loaders loaders, bool accessMemory,
+                             Debugger debugger, string name, string type,
+                             out Geometry.Traits traits,
+                             out List<double> result)
+            {
+                traits = null;
+                result = null;
+
                 if (accessMemory)
                     LoadMemory(debugger, name, type, out result);
 
@@ -1418,7 +1492,7 @@ namespace GraphicalDebugging
             }
 
             protected void LoadMemory(Debugger debugger, string name, string type,
-                                      out ExpressionDrawer.ValuesContainer result)
+                                      out List<double> result)
             {
                 result = null;
 
@@ -1439,10 +1513,10 @@ namespace GraphicalDebugging
                     });
 
                 if (ok)
-                    result = new ExpressionDrawer.ValuesContainer(list);
+                    result = list;
             }
 
-            protected void LoadParsed(Debugger debugger, string name, out ExpressionDrawer.ValuesContainer result)
+            protected void LoadParsed(Debugger debugger, string name, out List<double> result)
             {                
                 result = null;
                 int size = this.LoadSize(debugger, name);
@@ -1455,10 +1529,9 @@ namespace GraphicalDebugging
                         values.Add(value);
                     return okV;
                 });
+
                 if (ok)
-                {
-                    result = new ExpressionDrawer.ValuesContainer(values);
-                }
+                    result = values;
             }
         }
 
@@ -2363,6 +2436,92 @@ namespace GraphicalDebugging
                 {
                     result = LoadParsed(accessMemory, debugger, name, type,
                                         pointType, pointLoader, containerLoader);
+                }
+            }
+        }
+
+        // This is the only one loader created manually right now
+        // so the overrides below are not used
+        class CoordinatesContainers : PointRange<ExpressionDrawer.MultiPoint>
+        {
+            public CoordinatesContainers()
+                : base(ExpressionLoader.Kind.MultiPoint)
+            { }
+
+            public override TypeConstraint Constraint() { return null; }
+
+            public override string Id() { return null; }
+
+            public override bool MatchType(string type, string id)
+            {
+                return false;
+            }
+
+            public override void Load(Loaders loaders, bool accessMemory,
+                                      Debugger debugger, string name, string type,
+                                      out Geometry.Traits traits,
+                                      out ExpressionDrawer.MultiPoint result)
+            {
+                traits = null;
+                result = null;
+            }
+
+            public void Load(Loaders loaders, bool accessMemory,
+                             Debugger debugger, Expression[] exprs,
+                             out Geometry.Traits traits,
+                             out ExpressionDrawer.IDrawable result)
+            {
+                ExpressionDrawer.MultiPoint res = default(ExpressionDrawer.MultiPoint);
+                this.Load(loaders, accessMemory, debugger, exprs, out traits, out res);
+                result = res;
+            }
+
+            public void Load(Loaders loaders, bool accessMemory,
+                             Debugger debugger, Expression[] exprs,
+                             out Geometry.Traits traits,
+                             out ExpressionDrawer.MultiPoint result)
+            {
+                traits = null;
+                result = null;
+
+                int dimension = Math.Min(exprs.Length, 3); // 2 or 3
+
+                traits = new Geometry.Traits(dimension, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
+
+                List<double>[] coords = new List<double>[dimension];
+                for ( int i = 0 ; i < dimension; ++i )
+                {
+                    ValuesContainer containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
+                                                                         exprs[i].Name, exprs[i].Type) as ValuesContainer;
+                    if (containerLoader == null)
+                        return;
+
+                    Geometry.Traits foo = null;
+                    containerLoader.Load(loaders, accessMemory,
+                                         debugger, exprs[i].Name, exprs[i].Type,
+                                         out foo, out coords[i]);
+                }
+
+                int maxSize = 0;
+                foreach(var list in coords)
+                {
+                    maxSize = Math.Max(maxSize, list.Count);
+                }
+
+                result = new ExpressionDrawer.MultiPoint();
+                for (int i = 0; i < maxSize; ++i)
+                {
+                    double[] coo = new double[dimension];
+                    
+                    for (int j = 0; j < dimension; ++j)
+                    {
+                        coo[j] = i < coords[j].Count ? coords[j][i] : 0;
+                    }
+
+                    Geometry.Point pt = (dimension >= 3)
+                                      ? new Geometry.Point(coo[0], coo[1], coo[2])
+                                      : new Geometry.Point(coo[0], coo[1]);
+                    result.Add(pt);
                 }
             }
         }

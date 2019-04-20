@@ -210,8 +210,8 @@ namespace GraphicalDebugging
 
                 if (variable.Name != null && variable.Name != "")
                 {
-                    var expression = ExpressionLoader.Debugger.GetExpression(variable.Name);
-                    if (expression.IsValidValue)
+                    var expressions = ExpressionLoader.GetExpressions(variable.Name);
+                    if (ExpressionLoader.AllValidValues(expressions))
                     {
                         // create bitmap
                         bmp = new Bitmap(imageWidth, imageHeight);
@@ -250,7 +250,7 @@ namespace GraphicalDebugging
                             bmp = null;
                         }
 
-                        type = expression.Type;
+                        type = ExpressionLoader.TypeFromExpressions(expressions);
                     }
                 }
             }
