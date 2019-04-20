@@ -1,4 +1,5 @@
-# Graphical Debugging extension for Visual Studio 2013, 2015, 2017 and 2019
+# Graphical Debugging
+## extension for Visual Studio 2013, 2015, 2017 and 2019
 
 This extension allows to display graphical representation of variables during debugging.
 
@@ -72,6 +73,7 @@ Supported:
 * Containers of points
   * C-style array
   * Pointer to elements with size specifier e.g.: `ptr,5`
+  * Sequence of containers of point coordinates e.g.: `vec_x;vec_y`
   * STL: array, vector, deque, list
   * Boost.Array: array
   * Boost.Container: vector, static_vector
@@ -111,6 +113,7 @@ Supported:
 * Containers of elements convertible to double and containers of points
   * C-style array
   * Pointer to elements with size specifier e.g.: `ptr,5`
+  * Sequence of containers of point coordinates e.g.: `vec_x;vec_y`
   * STL: array, vector, deque, list
   * Boost.Array: array
   * Boost.Container: vector, static_vector
@@ -149,6 +152,7 @@ Supported containers of values convertible to double and containers of points:
 
   * C-style array
   * Pointer to elements with size specifier e.g.: `ptr,5`
+  * Sequence of containers of point coordinates e.g.: `vec_x;vec_y`
   * STL: array, vector, deque, list
   * Boost.Array: array
   * Boost.Container: vector, static_vector
