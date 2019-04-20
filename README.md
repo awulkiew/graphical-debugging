@@ -28,8 +28,6 @@ You need Microsoft Visual Studio 2015 Update 3, .NET Framework 4.5.2 and Visual 
 
 To install after building double-click the *.vsix file from bin/Debug or bin/Relase directory.
 
-This extension works with Visual Studio 2013, 2015, 2017 and 2019.
-
 ###### Use
 
 1. place a breakpoint somewhere in the code
