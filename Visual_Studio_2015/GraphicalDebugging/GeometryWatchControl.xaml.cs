@@ -511,5 +511,27 @@ namespace GraphicalDebugging
             m_mouseHLine.Visibility = Visibility.Hidden;
             m_mouseTxt.Visibility = Visibility.Hidden;
         }
+
+        private void imageGrid_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+        {
+            System.Windows.Point point = e.GetPosition(imageGrid);
+            bool zoomOut = e.Delta < 0;
+
+            double scale = 0.75;
+            if (zoomOut)
+                scale = 1.0 / scale;
+
+            double leftFrac = point.X / image.ActualWidth;
+            double topFrac = point.Y / image.ActualHeight;
+            double w = image.ActualWidth * scale;
+            double h = image.ActualHeight * scale;
+            double l = point.X - leftFrac * w;
+            double t = point.Y - topFrac * h;
+
+            // NOTE: Currently it's possible to zoom out further than the default zoom
+            m_zoomBox.Zoom(l, t, w, h, image.ActualWidth, image.ActualHeight);
+
+            UpdateItems(false);
+        }
     }
 }
