@@ -2540,11 +2540,7 @@ namespace GraphicalDebugging
 
             public override string ElementType(string type)
             {
-                string name = "";
-                int begin = type.LastIndexOf('[');
-                if (begin > 0)
-                    name = type.Substring(0, begin);
-                return name;
+                return ElemTypeFromType(type);
             }
             
             public override int LoadSize(Debugger debugger, string name)
@@ -2574,9 +2570,19 @@ namespace GraphicalDebugging
                                                ElementPtrName(name),
                                                elementConverter, memoryBlockPredicate);
             }
+
+            // type -> name[]
+            static public string ElemTypeFromType(string type)
+            {
+                string name = "";
+                int begin = type.LastIndexOf('[');
+                if (begin > 0 && begin + 1 < type.Length && type[begin + 1] == ']')
+                    name = type.Substring(0, begin);
+                return name;
+            }
         }
 
-        class CSList : RandomAccessContainer
+        class CSList : ContiguousContainer
         {
             public override string Id() { return "System.Collections.Generic.List"; }
 
@@ -2593,12 +2599,19 @@ namespace GraphicalDebugging
 
             public override string ElementPtrName(string name)
             {
-                return "";
+                return "(&" + name + "._items[0])";
             }
 
             public override bool ForEachMemoryBlock(Debugger debugger, string name, MemoryReader.Converter<double> elementConverter, MemoryBlockPredicate memoryBlockPredicate)
             {
-                return false;
+                Expression expr = debugger.GetExpression(name + "._items");
+                if (!expr.IsValidValue || CSArray.ElemTypeFromType(expr.Type).Length <= 0)
+                    return false;
+
+                return this.ForEachMemoryBlock(debugger,
+                                               name,
+                                               ElementPtrName(name),
+                                               elementConverter, memoryBlockPredicate);
             }
         }
 
