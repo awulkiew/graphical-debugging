@@ -25,6 +25,7 @@ namespace GraphicalDebugging
         private Debugger debugger;
         private DebuggerEvents debuggerEvents;
         private Loaders loaders;
+        private Loaders loadersCS;
 
         // Because containers of points (including c-arrays) are treated as MultiPoints
         //   they have to be searched first (Loaders class traverses the list of kinds),
@@ -107,6 +108,11 @@ namespace GraphicalDebugging
             loaders.Add(new BGTurn("boost::geometry::detail::buffer::buffer_turn_info"));
             loaders.Add(new BGTurnContainer("std::vector"));
             loaders.Add(new BGTurnContainer("std::deque"));
+
+            loadersCS = new Loaders();
+
+            loadersCS.Add(new CSList());
+            loadersCS.Add(new CSArray());
         }
 
         public static Debugger Debugger
@@ -218,17 +224,20 @@ namespace GraphicalDebugging
             Expression[] exprs = GetExpressions(name);
             if (exprs.Length < 1 || ! AllValidValues(exprs))
                 return;
-            
+
+            string language = Instance.debugger.CurrentStackFrame.Language;
+            Loaders loaders = language == "C#" ? Instance.loadersCS : Instance.loaders;
+
             if (exprs.Length == 1)
             {
-                Loader loader = Instance.loaders.FindByType(exprs[0].Name, exprs[0].Type);
+                Loader loader = loaders.FindByType(exprs[0].Name, exprs[0].Type);
                 if (loader == null)
                     return;
 
                 if (!kindConstraint.Check(loader.Kind()))
                     return;
 
-                loader.Load(Instance.loaders, IsMemoryAccessEnabled(),
+                loader.Load(loaders, IsMemoryAccessEnabled(),
                             Instance.debugger, exprs[0].Name, exprs[0].Type,
                             out traits, out result);
             }
@@ -237,7 +246,7 @@ namespace GraphicalDebugging
                 // For now there is only one loader which can handle this case
                 CoordinatesContainers loader = new CoordinatesContainers();
 
-                loader.Load(Instance.loaders, IsMemoryAccessEnabled(),
+                loader.Load(loaders, IsMemoryAccessEnabled(),
                             Instance.debugger, exprs,
                             out traits, out result);
             }
@@ -2448,14 +2457,7 @@ namespace GraphicalDebugging
                 : base(ExpressionLoader.Kind.MultiPoint)
             { }
 
-            public override TypeConstraint Constraint() { return null; }
-
             public override string Id() { return null; }
-
-            public override bool MatchType(string type, string id)
-            {
-                return false;
-            }
 
             public override void Load(Loaders loaders, bool accessMemory,
                                       Debugger debugger, string name, string type,
@@ -2525,5 +2527,80 @@ namespace GraphicalDebugging
                 }
             }
         }
+
+
+        class CSArray : ContiguousContainer
+        {
+            public override string Id() { return null; }
+
+            public override bool MatchType(string type, string id)
+            {
+                return ElementType(type).Length > 0;
+            }
+
+            public override string ElementType(string type)
+            {
+                string name = "";
+                int begin = type.LastIndexOf('[');
+                if (begin > 0)
+                    name = type.Substring(0, begin);
+                return name;
+            }
+            
+            public override int LoadSize(Debugger debugger, string name)
+            {
+                string e2 = debugger.GetExpression("&" + name + "[0]").Value;
+                string e3 = debugger.GetExpression("&" + name + "[1]").Value;
+                string e4 = debugger.GetExpression("&" + name + "[2]").Value;
+
+                Expression expr = debugger.GetExpression(name + ".Length");
+                if (!expr.IsValidValue)
+                    return 0;
+                int size = 0;
+                return int.TryParse(expr.Value, out size)
+                     ? size
+                     : 0;
+            }
+
+            public override string ElementPtrName(string name)
+            {
+                return "(&" + name + "[0])";
+            }
+
+            public override bool ForEachMemoryBlock(Debugger debugger, string name, MemoryReader.Converter<double> elementConverter, MemoryBlockPredicate memoryBlockPredicate)
+            {
+                return this.ForEachMemoryBlock(debugger,
+                                               name,
+                                               ElementPtrName(name),
+                                               elementConverter, memoryBlockPredicate);
+            }
+        }
+
+        class CSList : RandomAccessContainer
+        {
+            public override string Id() { return "System.Collections.Generic.List"; }
+
+            public override int LoadSize(Debugger debugger, string name)
+            {
+                Expression expr = debugger.GetExpression(name + ".Count");
+                if (!expr.IsValidValue)
+                    return 0;
+                int size = 0;
+                return int.TryParse(expr.Value, out size)
+                     ? size
+                     : 0;
+            }
+
+            public override string ElementPtrName(string name)
+            {
+                return "";
+            }
+
+            public override bool ForEachMemoryBlock(Debugger debugger, string name, MemoryReader.Converter<double> elementConverter, MemoryBlockPredicate memoryBlockPredicate)
+            {
+                return false;
+            }
+        }
+
     }
 }
