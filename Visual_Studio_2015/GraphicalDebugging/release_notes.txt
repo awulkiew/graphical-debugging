@@ -2,6 +2,7 @@ version 0.23
 
 additions:
 - zoom in/out with mouse wheel
+- support C# arrays (with direct memory access) and List<> (without direct memory access)
 
 version 0.22
 

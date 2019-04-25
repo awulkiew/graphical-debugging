@@ -1,11 +1,11 @@
 # Graphical Debugging
 ## extension for Visual Studio 2013, 2015, 2017 and 2019
 
-This extension allows to display graphical representation of variables during debugging.
+This extension allows to display graphical representation of C++ and C# variables during debugging.
 
 ![Graphical Debugging](images/graphical_debugging.png)
 
-Currently it supports Boost.Geometry and Boost.Polygon models, Boost.Variant, STL/Boost containers of values and points as well as C-style arrays. The extension has the following components:
+It supports Boost.Geometry and Boost.Polygon models, Boost.Variant, STL/Boost containers of values and points as well as C-style arrays, C# arrays and List. The extension has the following components:
 
 * **Debugger visualizers** for Boost.Array, Boost.Container, Boost.Geometry, Boost.MPL, Boost.Polygon, Boost.Tuple and Boost.Variant
 * **Geometry Watch** tool window displaying geometries in a common coordinate system, e.g. Boost.Geometry or Boost.Polygon polygons
@@ -71,6 +71,7 @@ Supported:
   * STL: array, vector, deque, list
   * Boost.Array: array
   * Boost.Container: vector, static_vector
+  * C#: array, List (as point coordinates)
 * 2D cartesian geometries
   * Boost.Geometry: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
   * Boost.Polygon: point_data, segment_data, rectangle_data, polygon_data, polygon_with_holes_data
@@ -111,6 +112,7 @@ Supported:
   * STL: array, vector, deque, list
   * Boost.Array: array
   * Boost.Container: vector, static_vector
+  * C#: array, List
 * 2D cartesian geometries
   * Boost.Geometry: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
   * Boost.Polygon: point_data, segment_data, rectangle_data, polygon_data, polygon_with_holes_data
@@ -150,6 +152,7 @@ Supported containers of values convertible to double and containers of points:
   * STL: array, vector, deque, list
   * Boost.Array: array
   * Boost.Container: vector, static_vector
+  * C#: array, List
 
 where points can be of any supported point type (coordinate system is ignored):
 
@@ -161,7 +164,7 @@ where points can be of any supported point type (coordinate system is ignored):
 
 ##### Zooming/cropping
 
-Geometry Watch and Plot Watch has zooming/cropping feature.
+Geometry Watch and Plot Watch has zooming/cropping feature. Mouse wheel can be used to zoom in/out as well.
 
 ![Geometry Watch Zoom](images/geometry_watch_zoom.png)
 
@@ -184,6 +187,7 @@ The extension attempts to obtain data through direct memory access if possible. 
   * `boost::container::vector<int>`
   * `boost::geometry::model::linestring< boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> >`
   * `boost::polygon::polygon_data<int>`
+  * `double[]` (C#)
   * etc.
 
 This behavior is enabled by default but can be disabled in options under **Tools**->**Options**->**Graphical Debugging**->**General**
