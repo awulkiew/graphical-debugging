@@ -71,7 +71,7 @@ Supported:
   * STL: array, vector, deque, list
   * Boost.Array: array
   * Boost.Container: vector, static_vector
-  * C#: array, List (as point coordinates)
+  * C#: array, List (as containers of coordinates)
 * 2D cartesian geometries
   * Boost.Geometry: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
   * Boost.Polygon: point_data, segment_data, rectangle_data, polygon_data, polygon_with_holes_data
@@ -105,7 +105,7 @@ Watch window displaying graphical representations of variables in a list. Each v
 
 Supported:
 
-* Containers of elements convertible to double and containers of points
+* Containers of values convertible to double and containers of points
   * C-style array
   * Pointer to elements with size specifier e.g.: `ptr,5`
   * Sequence of containers of point coordinates e.g.: `vec_x;vec_y`
