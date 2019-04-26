@@ -1,3 +1,8 @@
+version 0.24
+
+additions:
+- direct memory access for C# List<>
+
 version 0.23
 
 additions:
