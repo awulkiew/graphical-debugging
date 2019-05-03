@@ -113,6 +113,8 @@ namespace GraphicalDebugging
 
             loadersCS.Add(new CSList());
             loadersCS.Add(new CSArray());
+            // TODO: PointCSArray
+            loadersCS.Add(new PointContainer("System.Collections.Generic.List"));
         }
 
         public static Debugger Debugger
@@ -206,6 +208,15 @@ namespace GraphicalDebugging
         private static MultiPointKindConstraint onlyMultiPoints = new MultiPointKindConstraint();
         public static MultiPointKindConstraint OnlyMultiPoints { get { return onlyMultiPoints; } }
 
+        public static void ReloadUserTypes()
+        {
+            string language = Instance.debugger.CurrentStackFrame.Language;
+            Loaders loaders = language == "C#" ? Instance.loadersCS : Instance.loaders;
+
+            loaders.RemoveUserDefined();
+            LoadUserDefinedLoaders(loaders);
+        }
+
         public static void Load(string name,
                                 out Geometry.Traits traits,
                                 out ExpressionDrawer.IDrawable result)
@@ -228,6 +239,10 @@ namespace GraphicalDebugging
             string language = Instance.debugger.CurrentStackFrame.Language;
             Loaders loaders = language == "C#" ? Instance.loadersCS : Instance.loaders;
 
+            MemoryReader mreader = null;
+            if (IsMemoryAccessEnabled())
+                mreader = new MemoryReader(Instance.debugger);
+
             if (exprs.Length == 1)
             {
                 Loader loader = loaders.FindByType(exprs[0].Name, exprs[0].Type);
@@ -237,8 +252,8 @@ namespace GraphicalDebugging
                 if (!kindConstraint.Check(loader.Kind()))
                     return;
 
-                loader.Load(loaders, IsMemoryAccessEnabled(),
-                            Instance.debugger, exprs[0].Name, exprs[0].Type,
+                loader.Load(loaders, mreader, Instance.debugger,
+                            exprs[0].Name, exprs[0].Type,
                             out traits, out result);
             }
             else //if (exprs.Length > 1)
@@ -246,8 +261,8 @@ namespace GraphicalDebugging
                 // For now there is only one loader which can handle this case
                 CoordinatesContainers loader = new CoordinatesContainers();
 
-                loader.Load(loaders, IsMemoryAccessEnabled(),
-                            Instance.debugger, exprs,
+                loader.Load(loaders, mreader, Instance.debugger,
+                            exprs,
                             out traits, out result);
             }
         }
@@ -378,6 +393,19 @@ namespace GraphicalDebugging
                 return null;
             }
 
+            public void RemoveUserDefined()
+            {
+                foreach (List<Loader> li in lists)
+                {
+                    List<Loader> removeList = new List<Loader>();
+                    foreach (Loader l in li)
+                        if (l.IsUserDefined())
+                            removeList.Add(l);
+                    foreach (Loader l in removeList)
+                        li.Remove(l);
+                }                
+            }
+
             List<Loader>[] lists;
         }
 
@@ -421,6 +449,11 @@ namespace GraphicalDebugging
 
         abstract class Loader
         {
+            virtual public bool IsUserDefined()
+            {
+                return false;
+            }
+
             abstract public string Id();
             virtual public bool MatchType(string type, string id)
             {
@@ -436,12 +469,14 @@ namespace GraphicalDebugging
             virtual public void Initialize(Debugger debugger, string name)
             { }
 
-            abstract public void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
+            abstract public void Load(Loaders loaders,
+                                      MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
                                       out Geometry.Traits traits,
                                       out ExpressionDrawer.IDrawable result);
 
-            virtual public MemoryReader.Converter<double> GetMemoryConverter(Debugger debugger, string name, string type)
+            virtual public MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader,
+                                                                             string name, string type)
             {
                 return null;
             }
@@ -450,18 +485,20 @@ namespace GraphicalDebugging
         abstract class LoaderR<ResultType> : Loader
             where ResultType : ExpressionDrawer.IDrawable
         {
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
+            public override void Load(Loaders loaders,
+                                      MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
                                       out Geometry.Traits traits,
                                       out ExpressionDrawer.IDrawable result)
             {
                 ResultType res = default(ResultType);
-                this.Load(loaders, accessMemory, debugger, name, type, out traits, out res);
+                this.Load(loaders, mreader, debugger, name, type, out traits, out res);
                 result = res;
             }
 
-            abstract public void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
+            abstract public void Load(Loaders loaders,
+                                      MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
                                       out Geometry.Traits traits,
                                       out ResultType result);
         }
@@ -479,30 +516,30 @@ namespace GraphicalDebugging
         {
             protected PointLoader() : base(ExpressionLoader.Kind.Point) { }
             
-            public override void Load(Loaders loaders, bool accessMemory,
+            public override void Load(Loaders loaders, MemoryReader mreader,
                                       Debugger debugger, string name, string type,
                                       out Geometry.Traits traits,
                                       out ExpressionDrawer.Point point)
             {
                 traits = LoadTraits(type);
                 point = traits != null
-                      ? LoadPoint(accessMemory, debugger, name, type)
+                      ? LoadPoint(mreader, debugger, name, type)
                       : null;
             }
 
             abstract public Geometry.Traits LoadTraits(string type);
 
-            virtual public ExpressionDrawer.Point LoadPoint(bool accessMemory, Debugger debugger, string name, string type)
+            virtual public ExpressionDrawer.Point LoadPoint(MemoryReader mreader, Debugger debugger, string name, string type)
             {
                 ExpressionDrawer.Point result = null;
-                if (accessMemory)
-                    result = LoadPointMemory(debugger, name, type);
+                if (mreader != null)
+                    result = LoadPointMemory(mreader, name, type);
                 if (result == null)
                     result = LoadPointParsed(debugger, name, type);
                 return result;
             }
             abstract protected ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type);
-            abstract protected ExpressionDrawer.Point LoadPointMemory(Debugger debugger, string name, string type);
+            abstract protected ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, string name, string type);
         }
 
         abstract class BoxLoader : GeometryLoader<ExpressionDrawer.Box>
@@ -544,14 +581,9 @@ namespace GraphicalDebugging
             // With ReadArray knowing which memory copying optimizations can be made based on ElementLoader's type
             // Or not
 
-            abstract public string ElementPtrName(string name);
+            abstract public string ElementName(string name);
             public delegate bool MemoryBlockPredicate(double[] values);
-            abstract public bool ForEachMemoryBlock(Debugger debugger, string name, MemoryReader.Converter<double> elementConverter, MemoryBlockPredicate memoryBlockPredicate);
-
-            virtual public string ElementName(string name)
-            {
-                return "(*(" + this.ElementPtrName(name) + "))";
-            }
+            abstract public bool ForEachMemoryBlock(MemoryReader mreader, string name, MemoryReader.Converter<double> elementConverter, MemoryBlockPredicate memoryBlockPredicate);
         }
 
         abstract class BXPoint : PointLoader
@@ -569,10 +601,10 @@ namespace GraphicalDebugging
                      : null;
             }
 
-            protected ExpressionDrawer.Point LoadPointMemory(Debugger debugger, string name, string type, string ptrName, int count)
+            protected ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, string name, string type, string ptrName, int count)
             {
                 double[] values = new double[count];
-                if (MemoryReader.ReadNumericArray(debugger, ptrName, values))
+                if (mreader.ReadNumericArray(ptrName + "[0]", values))
                 {
                     if (count > 1)
                         return new ExpressionDrawer.Point(values[0], values[1]);
@@ -585,17 +617,15 @@ namespace GraphicalDebugging
                 return null;
             }
 
-            protected MemoryReader.Converter<double> GetMemoryConverter(Debugger debugger, string name, string memberArray, string elemType, int count)
+            protected MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader, string name, string memberArray, string elemType, int count)
             {
-                string ptrName = "(&" + name + ")";
-
+                string elemName = memberArray + "[0]";
                 MemoryReader.Converter<double> arrayConverter
-                    = MemoryReader.GetNumericArrayConverter(debugger, memberArray, elemType, count);
-                int byteSize = MemoryReader.GetValueSizeof(debugger, ptrName);
+                    = mreader.GetNumericArrayConverter(elemName, elemType, count);
+                int byteSize = mreader.GetValueSizeof(name);
                 if (byteSize == 0)
                     return null;
-                long byteOffset
-                    = MemoryReader.GetAddressDifference(debugger, ptrName, memberArray);
+                long byteOffset = mreader.GetAddressDifference(name, elemName);
                 if (MemoryReader.IsInvalidAddressDifference(byteOffset))
                     return null;
                 return new MemoryReader.StructConverter(byteSize,
@@ -633,17 +663,17 @@ namespace GraphicalDebugging
                 return LoadPointParsed(debugger, name, type, name + ".m_values", count);
             }
 
-            protected override ExpressionDrawer.Point LoadPointMemory(Debugger debugger, string name, string type)
+            protected override ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, string name, string type)
             {
                 List<string> tparams = Util.Tparams(type);
                 if (tparams.Count < 2)
                     return null;
                 int dimension = ParseInt(tparams[1]);
                 int count = Math.Min(dimension, 2);
-                return LoadPointMemory(debugger, name, type, name + ".m_values", count);
+                return LoadPointMemory(mreader, name, type, name + ".m_values", count);
             }
 
-            public override MemoryReader.Converter<double> GetMemoryConverter(Debugger debugger, string name, string type)
+            public override MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader, string name, string type)
             {
                 List<string> tparams = Util.Tparams(type);
                 if (tparams.Count < 2)
@@ -651,7 +681,7 @@ namespace GraphicalDebugging
                 string coordType = tparams[0];
                 int dimension = ParseInt(tparams[1]);
                 int count = Math.Min(dimension, 2);
-                return GetMemoryConverter(debugger, name, name + ".m_values", coordType, count);
+                return GetMemoryConverter(mreader, name, name + ".m_values", coordType, count);
             }
 
             protected void ParseCSAndUnit(string cs_type, out Geometry.CoordinateSystem cs, out Geometry.Unit unit)
@@ -708,19 +738,19 @@ namespace GraphicalDebugging
                 return LoadPointParsed(debugger, name, type, name + ".m_values", 2);
             }
 
-            protected override ExpressionDrawer.Point LoadPointMemory(Debugger debugger, string name, string type)
+            protected override ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, string name, string type)
             {
-                return LoadPointMemory(debugger, name, type, name + ".m_values", 2);
+                return LoadPointMemory(mreader, name, type, name + ".m_values", 2);
             }
 
-            public override MemoryReader.Converter<double> GetMemoryConverter(Debugger debugger, string name, string type)
+            public override MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader, string name, string type)
             {
                 List<string> tparams = Util.Tparams(type);
                 if (tparams.Count < 1)
                     return null;
                 string coordType = tparams[0];
 
-                return GetMemoryConverter(debugger, name, name + ".m_values", coordType, 2);
+                return GetMemoryConverter(mreader, name, name + ".m_values", coordType, 2);
             }
         }
 
@@ -728,8 +758,8 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "boost::geometry::model::box"; }
 
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
                                       out Geometry.Traits traits,
                                       out ExpressionDrawer.Box result)
             {
@@ -754,8 +784,8 @@ namespace GraphicalDebugging
                 if (traits == null)
                     return;
 
-                Geometry.Point fp = pointLoader.LoadPoint(accessMemory, debugger, m_min_corner, pointType);
-                Geometry.Point sp = pointLoader.LoadPoint(accessMemory, debugger, m_max_corner, pointType);
+                Geometry.Point fp = pointLoader.LoadPoint(mreader, debugger, m_min_corner, pointType);
+                Geometry.Point sp = pointLoader.LoadPoint(mreader, debugger, m_max_corner, pointType);
 
                 result = IsOk(fp, sp)
                        ? new ExpressionDrawer.Box(fp, sp)
@@ -776,8 +806,8 @@ namespace GraphicalDebugging
 
             public override string Id() { return id; }
 
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
                                       out Geometry.Traits traits,
                                       out ExpressionDrawer.Segment segment)
             {
@@ -802,8 +832,8 @@ namespace GraphicalDebugging
                 if (traits == null)
                     return;
 
-                Geometry.Point fp = pointLoader.LoadPoint(accessMemory, debugger, first, pointType);
-                Geometry.Point sp = pointLoader.LoadPoint(accessMemory, debugger, second, pointType);
+                Geometry.Point fp = pointLoader.LoadPoint(mreader, debugger, first, pointType);
+                Geometry.Point sp = pointLoader.LoadPoint(mreader, debugger, second, pointType);
 
                 segment = IsOk(fp, sp)
                         ? new ExpressionDrawer.Segment(fp, sp)
@@ -824,8 +854,8 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "boost::geometry::model::nsphere"; }
 
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
                                       out Geometry.Traits traits,
                                       out ExpressionDrawer.NSphere result)
             {
@@ -849,7 +879,7 @@ namespace GraphicalDebugging
                 if (traits == null)
                     return;
 
-                Geometry.Point center = pointLoader.LoadPoint(accessMemory, debugger,
+                Geometry.Point center = pointLoader.LoadPoint(mreader, debugger,
                                                               m_center, pointType);
                 bool ok = false;
                 double radius = LoadAsDouble(debugger, m_radius, out ok);
@@ -870,7 +900,7 @@ namespace GraphicalDebugging
                 : base(kind)
             { }
 
-            protected ResultType LoadParsed(bool accessMemory, // should this be passed?
+            protected ResultType LoadParsed(MemoryReader mreader, // should this be passed?
                                             Debugger debugger, string name, string type,
                                             string pointType,
                                             PointLoader pointLoader,
@@ -879,7 +909,7 @@ namespace GraphicalDebugging
                 ResultType result = new ResultType();
                 containerLoader.ForEachElement(debugger, name, delegate (string elName)
                 {
-                    ExpressionDrawer.Point p = pointLoader.LoadPoint(accessMemory, debugger, elName, pointType);
+                    ExpressionDrawer.Point p = pointLoader.LoadPoint(mreader, debugger, elName, pointType);
                     if (p == null)
                     {
                         result = null;
@@ -891,23 +921,23 @@ namespace GraphicalDebugging
                 return result;
             }
 
-            protected ResultType LoadMemory(Debugger debugger, string name, string type,
+            protected ResultType LoadMemory(MemoryReader mreader,
+                                            string name, string type,
                                             string pointType,
                                             PointLoader pointLoader,
                                             ContainerLoader containerLoader)
             {
                 ResultType result = null;
 
-                string pointPtrName = containerLoader.ElementPtrName(name);
-                if (pointPtrName != null)
+                string pointName = containerLoader.ElementName(name);
+                if (pointName != null)
                 {
-                    string pointName = "(*((" + pointType + "*)" + pointPtrName + "))";
-                    MemoryReader.Converter<double> pointConverter = pointLoader.GetMemoryConverter(debugger, pointName, pointType);
+                    MemoryReader.Converter<double> pointConverter = pointLoader.GetMemoryConverter(mreader, pointName, pointType);
                     if (pointConverter != null)
                     {
                         int dimension = pointConverter.ValueCount();
                         result = new ResultType();
-                        bool ok = containerLoader.ForEachMemoryBlock(debugger, name, pointConverter,
+                        bool ok = containerLoader.ForEachMemoryBlock(mreader, name, pointConverter,
                             delegate (double[] values)
                             {
                                 if (dimension == 0 || values.Length % dimension != 0)
@@ -949,8 +979,8 @@ namespace GraphicalDebugging
 
             public override string Id() { return id; }
 
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
                                       out Geometry.Traits traits,
                                       out ResultType result)
             {
@@ -979,15 +1009,15 @@ namespace GraphicalDebugging
                 if (traits == null)
                     return;
 
-                if (accessMemory)
+                if (mreader != null)
                 {
-                    result = LoadMemory(debugger, name, type,
+                    result = LoadMemory(mreader, name, type,
                                         pointType, pointLoader, containerLoader);
                 }
 
                 if (result == null)
                 {
-                    result = LoadParsed(accessMemory, debugger, name, type,
+                    result = LoadParsed(mreader, debugger, name, type,
                                         pointType, pointLoader, containerLoader);
                 }
             }
@@ -1010,8 +1040,8 @@ namespace GraphicalDebugging
 
             public override string Id() { return "boost::geometry::model::multi_linestring"; }
 
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
                                       out Geometry.Traits traits,
                                       out ExpressionDrawer.MultiLinestring result)
             {
@@ -1042,7 +1072,7 @@ namespace GraphicalDebugging
                 bool ok = containerLoader.ForEachElement(debugger, name, delegate (string elName)
                 {
                     ExpressionDrawer.Linestring ls = null;
-                    lsLoader.Load(loaders, accessMemory, debugger, elName, lsType, out t, out ls);
+                    lsLoader.Load(loaders, mreader, debugger, elName, lsType, out t, out ls);
                     if (ls == null)
                         return false;
                     mls.Add(ls);
@@ -1074,8 +1104,8 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "boost::geometry::model::polygon"; }
 
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
                                       out Geometry.Traits traits,
                                       out ExpressionDrawer.Polygon result)
             {
@@ -1101,7 +1131,7 @@ namespace GraphicalDebugging
                     return;
 
                 ExpressionDrawer.Ring outer = null;
-                outerLoader.Load(loaders, accessMemory, debugger, outerName, outerExpr.Type, out traits, out outer);
+                outerLoader.Load(loaders, mreader, debugger, outerName, outerExpr.Type, out traits, out outer);
                 if (outer == null)
                     return;
 
@@ -1110,7 +1140,7 @@ namespace GraphicalDebugging
                 bool ok = innersLoader.ForEachElement(debugger, innersName, delegate (string elName)
                 {
                     ExpressionDrawer.Ring inner = null;
-                    outerLoader.Load(loaders, accessMemory, debugger, elName, outerExpr.Type, out t, out inner);
+                    outerLoader.Load(loaders, mreader, debugger, elName, outerExpr.Type, out t, out inner);
                     if (inner == null)
                         return false;                    
                     inners.Add(inner);
@@ -1131,8 +1161,8 @@ namespace GraphicalDebugging
 
             public override string Id() { return "boost::geometry::model::multi_polygon"; }
 
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
                                       out Geometry.Traits traits,
                                       out ExpressionDrawer.MultiPolygon result)
             {
@@ -1162,7 +1192,7 @@ namespace GraphicalDebugging
                 bool ok = containerLoader.ForEachElement(debugger, name, delegate (string elName)
                 {
                     ExpressionDrawer.Polygon poly = null;
-                    polyLoader.Load(loaders, accessMemory, debugger, elName, polyType, out t, out poly);
+                    polyLoader.Load(loaders, mreader, debugger, elName, polyType, out t, out poly);
                     if (poly == null)
                         return false;
                     mpoly.Add(poly);
@@ -1182,8 +1212,8 @@ namespace GraphicalDebugging
 
             public override string Id() { return "boost::geometry::detail::buffer::buffered_ring"; }
 
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
                                       out Geometry.Traits traits,
                                       out ExpressionDrawer.Ring result)
             {
@@ -1195,13 +1225,14 @@ namespace GraphicalDebugging
                     return;
 
                 string ringType = tparams[0];
-                RangeLoader<ExpressionDrawer.Ring> ringLoader = loaders.FindByType(ExpressionLoader.Kind.Ring,
-                                                                                   name,
-                                                                                   ringType) as RangeLoader<ExpressionDrawer.Ring>;
+                RangeLoader<ExpressionDrawer.Ring>
+                    ringLoader = loaders.FindByType(ExpressionLoader.Kind.Ring,
+                                                    name,
+                                                    ringType) as RangeLoader<ExpressionDrawer.Ring>;
                 if (ringLoader == null)
                     return;
 
-                ringLoader.Load(loaders, accessMemory, debugger, name, ringType, out traits, out result);
+                ringLoader.Load(loaders, mreader, debugger, name, ringType, out traits, out result);
             }
         }
 
@@ -1212,8 +1243,8 @@ namespace GraphicalDebugging
 
             public override string Id() { return "boost::geometry::detail::buffer::buffered_ring_collection"; }
 
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
                                       out Geometry.Traits traits,
                                       out ExpressionDrawer.MultiPolygon result)
             {
@@ -1243,7 +1274,7 @@ namespace GraphicalDebugging
                 bool ok = containerLoader.ForEachElement(debugger, name, delegate (string elName)
                 {
                     ExpressionDrawer.Ring ring = null;
-                    ringLoader.Load(loaders, accessMemory, debugger, elName, ringType, out t, out ring);
+                    ringLoader.Load(loaders, mreader, debugger, elName, ringType, out t, out ring);
                     if (ring == null)
                         return false;
                     mpoly.Add(new ExpressionDrawer.Polygon(ring));
@@ -1271,19 +1302,19 @@ namespace GraphicalDebugging
                 return LoadPointParsed(debugger, name, type, name + ".coords_", 2);
             }
 
-            protected override ExpressionDrawer.Point LoadPointMemory(Debugger debugger, string name, string type)
+            protected override ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, string name, string type)
             {
-                return LoadPointMemory(debugger, name, type, name + ".coords_", 2);
+                return LoadPointMemory(mreader, name, type, name + ".coords_", 2);
             }
 
-            public override MemoryReader.Converter<double> GetMemoryConverter(Debugger debugger, string name, string type)
+            public override MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader, string name, string type)
             {
                 List<string> tparams = Util.Tparams(type);
                 if (tparams.Count < 1)
                     return null;
                 string coordType = tparams[0];
 
-                return GetMemoryConverter(debugger, name, name + ".coords_", coordType, 2);
+                return GetMemoryConverter(mreader, name, name + ".coords_", coordType, 2);
             }
         }
 
@@ -1291,8 +1322,8 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "boost::polygon::segment_data"; }
 
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
                                       out Geometry.Traits traits,
                                       out ExpressionDrawer.Segment result)
             {
@@ -1319,8 +1350,8 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "boost::polygon::rectangle_data"; }
 
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
                                       out Geometry.Traits traits,
                                       out ExpressionDrawer.Box result)
             {
@@ -1349,8 +1380,8 @@ namespace GraphicalDebugging
 
             public override string Id() { return "boost::polygon::polygon_data"; }
 
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
                                       out Geometry.Traits traits,
                                       out ExpressionDrawer.Ring result)
             {
@@ -1378,15 +1409,15 @@ namespace GraphicalDebugging
 
                 string containerName = name + ".coords_";
 
-                if (accessMemory)
+                if (mreader != null)
                 {
-                    result = LoadMemory(debugger, containerName, type,
+                    result = LoadMemory(mreader, containerName, type,
                                         pointType, pointLoader, containerLoader);
                 }
 
                 if (result == null)
                 {
-                    result = LoadParsed(accessMemory, debugger, containerName, type,
+                    result = LoadParsed(mreader, debugger, containerName, type,
                                         pointType, pointLoader, containerLoader);
                 }
             }
@@ -1396,8 +1427,8 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "boost::polygon::polygon_with_holes_data"; }
 
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
                                       out Geometry.Traits traits,
                                       out ExpressionDrawer.Polygon result)
             {
@@ -1436,8 +1467,8 @@ namespace GraphicalDebugging
                     return;
 
                 ExpressionDrawer.Ring outer = null;
-                outerLoader.Load(loaders, accessMemory,
-                                 debugger, member_self_, polygonType,
+                outerLoader.Load(loaders, mreader, debugger,
+                                 member_self_, polygonType,
                                  out traits, out outer);
                 if (outer == null)
                     return;
@@ -1447,7 +1478,7 @@ namespace GraphicalDebugging
                 bool ok = holesLoader.ForEachElement(debugger, member_holes_, delegate (string elName)
                 {
                     ExpressionDrawer.Ring hole = null;
-                    outerLoader.Load(loaders, accessMemory, debugger, elName, polygonType, out t, out hole);
+                    outerLoader.Load(loaders, mreader, debugger, elName, polygonType, out t, out hole);
                     if (hole == null)
                         return false;
                     holes.Add(hole);
@@ -1470,8 +1501,8 @@ namespace GraphicalDebugging
                 return tparams.Count > 0 ? tparams[0] : "";
             }
 
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
                                       out Geometry.Traits traits,
                                       out ExpressionDrawer.ValuesContainer result)
             {
@@ -1479,41 +1510,41 @@ namespace GraphicalDebugging
                 result = null;
 
                 List<double> values = null;
-                Load(loaders, accessMemory, debugger, name, type, out traits, out values);
+                Load(loaders, mreader, debugger, name, type, out traits, out values);
 
                 if (values != null)
                     result = new ExpressionDrawer.ValuesContainer(values);
             }
 
-            public void Load(Loaders loaders, bool accessMemory,
-                             Debugger debugger, string name, string type,
+            public void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                             string name, string type,
                              out Geometry.Traits traits,
                              out List<double> result)
             {
                 traits = null;
                 result = null;
 
-                if (accessMemory)
-                    LoadMemory(debugger, name, type, out result);
+                if (mreader != null)
+                    LoadMemory(mreader, name, type, out result);
 
                 if (result == null)
                     LoadParsed(debugger, name, out result);
             }
 
-            protected void LoadMemory(Debugger debugger, string name, string type,
+            protected void LoadMemory(MemoryReader mreader, string name, string type,
                                       out List<double> result)
             {
                 result = null;
 
-                string ptrName = "((" + this.ElementType(type) + "*)" + this.ElementPtrName(name) + ")";
+                string elemName = this.ElementName(name);
 
                 MemoryReader.ValueConverter<double>
-                    valueConverter = MemoryReader.GetNumericConverter(debugger, ptrName, null);
+                    valueConverter = mreader.GetNumericConverter(elemName, null);
                 if (valueConverter == null)
                     return;
 
                 List<double> list = new List<double>();
-                bool ok = this.ForEachMemoryBlock(debugger, name, valueConverter,
+                bool ok = this.ForEachMemoryBlock(mreader, name, valueConverter,
                     delegate (double[] values)
                     {
                         foreach (double v in values)
@@ -1572,16 +1603,26 @@ namespace GraphicalDebugging
 
         abstract class ContiguousContainer : RandomAccessContainer
         {
-            protected bool ForEachMemoryBlock(Debugger debugger, string name, string blockPtrName,
+            public override bool ForEachMemoryBlock(MemoryReader mreader, string name,
+                                                    MemoryReader.Converter<double> elementConverter,
+                                                    MemoryBlockPredicate memoryBlockPredicate)
+            {
+                return this.ForEachMemoryBlock(mreader,
+                                               name,
+                                               ElementName(name),
+                                               elementConverter, memoryBlockPredicate);
+            }
+
+            protected bool ForEachMemoryBlock(MemoryReader mreader, string name, string blockName,
                                               MemoryReader.Converter<double> elementConverter,
                                               MemoryBlockPredicate memoryBlockPredicate)
             {
-                if(elementConverter == null)
+                if (elementConverter == null)
                     return false;
-                int size = LoadSize(debugger, name);
+                int size = LoadSize(mreader.Debugger, name);
                 var blockConverter = new MemoryReader.ArrayConverter<double>(elementConverter, size);
                 double[] values = new double[blockConverter.ValueCount()];
-                if (!MemoryReader.Read(debugger, blockPtrName, values, blockConverter))
+                if (! mreader.Read(blockName, values, blockConverter))
                     return false;
                 return memoryBlockPredicate(values);
             }
@@ -1606,25 +1647,14 @@ namespace GraphicalDebugging
                 return elemType;
             }
 
-            public override string ElementPtrName(string name)
+            public override string ElementName(string name)
             {
-                // make raw pointer from the carray
-                return "(&(" + this.RandomAccessName(name) + "[0]))";
+                return this.RandomAccessName(name) + "[0]";
             }
 
             public override string RandomAccessName(string name)
             {
                 return RawNameFromName(name);
-            }
-
-            public override bool ForEachMemoryBlock(Debugger debugger, string name,
-                                                    MemoryReader.Converter<double> elementConverter,
-                                                    MemoryBlockPredicate memoryBlockPredicate)
-            {
-                return this.ForEachMemoryBlock(debugger,
-                                               name,
-                                               ElementPtrName(name),
-                                               elementConverter, memoryBlockPredicate);
             }
 
             public override int LoadSize(Debugger debugger, string name)
@@ -1675,17 +1705,9 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "std::array"; }
 
-            public override string ElementPtrName(string name)
+            public override string ElementName(string name)
             {
-                return name + "._Elems";
-            }
-
-            public override bool ForEachMemoryBlock(Debugger debugger, string name,
-                                                    MemoryReader.Converter<double> elementConverter,
-                                                    MemoryBlockPredicate memoryBlockPredicate)
-            {
-                return this.ForEachMemoryBlock(debugger, name, name + "._Elems",
-                                               elementConverter, memoryBlockPredicate);
+                return name + "._Elems[0]";
             }
 
             public override int LoadSize(Debugger debugger, string name)
@@ -1701,17 +1723,9 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "boost::array"; }
 
-            public override string ElementPtrName(string name)
+            public override string ElementName(string name)
             {
-                return name + ".elems";
-            }
-
-            public override bool ForEachMemoryBlock(Debugger debugger, string name,
-                                                    MemoryReader.Converter<double> elementConverter,
-                                                    MemoryBlockPredicate memoryBlockPredicate)
-            {
-                return this.ForEachMemoryBlock(debugger, name, name + ".elems",
-                                               elementConverter, memoryBlockPredicate);
+                return name + ".elems[0]";
             }
         }
 
@@ -1719,17 +1733,9 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "boost::container::vector"; }
 
-            public override string ElementPtrName(string name)
+            public override string ElementName(string name)
             {
-                return name + ".m_holder.m_start";
-            }
-
-            public override bool ForEachMemoryBlock(Debugger debugger, string name,
-                                                    MemoryReader.Converter<double> elementConverter,
-                                                    MemoryBlockPredicate memoryBlockPredicate)
-            {
-                return this.ForEachMemoryBlock(debugger, name, name + ".m_holder.m_start",
-                                               elementConverter, memoryBlockPredicate);
+                return name + ".m_holder.m_start[0]";
             }
 
             public override int LoadSize(Debugger debugger, string name)
@@ -1745,17 +1751,15 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "boost::container::static_vector"; }
 
-            public override string ElementPtrName(string name)
+            public override string ElementName(string name)
             {
-                return name + ".m_holder.storage.data";
-            }
-
-            public override bool ForEachMemoryBlock(Debugger debugger, string name,
-                                                    MemoryReader.Converter<double> elementConverter,
-                                                    MemoryBlockPredicate memoryBlockPredicate)
-            {
-                return this.ForEachMemoryBlock(debugger, name, this.ElementPtrName(name),
-                                               elementConverter, memoryBlockPredicate);
+                // TODO: The type-cast is needed here!!!
+                // Although it's possible it will be ok since this is used only to pass a value starting the memory block
+                // into the memory reader and type is not really important
+                // and in other places like PointRange or BGRange correct type is passed with it
+                // and based on this type the data is processed
+                // It needs testing
+                return name + ".m_holder.storage.data[0]";
             }
         }
 
@@ -1763,17 +1767,10 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "boost::geometry::index::detail::varray"; }
 
-            public override string ElementPtrName(string name)
+            public override string ElementName(string name)
             {
-                return name + ".m_storage.data_.buf";
-            }
-
-            public override bool ForEachMemoryBlock(Debugger debugger, string name,
-                                                    MemoryReader.Converter<double> elementConverter,
-                                                    MemoryBlockPredicate memoryBlockPredicate)
-            {
-                return this.ForEachMemoryBlock(debugger, name, name + ".m_storage.data_.buf",
-                                               elementConverter, memoryBlockPredicate);
+                // TODO: Check if type-cast is needed here
+                return name + ".m_storage.data_.buf[0]";
             }
 
             public override int LoadSize(Debugger debugger, string name)
@@ -1794,18 +1791,9 @@ namespace GraphicalDebugging
                 return FirstStr(rawName) + "[" + i + "]";
             }
 
-            public override string ElementPtrName(string name)
+            public override string ElementName(string name)
             {
-                return FirstStr(name);
-            }
-
-            public override bool ForEachMemoryBlock(Debugger debugger, string name,
-                                                    MemoryReader.Converter<double> elementConverter,
-                                                    MemoryBlockPredicate memoryBlockPredicate)
-            {
-                return this.ForEachMemoryBlock(debugger, name,
-                                               ElementPtrName(name),
-                                               elementConverter, memoryBlockPredicate);
+                return FirstStr(name) + "[0]";
             }
 
             public override int LoadSize(Debugger debugger, string name)
@@ -1846,38 +1834,38 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "std::deque"; }
 
-            public override string ElementPtrName(string name)
+            public override string ElementName(string name)
             {
-                return "(&(" + ElementStr(name, 0) + "))";
+                return ElementStr(name, 0);
             }
 
-            public override bool ForEachMemoryBlock(Debugger debugger, string name,
+            public override bool ForEachMemoryBlock(MemoryReader mreader, string name,
                                                     MemoryReader.Converter<double> elementConverter,
                                                     MemoryBlockPredicate memoryBlockPredicate)
             {
-                int size = LoadSize(debugger, name);
+                int size = LoadSize(mreader.Debugger, name);
                 if (size == 0)
                     return true;
 
                 // Map size                
-                Expression mapSizeExpr = debugger.GetExpression(MapSizeStr(name));
+                Expression mapSizeExpr = mreader.Debugger.GetExpression(MapSizeStr(name));
                 if (!mapSizeExpr.IsValidValue)
                     return false;
                 int mapSize = int.Parse(mapSizeExpr.Value);
 
                 // Map - array of pointers                
                 ulong[] pointers = new ulong[mapSize];
-                if (! MemoryReader.ReadPointerArray(debugger, MapStr(name), pointers))
+                if (! mreader.ReadPointerArray(MapStr(name) + "[0]", pointers))
                     return false;
 
                 // Block size
-                Expression dequeSizeExpr = debugger.GetExpression("((int)" + name + "._EEN_DS)");
+                Expression dequeSizeExpr = mreader.Debugger.GetExpression("((int)" + name + "._EEN_DS)");
                 if (!dequeSizeExpr.IsValidValue)
                     return false;
                 int dequeSize = int.Parse(dequeSizeExpr.Value);
 
                 // Offset
-                Expression offsetExpr = debugger.GetExpression(OffsetStr(name));
+                Expression offsetExpr = mreader.Debugger.GetExpression(OffsetStr(name));
                 if (!offsetExpr.IsValidValue)
                     return false;
                 int offset = int.Parse(offsetExpr.Value);
@@ -1916,7 +1904,7 @@ namespace GraphicalDebugging
                             ulong firstAddress = address + (ulong)(elemIndex * elementConverter.ByteSize());
 
                             double[] values = new double[valuesCount];
-                            if (!MemoryReader.Read(debugger, firstAddress, values, arrayConverter))
+                            if (! mreader.Read(firstAddress, values, arrayConverter))
                                 return false;
 
                             if (!memoryBlockPredicate(values))
@@ -1989,30 +1977,29 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "std::list"; }
 
-            public override string ElementPtrName(string name)
+            public override string ElementName(string name)
             {
-                return "(&" + HeadStr(name) + "->_Next->_Myval" + ")";
+                return HeadStr(name) + "->_Next->_Myval";
             }
 
-            public override bool ForEachMemoryBlock(Debugger debugger, string name,
+            public override bool ForEachMemoryBlock(MemoryReader mreader, string name,
                                                     MemoryReader.Converter<double> elementConverter,
                                                     MemoryBlockPredicate memoryBlockPredicate)
             {
-                int size = LoadSize(debugger, name);
+                int size = LoadSize(mreader.Debugger, name);
                 if (size <= 0)
                     return true;
 
                 string nextName = HeadStr(name) + "->_Next";
-                string nextNextPtrName = "(&" + HeadStr(name) + "->_Next->_Next)";
-                string nextValPtrName = "(&" + HeadStr(name) + "->_Next->_Myval)";
+                string nextNextName = HeadStr(name) + "->_Next->_Next";
+                string nextValName = HeadStr(name) + "->_Next->_Myval";
 
-                string nextPtrName = "(&" + nextName + ")";
-                MemoryReader.ValueConverter<ulong> nextConverter = MemoryReader.GetPointerConverter(debugger, nextPtrName, null);
+                MemoryReader.ValueConverter<ulong> nextConverter = mreader.GetPointerConverter(nextName, null);
                 if (nextConverter == null)
                     return false;
 
-                long nextDiff = MemoryReader.GetAddressDifference(debugger, nextName, nextNextPtrName);
-                long valDiff = MemoryReader.GetAddressDifference(debugger, nextName, nextValPtrName);
+                long nextDiff = mreader.GetAddressDifference("(*" + nextName + ")", nextNextName);
+                long valDiff = mreader.GetAddressDifference("(*" + nextName + ")", nextValName);
                 if (MemoryReader.IsInvalidAddressDifference(nextDiff)
                  || MemoryReader.IsInvalidAddressDifference(valDiff)
                  || nextDiff < 0 || valDiff < 0)
@@ -2024,14 +2011,14 @@ namespace GraphicalDebugging
                 for (int i = 0; i < size; ++i)
                 {
                     bool ok = next == 0
-                            ? MemoryReader.Read(debugger, nextPtrName, nextTmp, nextConverter)
-                            : MemoryReader.Read(debugger, next + (ulong)nextDiff, nextTmp, nextConverter);
+                            ? mreader.Read(nextName, nextTmp, nextConverter)
+                            : mreader.Read(next + (ulong)nextDiff, nextTmp, nextConverter);
                     if (!ok)
                         return false;
                     next = nextTmp[0];
 
                     double[] values = new double[elementConverter.ValueCount()];
-                    if (!MemoryReader.Read(debugger, next + (ulong)valDiff, values, elementConverter))
+                    if (!mreader.Read(next + (ulong)valDiff, values, elementConverter))
                         return false;
 
                     if (!memoryBlockPredicate(values))
@@ -2094,8 +2081,8 @@ namespace GraphicalDebugging
             public override string Id() { return "boost::variant"; }
             public override ExpressionLoader.Kind Kind() { return ExpressionLoader.Kind.Variant; }
 
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
                                       out Geometry.Traits traits,
                                       out ExpressionDrawer.IDrawable result)
             {
@@ -2118,7 +2105,7 @@ namespace GraphicalDebugging
                 if (loader == null)
                     return;
 
-                loader.Load(loaders, accessMemory, debugger, storedName, storedType, out traits, out result);
+                loader.Load(loaders, mreader, debugger, storedName, storedType, out traits, out result);
             }
         }
 
@@ -2132,8 +2119,8 @@ namespace GraphicalDebugging
 
             public override string Id() { return id; }
 
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
                                       out Geometry.Traits traits,
                                       out ExpressionDrawer.Turn result)
             {
@@ -2145,14 +2132,14 @@ namespace GraphicalDebugging
                     return;
 
                 string pointType = tparams[0];
-                PointLoader pointLoader = (PointLoader)loaders.FindByType(ExpressionLoader.Kind.Point,
-                                                                          name + ".point",
-                                                                          pointType);
+                PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
+                                                             name + ".point",
+                                                             pointType) as PointLoader;
                 if (pointLoader == null)
                     return;
 
                 ExpressionDrawer.Point p = null;
-                pointLoader.Load(loaders, accessMemory, debugger, name + ".point", pointType, out traits, out p);
+                pointLoader.Load(loaders, mreader, debugger, name + ".point", pointType, out traits, out p);
                 if (p == null)
                     return;
 
@@ -2218,8 +2205,8 @@ namespace GraphicalDebugging
             public override string Id() { return id; }
             public override TypeConstraint Constraint() { return new TparamKindConstraint(0, ExpressionLoader.Kind.Turn); }
 
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
                                       out Geometry.Traits traits,
                                       out ExpressionDrawer.TurnsContainer result)
             {
@@ -2249,7 +2236,7 @@ namespace GraphicalDebugging
                 bool ok = containerLoader.ForEachElement(debugger, name, delegate (string elName)
                 {
                     ExpressionDrawer.Turn turn = null;
-                    turnLoader.Load(loaders, accessMemory, debugger, elName, turnType, out t, out turn);
+                    turnLoader.Load(loaders, mreader, debugger, elName, turnType, out t, out turn);
                     if (turn == null)
                         return false;
                     turns.Add(turn);
@@ -2285,16 +2272,16 @@ namespace GraphicalDebugging
                      : null;
             }
 
-            protected override ExpressionDrawer.Point LoadPointMemory(Debugger debugger, string name, string type)
+            protected override ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, string name, string type)
             {
-                MemoryReader.Converter<double> converter = GetMemoryConverter(debugger, name, type);
+                MemoryReader.Converter<double> converter = GetMemoryConverter(mreader, name, type);
                 if (converter != null)
                 {
                     if (converter.ValueCount() != 2)
                         throw new ArgumentOutOfRangeException("converter.ValueCount()");
 
                     double[] values = new double[2];
-                    if (MemoryReader.Read(debugger, "(&" + name + ")", values, converter))
+                    if (mreader.Read(name, values, converter))
                     {
                         return new ExpressionDrawer.Point(values[0], values[1]);
                     }
@@ -2302,26 +2289,25 @@ namespace GraphicalDebugging
                 return null;
             }
 
-            public override MemoryReader.Converter<double> GetMemoryConverter(Debugger debugger, string name, string type)
+            public override MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader, string name, string type)
             {
                 List<string> tparams = Util.Tparams(type);
                 if (tparams.Count < 2)
                     return null;
                 string firstType = tparams[0];
                 string secondType = tparams[1];
-                string ptrName = "(&" + name + ")";
-                string ptrFirst = "(&" + name + ".first)";
-                string ptrSecond = "(&" + name + ".second)";
-                long firstOffset = MemoryReader.GetAddressDifference(debugger, ptrName, ptrFirst);
-                long secondOffset = MemoryReader.GetAddressDifference(debugger, ptrName, ptrSecond);
+                string first = name + ".first";
+                string second = name + ".second";
+                long firstOffset = mreader.GetAddressDifference(name, first);
+                long secondOffset = mreader.GetAddressDifference(name, second);
                 if (MemoryReader.IsInvalidAddressDifference(firstOffset)
                  || MemoryReader.IsInvalidAddressDifference(secondOffset))
                     return null;
-                MemoryReader.Converter<double> firstConverter = MemoryReader.GetNumericArrayConverter(debugger, ptrFirst, firstType, 1);
-                MemoryReader.Converter<double> secondConverter = MemoryReader.GetNumericArrayConverter(debugger, ptrSecond, secondType, 1);
+                MemoryReader.Converter<double> firstConverter = mreader.GetNumericArrayConverter(first, firstType, 1);
+                MemoryReader.Converter<double> secondConverter = mreader.GetNumericArrayConverter(second, secondType, 1);
                 if (firstConverter == null || secondConverter == null)
                     return null;
-                int sizeOfPair = MemoryReader.GetValueTypeSizeof(debugger, type);
+                int sizeOfPair = mreader.GetValueTypeSizeof(type);
                 if (sizeOfPair == 0)
                     return null;
                 return new MemoryReader.StructConverter(
@@ -2345,19 +2331,19 @@ namespace GraphicalDebugging
                 return LoadPointParsed(debugger, name, type, name + "._Val", 2);
             }
 
-            protected override ExpressionDrawer.Point LoadPointMemory(Debugger debugger, string name, string type)
+            protected override ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, string name, string type)
             {
-                return LoadPointMemory(debugger, name, type, name + "._Val", 2);
+                return LoadPointMemory(mreader, name, type, name + "._Val", 2);
             }
 
-            public override MemoryReader.Converter<double> GetMemoryConverter(Debugger debugger, string name, string type)
+            public override MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader, string name, string type)
             {
                 List<string> tparams = Util.Tparams(type);
                 if (tparams.Count < 1)
                     return null;
                 string coordType = tparams[0];
 
-                return GetMemoryConverter(debugger, name, name + "._Val", coordType, 2);
+                return GetMemoryConverter(mreader, name, name + "._Val", coordType, 2);
             }
         }
 
@@ -2404,7 +2390,7 @@ namespace GraphicalDebugging
                 return CArray.NameSizeFromType(type, out dummy, out size);
             }
 
-            public override void Load(Loaders loaders, bool accessMemory,
+            public override void Load(Loaders loaders, MemoryReader mreader,
                                       Debugger debugger, string name, string type,
                                       out Geometry.Traits traits,
                                       out ExpressionDrawer.MultiPoint result)
@@ -2435,15 +2421,15 @@ namespace GraphicalDebugging
                 if (containerLoader == null)
                     return;
 
-                if (accessMemory)
+                if (mreader != null)
                 {
-                    result = LoadMemory(debugger, name, type,
+                    result = LoadMemory(mreader, name, type,
                                         pointType, pointLoader, containerLoader);
                 }
 
                 if (result == null)
                 {
-                    result = LoadParsed(accessMemory, debugger, name, type,
+                    result = LoadParsed(mreader, debugger, name, type,
                                         pointType, pointLoader, containerLoader);
                 }
             }
@@ -2459,8 +2445,9 @@ namespace GraphicalDebugging
 
             public override string Id() { return null; }
 
-            public override void Load(Loaders loaders, bool accessMemory,
-                                      Debugger debugger, string name, string type,
+            public override void Load(Loaders loaders,
+                                      MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
                                       out Geometry.Traits traits,
                                       out ExpressionDrawer.MultiPoint result)
             {
@@ -2468,18 +2455,20 @@ namespace GraphicalDebugging
                 result = null;
             }
 
-            public void Load(Loaders loaders, bool accessMemory,
-                             Debugger debugger, Expression[] exprs,
+            public void Load(Loaders loaders,
+                             MemoryReader mreader, Debugger debugger,
+                             Expression[] exprs,
                              out Geometry.Traits traits,
                              out ExpressionDrawer.IDrawable result)
             {
                 ExpressionDrawer.MultiPoint res = default(ExpressionDrawer.MultiPoint);
-                this.Load(loaders, accessMemory, debugger, exprs, out traits, out res);
+                this.Load(loaders, mreader, debugger, exprs, out traits, out res);
                 result = res;
             }
 
-            public void Load(Loaders loaders, bool accessMemory,
-                             Debugger debugger, Expression[] exprs,
+            public void Load(Loaders loaders,
+                             MemoryReader mreader, Debugger debugger,
+                             Expression[] exprs,
                              out Geometry.Traits traits,
                              out ExpressionDrawer.MultiPoint result)
             {
@@ -2499,8 +2488,8 @@ namespace GraphicalDebugging
                         return;
 
                     Geometry.Traits foo = null;
-                    containerLoader.Load(loaders, accessMemory,
-                                         debugger, exprs[i].Name, exprs[i].Type,
+                    containerLoader.Load(loaders, mreader, debugger,
+                                         exprs[i].Name, exprs[i].Type,
                                          out foo, out coords[i]);
                 }
 
@@ -2558,17 +2547,9 @@ namespace GraphicalDebugging
                      : 0;
             }
 
-            public override string ElementPtrName(string name)
+            public override string ElementName(string name)
             {
-                return "(&" + name + "[0])";
-            }
-
-            public override bool ForEachMemoryBlock(Debugger debugger, string name, MemoryReader.Converter<double> elementConverter, MemoryBlockPredicate memoryBlockPredicate)
-            {
-                return this.ForEachMemoryBlock(debugger,
-                                               name,
-                                               ElementPtrName(name),
-                                               elementConverter, memoryBlockPredicate);
+                return name + "[0]";
             }
 
             // type -> name[]
@@ -2597,23 +2578,159 @@ namespace GraphicalDebugging
                      : 0;
             }
 
-            public override string ElementPtrName(string name)
+            public override string RandomAccessElementName(string rawName, int i)
             {
-                return "(&" + name + "._items[0])";
+                return rawName + "._items[" + i + "]";
             }
 
-            public override bool ForEachMemoryBlock(Debugger debugger, string name, MemoryReader.Converter<double> elementConverter, MemoryBlockPredicate memoryBlockPredicate)
+            public override string ElementName(string name)
             {
-                Expression expr = debugger.GetExpression(name + "._items");
+                return name + "._items[0]";
+            }
+
+            public override bool ForEachMemoryBlock(MemoryReader mreader, string name, MemoryReader.Converter<double> elementConverter, MemoryBlockPredicate memoryBlockPredicate)
+            {
+                Expression expr = mreader.Debugger.GetExpression(name + "._items");
                 if (!expr.IsValidValue || CSArray.ElemTypeFromType(expr.Type).Length <= 0)
                     return false;
 
-                return this.ForEachMemoryBlock(debugger,
-                                               name,
-                                               ElementPtrName(name),
-                                               elementConverter, memoryBlockPredicate);
+                return base.ForEachMemoryBlock(mreader, name, elementConverter, memoryBlockPredicate);
             }
         }
 
+        // TODO: CSList's of Points MemoryReader doesn't work because of the user of * and & in C#
+        // TODO: PointCSArray is not implemented
+
+        class UserPoint : PointLoader
+        {
+            public UserPoint(string id, string x, string y)
+            {
+                this.id = id;
+                this.member_x = x;
+                this.member_y = y;
+                this.member_type_x = null;
+                this.member_type_y = null;
+                this.sizeOf = 0;
+            }
+
+            public override bool IsUserDefined() { return true; }
+
+            public override string Id() { return id; }
+
+            public override void Initialize(Debugger debugger, string name)
+            {
+                Expression e = debugger.GetExpression(name);
+                Expression ex = debugger.GetExpression(name + "." + member_x);
+                Expression ey = debugger.GetExpression(name + "." + member_y);
+                if (e.IsValidValue && ex.IsValidValue && ey.IsValidValue)
+                {
+                    sizeOf = MemoryReader.GetValueTypeSizeof(debugger, e.Type);
+                    member_type_x = ex.Type;
+                    member_type_y = ey.Type;
+                }
+            }
+
+            public override Geometry.Traits LoadTraits(string type)
+            {
+                // TODO: dimension, CS and Units defined by the user
+                return new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
+            }
+
+            protected override ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type)
+            {
+                bool okx = true, oky = true;
+                double x = 0, y = 0;
+                x = LoadAsDouble(debugger, name + "." + member_x, out okx);
+                y = LoadAsDouble(debugger, name + "." + member_y, out oky);
+                return IsOk(okx, oky)
+                     ? new ExpressionDrawer.Point(x, y)
+                     : null;
+            }
+
+            protected override ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, string name, string type)
+            {
+                MemoryReader.Converter<double> converter = GetMemoryConverter(mreader, name, type);
+                if (converter != null)
+                {
+                    if (converter.ValueCount() != 2)
+                        throw new ArgumentOutOfRangeException("converter.ValueCount()");
+
+                    double[] values = new double[2];
+                    if (mreader.Read(name, values, converter))
+                    {
+                        return new ExpressionDrawer.Point(values[0], values[1]);
+                    }
+                }
+                return null;
+            }
+
+            public override MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader, string name, string type)
+            {
+                if (sizeOf == 0 /*|| member_type_x == null || member_type_y == null*/)
+                    return null;
+
+                string firstType = member_type_x;
+                string secondType = member_type_y;
+                string first = name + "." + member_x;
+                string second = name + "." + member_y;
+                // TODO: This could be done once, in Initialize
+                long firstOffset = mreader.GetAddressDifference(name, first);
+                long secondOffset = mreader.GetAddressDifference(name, second);
+                if (MemoryReader.IsInvalidAddressDifference(firstOffset)
+                 || MemoryReader.IsInvalidAddressDifference(secondOffset)
+                 || firstOffset < 0
+                 || secondOffset < 0
+                 || firstOffset > sizeOf
+                 || secondOffset > sizeOf)
+                    return null;
+
+                MemoryReader.Converter<double> firstConverter = mreader.GetNumericArrayConverter(first, firstType, 1);
+                MemoryReader.Converter<double> secondConverter = mreader.GetNumericArrayConverter(second, secondType, 1);
+                if (firstConverter == null || secondConverter == null)
+                    return null;
+
+                return new MemoryReader.StructConverter(
+                            sizeOf,
+                            new MemoryReader.Member(firstConverter, (int)firstOffset),
+                            new MemoryReader.Member(secondConverter, (int)secondOffset));
+            }
+
+            string id;
+            string member_x;
+            string member_y;
+            string member_type_x;
+            string member_type_y;
+            int sizeOf;
+        }
+
+        static void LoadUserDefinedLoaders(Loaders loaders)
+        {
+            GeneralOptionPage optionPage = Util.GetDialogPage<GeneralOptionPage>();
+            if (System.IO.File.Exists(optionPage.UserTypesPath))
+            {
+                System.Xml.XmlDocument doc = new System.Xml.XmlDocument();
+                doc.Load(optionPage.UserTypesPath);
+                foreach (System.Xml.XmlElement elRoot in doc.GetElementsByTagName("GraphicalDebugging"))
+                {
+                    foreach (System.Xml.XmlElement elPoint in elRoot.GetElementsByTagName("Point"))
+                    {
+                        var elCoords = Util.GetXmlElementByTagName(elPoint, "Coordinates");
+                        if (elCoords != null)
+                        {
+                            var elX = Util.GetXmlElementByTagName(elCoords, "X");
+                            var elY = Util.GetXmlElementByTagName(elCoords, "Y");
+                            if (elX != null && elY != null)
+                            {
+                                string x = elX.InnerText;
+                                string y = elY.InnerText;
+                                string id = elPoint.GetAttribute("Id");
+                                //string name = elPoint.GetAttribute("Name");
+                                loaders.Add(new UserPoint(id, x, y));
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

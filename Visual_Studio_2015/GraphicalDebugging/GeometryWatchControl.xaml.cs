@@ -300,6 +300,9 @@ namespace GraphicalDebugging
 
                         try
                         {
+//TODO - reload only if necessary
+                            ExpressionLoader.ReloadUserTypes();
+
                             ExpressionDrawer.IDrawable[] drawables = new ExpressionDrawer.IDrawable[names.Length];
                             Geometry.Traits[] traits = new Geometry.Traits[names.Length];
                             for (int i = 0; i < names.Length; ++i)

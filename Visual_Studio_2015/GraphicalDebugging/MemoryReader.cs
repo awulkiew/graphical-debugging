@@ -195,11 +195,50 @@ namespace GraphicalDebugging
             int internalValueCount = 0;
         }
 
-        public static ValueConverter<double> GetNumericConverter(Debugger debugger, string ptrName, string valType)
+        private bool IsSignedIntegralType(string valType)
+        {
+            if (language == Language.CS)
+            {
+                return valType == "int"
+                    || valType == "long"
+                    || valType == "short"
+                    || valType == "sbyte";
+            }
+            else
+            {
+                return valType == "int"
+                    || valType == "long"
+                    || valType == "__int64"
+                    || valType == "short"
+                    || valType == "char";
+            }
+        }
+
+        private bool IsUnsignedIntegralType(string valType)
+        {
+            if (language == Language.CS)
+            {
+                return valType == "uint"
+                    || valType == "ulong"
+                    || valType == "ushort"
+                    || valType == "char"
+                    || valType == "byte";
+            }
+            else
+            {
+                return valType == "unsigned int"
+                    || valType == "unsigned long"
+                    || valType == "unsigned __int64"
+                    || valType == "unsigned short"
+                    || valType == "unsigned char";
+            }
+        }
+
+        public ValueConverter<double> GetNumericConverter(string valName, string valType)
         {
             if (valType == null)
-                valType = GetValueType(debugger, ptrName);
-            int valSize = GetValueTypeSizeof(debugger, valType);
+                valType = GetValueType(valName);
+            int valSize = GetValueTypeSizeof(valType);
 
             if (valType == null || valSize == 0)
                 return null;
@@ -212,11 +251,7 @@ namespace GraphicalDebugging
             {
                 return new ValueConverter<double, float>();
             }
-            else if (valType == "int"
-                  || valType == "long"
-                  || valType == "__int64"
-                  || valType == "short"
-                  || valType == "char")
+            else if (IsSignedIntegralType(valType))
             {
                 if (valSize == 4)
                     return new ValueConverter<double, int>();
@@ -227,30 +262,32 @@ namespace GraphicalDebugging
                 else if (valSize == 1)
                     return new ValueConverter<double, sbyte>();
             }
-            else if (valType == "unsigned short"
-                  || valType == "unsigned int"
-                  || valType == "unsigned long"
-                  || valType == "unsigned __int64"
-                  || valType == "unsigned char")
+            else if (IsUnsignedIntegralType(valType))
             {
-                if (valSize == 4 && sizeof(uint) == 4)
+                if (valSize == 4)
                     return new ValueConverter<double, uint>();
-                else if (valSize == 8 && sizeof(ulong) == 8)
+                else if (valSize == 8)
                     return new ValueConverter<double, ulong>();
                 else if (valSize == 2)
                     return new ValueConverter<double, ushort>();
                 else if (valSize == 1)
                     return new ValueConverter<double, byte>();
             }
+            else if (valType == "decimal") // C# only
+            {
+                return new ValueConverter<double, decimal>();
+            }
 
             return null;
         }
 
-        public static ValueConverter<ulong> GetPointerConverter(Debugger debugger, string ptrName, string valType)
+        // valName - pointer name
+        // valType - pointer type, must end with *
+        public ValueConverter<ulong> GetPointerConverter(string valName, string valType)
         {
             if (valType == null)
-                valType = GetValueType(debugger, ptrName);
-            int valSize = GetValueTypeSizeof(debugger, valType);
+                valType = GetValueType(valName);
+            int valSize = GetValueTypeSizeof(valType);
 
             if (valType == null || valSize == 0)
                 return null;
@@ -266,25 +303,51 @@ namespace GraphicalDebugging
             return null;
         }
 
-        public static ArrayConverter<double> GetNumericArrayConverter(Debugger debugger, string ptrName, string valType, int size)
+        // valName - name of the first element in array
+        public ArrayConverter<double> GetNumericArrayConverter(string valName, string valType, int size)
         {
-            ValueConverter<double> valueConverter = GetNumericConverter(debugger, ptrName, valType);
+            ValueConverter<double> valueConverter = GetNumericConverter(valName, valType);
             return valueConverter == null
                  ? null
                  : new ArrayConverter<double>(valueConverter, size);
         }
 
-        public static ArrayConverter<ulong> GetPointerArrayConverter(Debugger debugger, string ptrName, string valType, int size)
+        // valName - name of the first pointer in array
+        public ArrayConverter<ulong> GetPointerArrayConverter(string valName, string valType, int size)
         {
-            ValueConverter<ulong> pointerConverter = GetPointerConverter(debugger, ptrName, valType);
+            ValueConverter<ulong> pointerConverter = GetPointerConverter(valName, valType);
             return pointerConverter == null
                  ? null
                  : new ArrayConverter<ulong>(pointerConverter, size);
         }
 
-        public static bool Read<ValueType>(Debugger debugger, string ptrName,
-                                           ValueType[] values,
-                                           Converter<ValueType> converter)
+        // valName - name of the variable starting the block
+        public bool Read<ValueType>(string valName,
+                                    ValueType[] values,
+                                    Converter<ValueType> converter)
+            where ValueType : struct
+        {
+            // TODO: redundant
+
+            if (converter.ValueCount() != values.Length)
+                throw new ArgumentOutOfRangeException("values.Length");
+
+            int byteSize = converter.ByteSize();
+            if (byteSize < 1)
+                return true;
+            byte[] bytes = new byte[byteSize];
+            bool ok = ReadBytes(valName, bytes);
+            if (!ok)
+                return false;
+
+            converter.Copy(bytes, values);
+
+            return true;
+        }
+
+        public bool Read<ValueType>(ulong address,
+                                    ValueType[] values,
+                                    Converter<ValueType> converter)
             where ValueType : struct
         {
             if (converter.ValueCount() != values.Length)
@@ -294,7 +357,7 @@ namespace GraphicalDebugging
             if (byteSize < 1)
                 return true;
             byte[] bytes = new byte[byteSize];
-            bool ok = ReadBytes(debugger, ptrName, bytes);
+            bool ok = ReadBytes(address, bytes);
             if (!ok)
                 return false;
 
@@ -303,91 +366,54 @@ namespace GraphicalDebugging
             return true;
         }
 
-        public static bool Read<ValueType>(Debugger debugger, ulong address,
-                                           ValueType[] values,
-                                           Converter<ValueType> converter)
-            where ValueType : struct
-        {
-            if (converter.ValueCount() != values.Length)
-                throw new ArgumentOutOfRangeException("values.Length");
-
-            int byteSize = converter.ByteSize();
-            if (byteSize < 1)
-                return true;
-            byte[] bytes = new byte[byteSize];
-            bool ok = ReadBytes(debugger, address, bytes);
-            if (!ok)
-                return false;
-
-            converter.Copy(bytes, values);
-
-            return true;
-        }
-
-        public static bool ReadNumericArray(Debugger debugger, string ptrName, double[] values)
+        // valName - first value in range
+        public bool ReadNumericArray(string valName, double[] values)
         {
             int count = values.Length;
             if (count < 1)
                 return true;
 
-            ArrayConverter<double> converter = GetNumericArrayConverter(debugger, ptrName, null, count);
+            ArrayConverter<double> converter = GetNumericArrayConverter(valName, null, count);
             if (converter == null)
                 return false;
 
-            return Read(debugger, ptrName, values, converter);
+            return Read(valName, values, converter);
         }
 
-        public static bool ReadPointerArray(Debugger debugger, string ptrName, ulong[] values)
+        // valName - first pointer in range
+        public bool ReadPointerArray(string valName, ulong[] values)
         {
             int count = values.Length;
             if (count < 1)
                 return true;
 
-            ArrayConverter<ulong> converter = GetPointerArrayConverter(debugger, ptrName, null, count);
+            ArrayConverter<ulong> converter = GetPointerArrayConverter(valName, null, count);
             if (converter == null)
                 return false;
 
-            return Read(debugger, ptrName, values, converter);
+            return Read(valName, values, converter);
         }
 
-        public static bool ReadBytes(Debugger debugger, string ptrName, byte[] buffer)
+        // TODO: redundant
+        private bool ReadBytes(string valName, byte[] buffer)
         {
-            ulong address = GetValueAddress(debugger, ptrName);
+            ulong address = GetValueAddress(valName);
             if (address == 0)
                 return false;
 
-            return ReadBytes(debugger, address, buffer);
+            return ReadBytes(address, buffer);
         }
 
-        public static bool ReadBytes(Debugger debugger, ulong address, byte[] buffer)
+        private bool ReadBytes(ulong address, byte[] buffer)
         {
             if (buffer.Length < 1)
                 return true;
 
-            DkmProcess proc = GetDebuggedProcess(debugger);
-            if (proc == null)
+            if (process == null)
                 return false;
 
-            int bytesRead = proc.ReadMemory(address, DkmReadMemoryFlags.None, buffer);
+            int bytesRead = process.ReadMemory(address, DkmReadMemoryFlags.None, buffer);
             return bytesRead == buffer.Length;
-        }
-
-        public static DkmProcess GetDebuggedProcess(Debugger debugger)
-        {
-            DkmProcess[] procs = DkmProcess.GetProcesses();
-            if (procs.Length == 1)
-            {
-                return procs[0];
-            }
-            else if (procs.Length > 1)
-            {
-                foreach (DkmProcess proc in procs)
-                {
-                    if (proc.Path == debugger.CurrentProcess.Name)
-                        return proc;
-                }
-            }
-            return null;
         }
 
         public static bool IsInvalidAddressDifference(long diff)
@@ -395,10 +421,10 @@ namespace GraphicalDebugging
             return diff == long.MinValue;
         }
 
-        public static long GetAddressDifference(Debugger debugger, string ptrName1, string ptrName2)
+        public long GetAddressDifference(string valName1, string valName2)
         {
-            ulong addr1 = GetValueAddress(debugger, ptrName1);
-            ulong addr2 = GetValueAddress(debugger, ptrName2);
+            ulong addr1 = GetValueAddress(valName1);
+            ulong addr2 = GetValueAddress(valName2);
             if (addr1 == 0 || addr2 == 0)
                 return long.MinValue;
             return (addr2 >= addr1)
@@ -406,9 +432,9 @@ namespace GraphicalDebugging
                  : -(long)(addr1 - addr2);
         }
 
-        public static ulong GetValueAddress(Debugger debugger, string ptrName)
+        public ulong GetValueAddress(string valName)
         {
-            Expression ptrExpr = debugger.GetExpression("(void*)&(*(" + ptrName + "))");
+            Expression ptrExpr = debugger.GetExpression("((void*)&(" + valName + "))");
             if (!ptrExpr.IsValidValue)
                 return 0;
             string addr = ptrExpr.Value;
@@ -419,10 +445,19 @@ namespace GraphicalDebugging
         }
 
         // Valid size or 0
-        // NOTE: The actual byte size depends on sizeof(char)
-        public static int GetValueSizeof(Debugger debugger, string ptrName)
+        // NOTE: In C++ the actual byte size depends on CHAR_BIT
+        public int GetValueSizeof(string valName)
         {
-            Expression valSizeExpr = debugger.GetExpression("sizeof(*(" + ptrName + "))");
+            string sizeOfStr = "sizeof(" + valName + ")";
+            if (language == Language.CS)
+            {
+                Expression valExpr = debugger.GetExpression(valName);
+                if (!valExpr.IsValidValue)
+                    return 0;
+                sizeOfStr = "sizeof(" + valExpr.Type + ")";
+            }
+
+            Expression valSizeExpr = debugger.GetExpression(sizeOfStr);
             return valSizeExpr.IsValidValue
                  ? int.Parse(valSizeExpr.Value)
                  : 0;
@@ -437,13 +472,25 @@ namespace GraphicalDebugging
                  : 0;
         }
 
-        // Valid name or null
-        public static string GetValueType(Debugger debugger, string ptrName)
+        // Valid size or 0
+        public int GetValueTypeSizeof(string valType)
         {
-            Expression valExpr = debugger.GetExpression("*(" + ptrName + ")");
+            return GetValueTypeSizeof(debugger, valType);
+        }
+
+        // Valid name or null
+        public static string GetValueType(Debugger debugger, string valName)
+        {
+            Expression valExpr = debugger.GetExpression(valName);
             return valExpr.IsValidValue
                  ? valExpr.Type
                  : null;
+        }
+
+        // Valid name or null
+        public string GetValueType(string valName)
+        {
+            return GetValueType(debugger, valName);
         }
 
         /*
@@ -462,5 +509,41 @@ namespace GraphicalDebugging
                 doubleBuffer[i] = BitConverter.ToDouble(byteBuffer, i * sizeof(double));
         }
         */
+
+        public MemoryReader(Debugger debugger)
+        {
+            this.debugger = debugger;
+
+            string language = debugger.CurrentStackFrame.Language;
+            this.language = language == "C#" ? Language.CS : Language.Cpp;
+
+            this.process = GetDebuggedProcess(debugger);
+        }
+
+        private static DkmProcess GetDebuggedProcess(Debugger debugger)
+        {
+            DkmProcess[] procs = DkmProcess.GetProcesses();
+            if (procs.Length == 1)
+            {
+                return procs[0];
+            }
+            else if (procs.Length > 1)
+            {
+                foreach (DkmProcess proc in procs)
+                {
+                    if (proc.Path == debugger.CurrentProcess.Name)
+                        return proc;
+                }
+            }
+            return null;
+        }
+
+        public Debugger Debugger { get { return debugger; } }
+
+        enum Language { Cpp, CS };
+
+        Debugger debugger;
+        Language language;
+        DkmProcess process;
     }
 }

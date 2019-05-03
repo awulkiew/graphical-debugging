@@ -222,6 +222,9 @@ namespace GraphicalDebugging
 
                         try
                         {
+//TODO - reload only if necessary
+                            ExpressionLoader.ReloadUserTypes();
+
                             if (variable.Drawable == null)
                             {
                                 Geometry.Traits traits = null;

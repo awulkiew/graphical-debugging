@@ -12,6 +12,7 @@ namespace GraphicalDebugging
     public class GeneralOptionPage : DialogPage
     {
         private bool enableDirectMemoryAccess = true;
+        private string userTypesPath = "";
 
         [Category("Data Access")]
         [DisplayName("Enable Direct Memory Access")]
@@ -20,6 +21,15 @@ namespace GraphicalDebugging
         {
             get { return enableDirectMemoryAccess; }
             set { enableDirectMemoryAccess = value; }
+        }
+
+        [Category("User Types")]
+        [DisplayName("Path")]
+        [Description("Path to XML file defining user types.")]
+        public string UserTypesPath
+        {
+            get { return userTypesPath; }
+            set { userTypesPath = value; }
         }
     }
 }

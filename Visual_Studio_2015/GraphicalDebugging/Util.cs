@@ -232,5 +232,12 @@ namespace GraphicalDebugging
                 dataGrid.SelectedItem = null;
             }
         }
+
+        public static System.Xml.XmlElement GetXmlElementByTagName(System.Xml.XmlElement parent, string name)
+        {
+            foreach (System.Xml.XmlElement el in parent.GetElementsByTagName(name))
+                return el;
+            return null;
+        }
     }
 }
