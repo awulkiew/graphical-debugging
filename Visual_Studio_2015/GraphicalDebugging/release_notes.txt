@@ -1,7 +1,10 @@
 version 0.25
 
 additions:
-- support for user-defined point types
+- basic support for user-defined point types
+
+bugfixes:
+- fixed issue with Hexadecimal Display enabled
 
 version 0.24
 
