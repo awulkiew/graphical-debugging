@@ -286,5 +286,30 @@ namespace GraphicalDebugging
         {
             return double.Parse(s, CultureInfo.InvariantCulture);
         }
+
+        // class -> v != null
+        // bool  -> v != false
+        public static bool IsOk<T1>(T1 v1)
+        {
+            return !v1.Equals(default(T1));
+        }
+        public static bool IsOk<T1, T2>(T1 v1, T2 v2)
+        {
+            return !v1.Equals(default(T1))
+                && !v2.Equals(default(T2));
+        }
+        public static bool IsOk<T1, T2, T3>(T1 v1, T2 v2, T3 v3)
+        {
+            return !v1.Equals(default(T1))
+                && !v2.Equals(default(T2))
+                && !v3.Equals(default(T3));
+        }
+        public static bool IsOk<T1, T2, T3, T4>(T1 v1, T2 v2, T3 v3, T4 v4)
+        {
+            return !v1.Equals(default(T1))
+                && !v2.Equals(default(T2))
+                && !v3.Equals(default(T3))
+                && !v4.Equals(default(T4));
+        }
     }
 }

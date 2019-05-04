@@ -260,36 +260,6 @@ namespace GraphicalDebugging
                             out traits, out result);
             }
         }
-        
-        static double LoadAsDouble(Debugger debugger, string name, out bool ok)
-        {
-            Expression expr = debugger.GetExpression("(double)" + name);
-            ok = expr.IsValidValue;
-            return ok ? Util.ParseDouble(expr.Value) : 0.0;
-        }
-
-        static bool IsOk<T>(T v1)
-        {
-            return !v1.Equals(default(T));
-        }
-        static bool IsOk<T1, T2>(T1 v1, T2 v2)
-        {
-            return !v1.Equals(default(T1))
-                && !v2.Equals(default(T2));
-        }
-        static bool IsOk<T1, T2, T3>(T1 v1, T2 v2, T3 v3)
-        {
-            return !v1.Equals(default(T1))
-                && !v2.Equals(default(T2))
-                && !v3.Equals(default(T3));
-        }
-        static bool IsOk<T1, T2, T3, T4>(T1 v1, T2 v2, T3 v3, T4 v4)
-        {
-            return !v1.Equals(default(T1))
-                && !v2.Equals(default(T2))
-                && !v3.Equals(default(T3))
-                && !v4.Equals(default(T4));
-        }
 
         class Loaders
         {
@@ -572,10 +542,10 @@ namespace GraphicalDebugging
                 bool okx = true, oky = true;
                 double x = 0, y = 0;
                 if (count > 0)
-                    x = LoadAsDouble(debugger, ptrName + "[0]", out okx);
+                    okx = TryLoadAsDoubleParsed(debugger, ptrName + "[0]", out x);
                 if (count > 1)
-                    y = LoadAsDouble(debugger, ptrName + "[1]", out oky);
-                return IsOk(okx, oky)
+                    oky = TryLoadAsDoubleParsed(debugger, ptrName + "[1]", out y);
+                return Util.IsOk(okx, oky)
                      ? new ExpressionDrawer.Point(x, y)
                      : null;
             }
@@ -766,7 +736,7 @@ namespace GraphicalDebugging
                 Geometry.Point fp = pointLoader.LoadPoint(mreader, debugger, m_min_corner, pointType);
                 Geometry.Point sp = pointLoader.LoadPoint(mreader, debugger, m_max_corner, pointType);
 
-                result = IsOk(fp, sp)
+                result = Util.IsOk(fp, sp)
                        ? new ExpressionDrawer.Box(fp, sp)
                        : null;
             }
@@ -814,7 +784,7 @@ namespace GraphicalDebugging
                 Geometry.Point fp = pointLoader.LoadPoint(mreader, debugger, first, pointType);
                 Geometry.Point sp = pointLoader.LoadPoint(mreader, debugger, second, pointType);
 
-                segment = IsOk(fp, sp)
+                segment = Util.IsOk(fp, sp)
                         ? new ExpressionDrawer.Segment(fp, sp)
                         : null;
             }
@@ -860,10 +830,10 @@ namespace GraphicalDebugging
 
                 Geometry.Point center = pointLoader.LoadPoint(mreader, debugger,
                                                               m_center, pointType);
-                bool ok = false;
-                double radius = LoadAsDouble(debugger, m_radius, out ok);
+                double radius = 0;
+                bool ok = TryLoadAsDoubleParsed(debugger, m_radius, out radius);
 
-                result = IsOk(center, ok)
+                result = Util.IsOk(center, ok)
                        ? new ExpressionDrawer.NSphere(center, radius)
                        : null;
             }
@@ -1309,13 +1279,13 @@ namespace GraphicalDebugging
                 traits = new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
                 result = null;
 
-                bool okx0 = false, oky0 = false, okx1 = false, oky1 = false;
-                double x0 = LoadAsDouble(debugger, name + ".points_[0].coords_[0]", out okx0);
-                double y0 = LoadAsDouble(debugger, name + ".points_[0].coords_[1]", out oky0);
-                double x1 = LoadAsDouble(debugger, name + ".points_[1].coords_[0]", out okx1);
-                double y1 = LoadAsDouble(debugger, name + ".points_[1].coords_[1]", out oky1);
+                double x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+                bool okx0 = TryLoadAsDoubleParsed(debugger, name + ".points_[0].coords_[0]", out x0);
+                bool oky0 = TryLoadAsDoubleParsed(debugger, name + ".points_[0].coords_[1]", out y0);
+                bool okx1 = TryLoadAsDoubleParsed(debugger, name + ".points_[1].coords_[0]", out x1);
+                bool oky1 = TryLoadAsDoubleParsed(debugger, name + ".points_[1].coords_[1]", out y1);
 
-                if (!IsOk(okx0, oky0, okx1, oky1))
+                if (! Util.IsOk(okx0, oky0, okx1, oky1))
                     return;
 
                 Geometry.Point first_p = new Geometry.Point(x0, y0);
@@ -1337,13 +1307,13 @@ namespace GraphicalDebugging
                 traits = new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
                 result = null;
 
-                bool okxl = false, okxh = false, okyl = false, okyh = false;
-                double xl = LoadAsDouble(debugger, name + ".ranges_[0].coords_[0]", out okxl);
-                double xh = LoadAsDouble(debugger, name + ".ranges_[0].coords_[1]", out okxh);
-                double yl = LoadAsDouble(debugger, name + ".ranges_[1].coords_[0]", out okyl);
-                double yh = LoadAsDouble(debugger, name + ".ranges_[1].coords_[1]", out okyh);
+                double xl = 0, xh = 0, yl = 0, yh = 0;
+                bool okxl = TryLoadAsDoubleParsed(debugger, name + ".ranges_[0].coords_[0]", out xl);
+                bool okxh = TryLoadAsDoubleParsed(debugger, name + ".ranges_[0].coords_[1]", out xh);
+                bool okyl = TryLoadAsDoubleParsed(debugger, name + ".ranges_[1].coords_[0]", out yl);
+                bool okyh = TryLoadAsDoubleParsed(debugger, name + ".ranges_[1].coords_[1]", out yh);
 
-                if (!IsOk(okxl, okxh, okyl, okyh))
+                if (! Util.IsOk(okxl, okxh, okyl, okyh))
                     return;
 
                 Geometry.Point first_p = new Geometry.Point(xl, yl);
@@ -1542,8 +1512,8 @@ namespace GraphicalDebugging
                 List<double> values = new List<double>();
                 bool ok = this.ForEachElement(debugger, name, delegate (string elName)
                 {
-                    bool okV = false;
-                    double value = LoadAsDouble(debugger, elName, out okV);
+                    double value = 0;
+                    bool okV = TryLoadAsDoubleParsed(debugger, elName, out value);
                     if (okV)
                         values.Add(value);
                     return okV;
@@ -1821,10 +1791,9 @@ namespace GraphicalDebugging
                     return true;
 
                 // Map size
-                Expression mapSizeExpr = mreader.Debugger.GetExpression(MapSizeStr(name));
-                if (!mapSizeExpr.IsValidValue)
+                int mapSize = 0;
+                if (! TryLoadIntParsed(mreader.Debugger, MapSizeStr(name), out mapSize))
                     return false;
-                int mapSize = Util.ParseInt(mapSizeExpr.Value, mreader.Debugger.HexDisplayMode);
 
                 // Map - array of pointers                
                 ulong[] pointers = new ulong[mapSize];
@@ -1832,16 +1801,14 @@ namespace GraphicalDebugging
                     return false;
 
                 // Block size
-                Expression dequeSizeExpr = mreader.Debugger.GetExpression("((int)" + name + "._EEN_DS)");
-                if (!dequeSizeExpr.IsValidValue)
+                int dequeSize = 0;
+                if (! TryLoadIntParsed(mreader.Debugger, "((int)" + name + "._EEN_DS)", out dequeSize))
                     return false;
-                int dequeSize = Util.ParseInt(dequeSizeExpr.Value, mreader.Debugger.HexDisplayMode);
 
                 // Offset
-                Expression offsetExpr = mreader.Debugger.GetExpression(OffsetStr(name));
-                if (!offsetExpr.IsValidValue)
+                int offset = 0;
+                if (! TryLoadIntParsed(mreader.Debugger, OffsetStr(name), out offset))
                     return false;
-                int offset = Util.ParseInt(offsetExpr.Value, mreader.Debugger.HexDisplayMode);
                     
                 // Initial indexes
                 int firstBlock = ((0 + offset) / dequeSize) % mapSize;
@@ -2056,10 +2023,9 @@ namespace GraphicalDebugging
                 traits = null;
                 result = null;
 
-                Expression whichExpr = debugger.GetExpression(name + ".which_");
-                if (!whichExpr.IsValidValue)
+                int which = 0;
+                if (! TryLoadIntParsed(debugger, name + ".which_", out which))
                     return;
-                int which = Util.ParseInt(whichExpr.Value, debugger.HexDisplayMode);
 
                 List<string> tparams = Util.Tparams(type);
                 if (which < 0 || tparams.Count <= which)
@@ -2230,11 +2196,10 @@ namespace GraphicalDebugging
 
             protected override ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type)
             {
-                bool okx = true, oky = true;
                 double x = 0, y = 0;
-                x = LoadAsDouble(debugger, name + ".first", out okx);
-                y = LoadAsDouble(debugger, name + ".second", out oky);
-                return IsOk(okx, oky)
+                bool okx = TryLoadAsDoubleParsed(debugger, name + ".first", out x);
+                bool oky = TryLoadAsDoubleParsed(debugger, name + ".second", out y);
+                return Util.IsOk(okx, oky)
                      ? new ExpressionDrawer.Point(x, y)
                      : null;
             }
@@ -2591,11 +2556,10 @@ namespace GraphicalDebugging
 
             protected override ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type)
             {
-                bool okx = true, oky = true;
                 double x = 0, y = 0;
-                x = LoadAsDouble(debugger, name + "." + member_x, out okx);
-                y = LoadAsDouble(debugger, name + "." + member_y, out oky);
-                return IsOk(okx, oky)
+                bool okx = TryLoadAsDoubleParsed(debugger, name + "." + member_x, out x);
+                bool oky = TryLoadAsDoubleParsed(debugger, name + "." + member_y, out y);
+                return Util.IsOk(okx, oky)
                      ? new ExpressionDrawer.Point(x, y)
                      : null;
             }
@@ -2720,6 +2684,16 @@ namespace GraphicalDebugging
             if (!expr.IsValidValue)
                 return false;
             result = Util.ParseInt(expr.Value, debugger.HexDisplayMode);
+            return true;
+        }
+
+        static bool TryLoadAsDoubleParsed(Debugger debugger, string name, out double result)
+        {
+            result = 0.0;
+            Expression expr = debugger.GetExpression("(double)" + name);
+            if (!expr.IsValidValue)
+                return false;
+            result = Util.ParseDouble(expr.Value);
             return true;
         }
     }

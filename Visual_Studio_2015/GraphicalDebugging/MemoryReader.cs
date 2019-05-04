@@ -440,6 +440,8 @@ namespace GraphicalDebugging
             string addr = ptrExpr.Value;
 
             // NOTE: Hexadecimal value is automatically detected, this is probably not needed.
+            // But automatically detect the format just in case of various versions
+            // of VS displayed it differently regardless of debugger mode.
             return Util.ParseULong(addr/*, true*/);
         }
 
