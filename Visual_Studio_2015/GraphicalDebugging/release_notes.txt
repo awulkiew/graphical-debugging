@@ -1,6 +1,7 @@
 version 0.25
 
 additions:
+- support C# arrays and List<> of points
 - basic support for user-defined point types
 
 bugfixes:
