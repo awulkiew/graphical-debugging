@@ -194,7 +194,7 @@ This behavior is enabled by default but can be disabled in options under **Tools
 
 ##### User-defined types
 
-The extension offers basic support for user-defined point types. You can define points in XML file based on type identifier (without template parameters) and X and Y members and set path to this file in options under **Tools**->**Options**->**Graphical Debugging**->**General**. An example XML file defining C++ type `MyPoint` in global namespace looks like this:
+The extension offers basic support for user-defined point types. You can define points in XML file based on type identifier and X and Y members and set path to this file in options under **Tools**->**Options**->**Graphical Debugging**->**General**. An example XML file defining C++ type `MyPoint` in global namespace looks like this:
 
 ```
 <?xml version="1.0" encoding="utf-8"?>
@@ -209,6 +209,12 @@ The extension offers basic support for user-defined point types. You can define 
 
 </GraphicalDebugging>
 ```
+
+Basic support has limitations:
+  * based on identifier so no template parameters, no specializations
+  * no support for user-defined coordinate system, cartesian is used by default
+
+(Let me know if you need something more advanced).
 
 See more [examples at GitHub](https://github.com/awulkiew/graphical-debugging/tree/master/examples).
 
