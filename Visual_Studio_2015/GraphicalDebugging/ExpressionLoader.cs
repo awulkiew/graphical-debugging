@@ -2572,6 +2572,10 @@ namespace GraphicalDebugging
                 if (pointLoader == null)
                     return;
 
+                traits = pointLoader.LoadTraits(pointType);
+                if (traits == null)
+                    return;
+
                 if (mreader != null)
                 {
                     result = LoadMemory(mreader, name, type,
