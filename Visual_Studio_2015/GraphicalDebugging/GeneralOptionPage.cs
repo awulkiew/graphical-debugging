@@ -17,6 +17,8 @@ namespace GraphicalDebugging
 
         public bool isUserTypesPathCppChanged = false;
         public bool isUserTypesPathCSChanged = false;
+        public System.DateTime userTypesCppWriteTime = new System.DateTime(0);
+        public System.DateTime userTypesCSWriteTime = new System.DateTime(0);
 
         [Category("Data Access")]
         [DisplayName("Enable Direct Memory Access")]

@@ -2688,11 +2688,27 @@ namespace GraphicalDebugging
             int sizeOf;
         }
 
-        private static void ReloadUserTypes(string userTypesPath, Loaders loaders)
+        private static bool ReloadUserTypes(Loaders loaders,
+                                            string userTypesPath,
+                                            bool isChanged,
+                                            DateTime lastWriteTime,
+                                            out DateTime newWriteTime)
         {
-            loaders.RemoveUserDefined();
+            newWriteTime = new DateTime(0);
 
-            if (System.IO.File.Exists(userTypesPath))
+            bool fileExists = System.IO.File.Exists(userTypesPath);
+            bool newerFile = false;
+            if (fileExists)
+            {
+                newWriteTime = (new System.IO.FileInfo(userTypesPath)).LastWriteTime;
+                newerFile = newWriteTime > lastWriteTime;
+            }
+            bool update = isChanged || newerFile;
+
+            if (update)
+                loaders.RemoveUserDefined();
+
+            if (update && fileExists)
             {
                 System.Xml.XmlDocument doc = new System.Xml.XmlDocument();
                 doc.Load(userTypesPath);
@@ -2717,6 +2733,8 @@ namespace GraphicalDebugging
                     }
                 }
             }
+
+            return update;
         }
 
         public static void ReloadUserTypes(GeneralOptionPage options)
@@ -2724,16 +2742,26 @@ namespace GraphicalDebugging
             if (options == null)
                 return;
 
-            if (options.isUserTypesPathCppChanged)
+            DateTime wtCpp;
+            if (ReloadUserTypes(Instance.loadersCpp,
+                                options.UserTypesPathCpp,
+                                options.isUserTypesPathCppChanged,
+                                options.userTypesCppWriteTime,
+                                out wtCpp))
             {
-                ReloadUserTypes(options.UserTypesPathCpp, Instance.loadersCpp);
                 options.isUserTypesPathCppChanged = false;
+                options.userTypesCppWriteTime = wtCpp;
             }
 
-            if (options.isUserTypesPathCSChanged)
+            DateTime wtCS;
+            if (ReloadUserTypes(Instance.loadersCS,
+                                options.UserTypesPathCS,
+                                options.isUserTypesPathCSChanged,
+                                options.userTypesCSWriteTime,
+                                out wtCS))
             {
-                ReloadUserTypes(options.UserTypesPathCS, Instance.loadersCS);
                 options.isUserTypesPathCSChanged = false;
+                options.userTypesCSWriteTime = wtCS;
             }
         }
 
