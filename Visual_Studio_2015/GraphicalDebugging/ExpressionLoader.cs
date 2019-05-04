@@ -558,9 +558,11 @@ namespace GraphicalDebugging
             // With ReadArray knowing which memory copying optimizations can be made based on ElementLoader's type
             // Or not
 
-            abstract public string ElementName(string name);
+            abstract public string ElementName(string name, string elemType);
             public delegate bool MemoryBlockPredicate(double[] values);
-            abstract public bool ForEachMemoryBlock(MemoryReader mreader, string name, MemoryReader.Converter<double> elementConverter, MemoryBlockPredicate memoryBlockPredicate);
+            abstract public bool ForEachMemoryBlock(MemoryReader mreader, string name, string type,
+                                                    MemoryReader.Converter<double> elementConverter,
+                                                    MemoryBlockPredicate memoryBlockPredicate);
         }
 
         abstract class BXPoint : PointLoader
@@ -906,7 +908,7 @@ namespace GraphicalDebugging
             {
                 ResultType result = null;
 
-                string pointName = containerLoader.ElementName(name);
+                string pointName = containerLoader.ElementName(name, pointType);
                 if (pointName != null)
                 {
                     MemoryReader.Converter<double> pointConverter = pointLoader.GetMemoryConverter(mreader, pointName, pointType);
@@ -914,7 +916,7 @@ namespace GraphicalDebugging
                     {
                         int dimension = pointConverter.ValueCount();
                         result = new ResultType();
-                        bool ok = containerLoader.ForEachMemoryBlock(mreader, name, pointConverter,
+                        bool ok = containerLoader.ForEachMemoryBlock(mreader, name, type, pointConverter,
                             delegate (double[] values)
                             {
                                 if (dimension == 0 || values.Length % dimension != 0)
@@ -977,7 +979,7 @@ namespace GraphicalDebugging
 
                 string pointType = tparams[pointTIndex];
                 PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
-                                                             containerLoader.ElementName(name),
+                                                             containerLoader.ElementName(name, pointType),
                                                              pointType) as PointLoader;
                 if (pointLoader == null)
                     return;
@@ -1039,7 +1041,7 @@ namespace GraphicalDebugging
                 string lsType = tparams[0];
                 RangeLoader<ExpressionDrawer.Linestring>
                     lsLoader = loaders.FindByType(ExpressionLoader.Kind.Linestring,
-                                                  containerLoader.ElementName(name),
+                                                  containerLoader.ElementName(name, lsType),
                                                   lsType) as RangeLoader<ExpressionDrawer.Linestring>;
                 if (lsLoader == null)
                     return;
@@ -1159,7 +1161,7 @@ namespace GraphicalDebugging
 
                 string polyType = tparams[0];
                 PolygonLoader polyLoader = loaders.FindByType(ExpressionLoader.Kind.Polygon,
-                                                              containerLoader.ElementName(name),
+                                                              containerLoader.ElementName(name, polyType),
                                                               polyType) as PolygonLoader;
                 if (polyLoader == null)
                     return;
@@ -1241,7 +1243,7 @@ namespace GraphicalDebugging
                 string ringType = tparams[0];
                 RangeLoader<ExpressionDrawer.Ring>
                     ringLoader = loaders.FindByType(ExpressionLoader.Kind.Ring,
-                                                    containerLoader.ElementName(name),
+                                                    containerLoader.ElementName(name, ringType),
                                                     ringType) as RangeLoader<ExpressionDrawer.Ring>;
                 if (ringLoader == null)
                     return;
@@ -1365,6 +1367,13 @@ namespace GraphicalDebugging
                 traits = new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
                 result = null;
 
+                List<string> tparams = Util.Tparams(type);
+                if (tparams.Count < 1)
+                    return;
+
+                string tparam = tparams[0].EndsWith(">") ? tparams[0] + ' ' : tparams[0];
+                string pointType = "boost::polygon::point_data<" + tparam + ">";
+
                 ContainerLoader containerLoader = loaders.FindById(ExpressionLoader.Kind.Container,
                                                                    name,
                                                                    "std::vector") as ContainerLoader;
@@ -1372,17 +1381,10 @@ namespace GraphicalDebugging
                     return;
 
                 BPPoint pointLoader = loaders.FindById(ExpressionLoader.Kind.Point,
-                                                       containerLoader.ElementName(name),
+                                                       containerLoader.ElementName(name, pointType),
                                                        "boost::polygon::point_data") as BPPoint;
                 if (pointLoader == null)
                     return;
-
-                List<string> tparams = Util.Tparams(type);
-                if (tparams.Count < 1)
-                    return;
-
-                string tparam = tparams[0].EndsWith(">") ? tparams[0] + ' ' : tparams[0];
-                string pointType = "boost::polygon::point_data<" + tparam + ">";
 
                 string containerName = name + ".coords_";
 
@@ -1513,7 +1515,7 @@ namespace GraphicalDebugging
             {
                 result = null;
 
-                string elemName = this.ElementName(name);
+                string elemName = this.ElementName(name, ElementType(type));
 
                 MemoryReader.ValueConverter<double>
                     valueConverter = mreader.GetNumericConverter(elemName, null);
@@ -1521,7 +1523,7 @@ namespace GraphicalDebugging
                     return;
 
                 List<double> list = new List<double>();
-                bool ok = this.ForEachMemoryBlock(mreader, name, valueConverter,
+                bool ok = this.ForEachMemoryBlock(mreader, name, type, valueConverter,
                     delegate (double[] values)
                     {
                         foreach (double v in values)
@@ -1580,17 +1582,18 @@ namespace GraphicalDebugging
 
         abstract class ContiguousContainer : RandomAccessContainer
         {
-            public override bool ForEachMemoryBlock(MemoryReader mreader, string name,
+            public override bool ForEachMemoryBlock(MemoryReader mreader, string name, string type,
                                                     MemoryReader.Converter<double> elementConverter,
                                                     MemoryBlockPredicate memoryBlockPredicate)
             {
                 return this.ForEachMemoryBlock(mreader,
-                                               name,
-                                               ElementName(name),
+                                               name, type,
+                                               ElementName(name, ElementType(type)),
                                                elementConverter, memoryBlockPredicate);
             }
 
-            protected bool ForEachMemoryBlock(MemoryReader mreader, string name, string blockName,
+            protected bool ForEachMemoryBlock(MemoryReader mreader,
+                                              string name, string type, string blockName,
                                               MemoryReader.Converter<double> elementConverter,
                                               MemoryBlockPredicate memoryBlockPredicate)
             {
@@ -1624,7 +1627,7 @@ namespace GraphicalDebugging
                 return elemType;
             }
 
-            public override string ElementName(string name)
+            public override string ElementName(string name, string elType)
             {
                 return this.RandomAccessName(name) + "[0]";
             }
@@ -1684,7 +1687,7 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "std::array"; }
 
-            public override string ElementName(string name)
+            public override string ElementName(string name, string elType)
             {
                 return name + "._Elems[0]";
             }
@@ -1702,7 +1705,7 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "boost::array"; }
 
-            public override string ElementName(string name)
+            public override string ElementName(string name, string elType)
             {
                 return name + ".elems[0]";
             }
@@ -1712,7 +1715,7 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "boost::container::vector"; }
 
-            public override string ElementName(string name)
+            public override string ElementName(string name, string elType)
             {
                 return name + ".m_holder.m_start[0]";
             }
@@ -1727,7 +1730,7 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "boost::container::static_vector"; }
 
-            public override string ElementName(string name)
+            public override string ElementName(string name, string elType)
             {
                 // TODO: The type-cast is needed here!!!
                 // Although it's possible it will be ok since this is used only to pass a value starting the memory block
@@ -1735,7 +1738,7 @@ namespace GraphicalDebugging
                 // and in other places like PointRange or BGRange correct type is passed with it
                 // and based on this type the data is processed
                 // It needs testing
-                return name + ".m_holder.storage.data[0]";
+                return "((" + elType + "*)" + name + ".m_holder.storage.data)[0]";
             }
         }
 
@@ -1743,10 +1746,10 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "boost::geometry::index::detail::varray"; }
 
-            public override string ElementName(string name)
+            public override string ElementName(string name, string elType)
             {
                 // TODO: Check if type-cast is needed here
-                return name + ".m_storage.data_.buf[0]";
+                return "((" + elType + "*)" + name + ".m_storage.data_.buf)[0]";
             }
 
             public override int LoadSize(Debugger debugger, string name)
@@ -1764,7 +1767,7 @@ namespace GraphicalDebugging
                 return FirstStr(rawName) + "[" + i + "]";
             }
 
-            public override string ElementName(string name)
+            public override string ElementName(string name, string elType)
             {
                 return FirstStr(name) + "[0]";
             }
@@ -1804,12 +1807,12 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "std::deque"; }
 
-            public override string ElementName(string name)
+            public override string ElementName(string name, string elType)
             {
                 return ElementStr(name, 0);
             }
 
-            public override bool ForEachMemoryBlock(MemoryReader mreader, string name,
+            public override bool ForEachMemoryBlock(MemoryReader mreader, string name, string type,
                                                     MemoryReader.Converter<double> elementConverter,
                                                     MemoryBlockPredicate memoryBlockPredicate)
             {
@@ -1944,12 +1947,12 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "std::list"; }
 
-            public override string ElementName(string name)
+            public override string ElementName(string name, string elType)
             {
                 return HeadStr(name) + "->_Next->_Myval";
             }
 
-            public override bool ForEachMemoryBlock(MemoryReader mreader, string name,
+            public override bool ForEachMemoryBlock(MemoryReader mreader, string name, string type,
                                                     MemoryReader.Converter<double> elementConverter,
                                                     MemoryBlockPredicate memoryBlockPredicate)
             {
@@ -2190,7 +2193,7 @@ namespace GraphicalDebugging
                 // TODO: Get element type from ContainerLoader instead?
                 string turnType = tparams[0];
                 BGTurn turnLoader = loaders.FindByType(ExpressionLoader.Kind.Turn,
-                                                       containerLoader.ElementName(name),
+                                                       containerLoader.ElementName(name, turnType),
                                                        turnType) as BGTurn;
                 if (turnLoader == null)
                     return;
@@ -2501,7 +2504,7 @@ namespace GraphicalDebugging
                 return LoadSizeParsed(debugger, name + ".Length");
             }
 
-            public override string ElementName(string name)
+            public override string ElementName(string name, string elType)
             {
                 return name + "[0]";
             }
@@ -2531,18 +2534,20 @@ namespace GraphicalDebugging
                 return rawName + "._items[" + i + "]";
             }
 
-            public override string ElementName(string name)
+            public override string ElementName(string name, string elType)
             {
                 return name + "._items[0]";
             }
 
-            public override bool ForEachMemoryBlock(MemoryReader mreader, string name, MemoryReader.Converter<double> elementConverter, MemoryBlockPredicate memoryBlockPredicate)
+            public override bool ForEachMemoryBlock(MemoryReader mreader, string name, string type,
+                                                    MemoryReader.Converter<double> elementConverter,
+                                                    MemoryBlockPredicate memoryBlockPredicate)
             {
                 Expression expr = mreader.Debugger.GetExpression(name + "._items");
                 if (!expr.IsValidValue || CSArray.ElemTypeFromType(expr.Type).Length <= 0)
                     return false;
 
-                return base.ForEachMemoryBlock(mreader, name, elementConverter, memoryBlockPredicate);
+                return base.ForEachMemoryBlock(mreader, name, type, elementConverter, memoryBlockPredicate);
             }
         }
 
@@ -2673,7 +2678,7 @@ namespace GraphicalDebugging
                                 string x = elX.InnerText;
                                 string y = elY.InnerText;
                                 string id = elPoint.GetAttribute("Id");
-                                //string name = elPoint.GetAttribute("Name");
+                                //string name = elPoint.GetAttribute("Type");
                                 loaders.Add(new UserPoint(id, x, y));
                             }
                         }
