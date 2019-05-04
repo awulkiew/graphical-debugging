@@ -220,6 +220,11 @@ namespace GraphicalDebugging
             bool imageEmpty = true;
             if (ExpressionLoader.Debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
             {
+                if (load)
+                {
+                    ExpressionLoader.ReloadUserTypes(Util.GetDialogPage<GeneralOptionPage>());
+                }
+
                 ExpressionDrawer.Settings referenceSettings = new ExpressionDrawer.Settings();
                 GeometryWatchOptionPage optionPage = Util.GetDialogPage<GeometryWatchOptionPage>();
                 if (optionPage != null)
@@ -300,9 +305,6 @@ namespace GraphicalDebugging
 
                         try
                         {
-//TODO - reload only if necessary
-                            ExpressionLoader.ReloadUserTypes();
-
                             ExpressionDrawer.IDrawable[] drawables = new ExpressionDrawer.IDrawable[names.Length];
                             Geometry.Traits[] traits = new Geometry.Traits[names.Length];
                             for (int i = 0; i < names.Length; ++i)

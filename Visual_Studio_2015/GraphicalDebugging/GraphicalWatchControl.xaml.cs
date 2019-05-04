@@ -165,6 +165,11 @@ namespace GraphicalDebugging
 
             if (ExpressionLoader.Debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
             {
+                if (load)
+                {
+                    ExpressionLoader.ReloadUserTypes(Util.GetDialogPage<GeneralOptionPage>());
+                }
+
                 // Empty color - use default
                 ExpressionDrawer.Settings settings = new ExpressionDrawer.Settings();
                 settings.densify = true;
@@ -222,9 +227,6 @@ namespace GraphicalDebugging
 
                         try
                         {
-//TODO - reload only if necessary
-                            ExpressionLoader.ReloadUserTypes();
-
                             if (variable.Drawable == null)
                             {
                                 Geometry.Traits traits = null;

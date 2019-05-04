@@ -12,7 +12,11 @@ namespace GraphicalDebugging
     public class GeneralOptionPage : DialogPage
     {
         private bool enableDirectMemoryAccess = true;
-        private string userTypesPath = "";
+        private string userTypesPathCpp = "";
+        private string userTypesPathCS = "";
+
+        public bool isUserTypesPathCppChanged = false;
+        public bool isUserTypesPathCSChanged = false;
 
         [Category("Data Access")]
         [DisplayName("Enable Direct Memory Access")]
@@ -24,12 +28,21 @@ namespace GraphicalDebugging
         }
 
         [Category("User Types")]
-        [DisplayName("Path")]
-        [Description("Path to XML file defining user types.")]
-        public string UserTypesPath
+        [DisplayName("C++")]
+        [Description("Path to XML file defining C++ user types.")]
+        public string UserTypesPathCpp
         {
-            get { return userTypesPath; }
-            set { userTypesPath = value; }
+            get { return userTypesPathCpp; }
+            set { userTypesPathCpp = value; isUserTypesPathCppChanged = true; }
+        }
+
+        [Category("User Types")]
+        [DisplayName("C#")]
+        [Description("Path to XML file defining C# user types.")]
+        public string UserTypesPathCS
+        {
+            get { return userTypesPathCS; }
+            set { userTypesPathCS = value; isUserTypesPathCSChanged = true; }
         }
     }
 }

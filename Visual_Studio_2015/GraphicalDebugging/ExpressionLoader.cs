@@ -24,7 +24,7 @@ namespace GraphicalDebugging
         private DTE2 dte;
         private Debugger debugger;
         private DebuggerEvents debuggerEvents;
-        private Loaders loaders;
+        private Loaders loadersCpp;
         private Loaders loadersCS;
 
         // Because containers of points (including c-arrays) are treated as MultiPoints
@@ -54,60 +54,60 @@ namespace GraphicalDebugging
             this.debugger = dte.Debugger;
             this.debuggerEvents = this.dte.Events.DebuggerEvents;
 
-            loaders = new Loaders();
+            loadersCpp = new Loaders();
 
-            loaders.Add(new BGPoint());
-            loaders.Add(new BGPointXY());
-            loaders.Add(new BGSegment());
-            loaders.Add(new BGReferringSegment());
-            loaders.Add(new BGBox());
-            loaders.Add(new BGNSphere());
-            loaders.Add(new BGMultiPoint());
-            loaders.Add(new BGLinestring());
-            loaders.Add(new BGMultiLinestring());
-            loaders.Add(new BGRing());
-            loaders.Add(new BGPolygon());
-            loaders.Add(new BGMultiPolygon());
-            loaders.Add(new BGBufferedRing());
-            loaders.Add(new BGBufferedRingCollection());
+            loadersCpp.Add(new BGPoint());
+            loadersCpp.Add(new BGPointXY());
+            loadersCpp.Add(new BGSegment());
+            loadersCpp.Add(new BGReferringSegment());
+            loadersCpp.Add(new BGBox());
+            loadersCpp.Add(new BGNSphere());
+            loadersCpp.Add(new BGMultiPoint());
+            loadersCpp.Add(new BGLinestring());
+            loadersCpp.Add(new BGMultiLinestring());
+            loadersCpp.Add(new BGRing());
+            loadersCpp.Add(new BGPolygon());
+            loadersCpp.Add(new BGMultiPolygon());
+            loadersCpp.Add(new BGBufferedRing());
+            loadersCpp.Add(new BGBufferedRingCollection());
 
-            loaders.Add(new BPPoint());
-            loaders.Add(new BPSegment());
-            loaders.Add(new BPBox());
-            loaders.Add(new BPRing());
-            loaders.Add(new BPPolygon());
+            loadersCpp.Add(new BPPoint());
+            loadersCpp.Add(new BPSegment());
+            loadersCpp.Add(new BPBox());
+            loadersCpp.Add(new BPRing());
+            loadersCpp.Add(new BPPolygon());
 
-            loaders.Add(new StdPairPoint());
-            loaders.Add(new StdComplexPoint());
+            loadersCpp.Add(new StdPairPoint());
+            loadersCpp.Add(new StdComplexPoint());
 
-            loaders.Add(new BVariant());
+            loadersCpp.Add(new BVariant());
 
-            loaders.Add(new StdArray());
-            loaders.Add(new BoostArray());
-            loaders.Add(new BGVarray());
-            loaders.Add(new BoostContainerVector());
-            loaders.Add(new BoostContainerStaticVector());
-            loaders.Add(new StdVector());
-            loaders.Add(new StdDeque());
-            loaders.Add(new StdList());
+            loadersCpp.Add(new StdArray());
+            loadersCpp.Add(new BoostArray());
+            loadersCpp.Add(new BGVarray());
+            loadersCpp.Add(new BoostContainerVector());
+            loadersCpp.Add(new BoostContainerStaticVector());
+            loadersCpp.Add(new StdVector());
+            loadersCpp.Add(new StdDeque());
+            loadersCpp.Add(new StdList());
 
-            loaders.Add(new CArray());
-            loaders.Add(new PointCArray());
+            loadersCpp.Add(new CArray());
+            loadersCpp.Add(new PointCArray());
 
-            loaders.Add(new PointContainer("std::array"));
-            loaders.Add(new PointContainer("boost::array"));
-            loaders.Add(new PointContainer("boost::geometry::index::detail::varray"));
-            loaders.Add(new PointContainer("boost::container::vector"));
-            loaders.Add(new PointContainer("boost::container::static_vector"));
-            loaders.Add(new PointContainer("std::vector"));
-            loaders.Add(new PointContainer("std::deque"));
-            loaders.Add(new PointContainer("std::list"));
+            loadersCpp.Add(new PointContainer("std::array"));
+            loadersCpp.Add(new PointContainer("boost::array"));
+            loadersCpp.Add(new PointContainer("boost::geometry::index::detail::varray"));
+            loadersCpp.Add(new PointContainer("boost::container::vector"));
+            loadersCpp.Add(new PointContainer("boost::container::static_vector"));
+            loadersCpp.Add(new PointContainer("std::vector"));
+            loadersCpp.Add(new PointContainer("std::deque"));
+            loadersCpp.Add(new PointContainer("std::list"));
 
-            loaders.Add(new BGTurn("boost::geometry::detail::overlay::turn_info"));
-            loaders.Add(new BGTurn("boost::geometry::detail::overlay::traversal_turn_info"));
-            loaders.Add(new BGTurn("boost::geometry::detail::buffer::buffer_turn_info"));
-            loaders.Add(new BGTurnContainer("std::vector"));
-            loaders.Add(new BGTurnContainer("std::deque"));
+            loadersCpp.Add(new BGTurn("boost::geometry::detail::overlay::turn_info"));
+            loadersCpp.Add(new BGTurn("boost::geometry::detail::overlay::traversal_turn_info"));
+            loadersCpp.Add(new BGTurn("boost::geometry::detail::buffer::buffer_turn_info"));
+            loadersCpp.Add(new BGTurnContainer("std::vector"));
+            loadersCpp.Add(new BGTurnContainer("std::deque"));
 
             loadersCS = new Loaders();
 
@@ -208,15 +208,6 @@ namespace GraphicalDebugging
         private static MultiPointKindConstraint onlyMultiPoints = new MultiPointKindConstraint();
         public static MultiPointKindConstraint OnlyMultiPoints { get { return onlyMultiPoints; } }
 
-        public static void ReloadUserTypes()
-        {
-            string language = Instance.debugger.CurrentStackFrame.Language;
-            Loaders loaders = language == "C#" ? Instance.loadersCS : Instance.loaders;
-
-            loaders.RemoveUserDefined();
-            LoadUserDefinedLoaders(loaders);
-        }
-
         public static void Load(string name,
                                 out Geometry.Traits traits,
                                 out ExpressionDrawer.IDrawable result)
@@ -237,11 +228,14 @@ namespace GraphicalDebugging
                 return;
 
             string language = Instance.debugger.CurrentStackFrame.Language;
-            Loaders loaders = language == "C#" ? Instance.loadersCS : Instance.loaders;
+            Loaders loaders = language == "C#" ? Instance.loadersCS : Instance.loadersCpp;
 
             MemoryReader mreader = null;
-            if (IsMemoryAccessEnabled())
+            GeneralOptionPage optionPage = Util.GetDialogPage<GeneralOptionPage>();
+            if (optionPage == null || optionPage.EnableDirectMemoryAccess)
+            {
                 mreader = new MemoryReader(Instance.debugger);
+            }
 
             if (exprs.Length == 1)
             {
@@ -265,14 +259,6 @@ namespace GraphicalDebugging
                             exprs,
                             out traits, out result);
             }
-        }
-
-        static bool IsMemoryAccessEnabled()
-        {
-            GeneralOptionPage optionPage = Util.GetDialogPage<GeneralOptionPage>();
-            return optionPage != null
-                 ? optionPage.EnableDirectMemoryAccess
-                 : true; // default
         }
 
         static int ParseInt(string s)
@@ -2703,13 +2689,14 @@ namespace GraphicalDebugging
             int sizeOf;
         }
 
-        static void LoadUserDefinedLoaders(Loaders loaders)
+        private static void ReloadUserTypes(string userTypesPath, Loaders loaders)
         {
-            GeneralOptionPage optionPage = Util.GetDialogPage<GeneralOptionPage>();
-            if (System.IO.File.Exists(optionPage.UserTypesPath))
+            loaders.RemoveUserDefined();
+
+            if (System.IO.File.Exists(userTypesPath))
             {
                 System.Xml.XmlDocument doc = new System.Xml.XmlDocument();
-                doc.Load(optionPage.UserTypesPath);
+                doc.Load(userTypesPath);
                 foreach (System.Xml.XmlElement elRoot in doc.GetElementsByTagName("GraphicalDebugging"))
                 {
                     foreach (System.Xml.XmlElement elPoint in elRoot.GetElementsByTagName("Point"))
@@ -2730,6 +2717,24 @@ namespace GraphicalDebugging
                         }
                     }
                 }
+            }
+        }
+
+        public static void ReloadUserTypes(GeneralOptionPage options)
+        {
+            if (options == null)
+                return;
+
+            if (options.isUserTypesPathCppChanged)
+            {
+                ReloadUserTypes(options.UserTypesPathCpp, Instance.loadersCpp);
+                options.isUserTypesPathCppChanged = false;
+            }
+
+            if (options.isUserTypesPathCSChanged)
+            {
+                ReloadUserTypes(options.UserTypesPathCS, Instance.loadersCS);
+                options.isUserTypesPathCSChanged = false;
             }
         }
     }
