@@ -1,3 +1,8 @@
+version 0.25
+
+additions:
+- support for user-defined point types
+
 version 0.24
 
 additions:
