@@ -439,9 +439,8 @@ namespace GraphicalDebugging
                 return 0;
             string addr = ptrExpr.Value;
 
-            return addr.StartsWith("0x", StringComparison.CurrentCultureIgnoreCase)
-                 ? ulong.Parse(addr.Substring(2), NumberStyles.HexNumber)
-                 : ulong.Parse(addr);
+            // NOTE: Hexadecimal value is automatically detected, this is probably not needed.
+            return Util.ParseULong(addr/*, true*/);
         }
 
         // Valid size or 0
@@ -459,7 +458,7 @@ namespace GraphicalDebugging
 
             Expression valSizeExpr = debugger.GetExpression(sizeOfStr);
             return valSizeExpr.IsValidValue
-                 ? int.Parse(valSizeExpr.Value)
+                 ? Util.ParseInt(valSizeExpr.Value, debugger.HexDisplayMode)
                  : 0;
         }
 
@@ -468,7 +467,7 @@ namespace GraphicalDebugging
         {
             Expression valSizeExpr = debugger.GetExpression("sizeof(" + valType + ")");
             return valSizeExpr.IsValidValue
-                 ? int.Parse(valSizeExpr.Value)
+                 ? Util.ParseInt(valSizeExpr.Value, debugger.HexDisplayMode)
                  : 0;
         }
 

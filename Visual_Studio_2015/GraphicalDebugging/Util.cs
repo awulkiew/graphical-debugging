@@ -239,5 +239,52 @@ namespace GraphicalDebugging
                 return el;
             return null;
         }
+
+        public static bool IsHex(string val)
+        {
+            //return val.StartsWith("0x", StringComparison.CurrentCultureIgnoreCase);
+            return val.Length > 1 /*&& val[0] == '0'*/ && val[1] == 'x';
+        }
+
+        public static ulong ParseULong(string val)
+        {
+            return ParseULong(val, IsHex(val));
+        }
+
+        public static ulong ParseULong(string val, bool isHex)
+        {
+            return IsHex(val)
+                 ? ulong.Parse(val.Substring(2), NumberStyles.HexNumber)
+                 : ulong.Parse(val);
+        }
+
+        public static int ParseInt(string val)
+        {
+            return ParseInt(val, IsHex(val));
+        }
+
+        public static int ParseInt(string val, bool isHex)
+        {
+            return isHex
+                 ? int.Parse(val.Substring(2), NumberStyles.HexNumber)
+                 : int.Parse(val);
+        }
+
+        public static bool TryParseInt(string val, out int result)
+        {
+            return TryParseInt(val, IsHex(val), out result);
+        }
+
+        public static bool TryParseInt(string val, bool isHex, out int result)
+        {
+            return isHex
+                 ? int.TryParse(val.Substring(2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result)
+                 : int.TryParse(val, out result);
+        }
+
+        public static double ParseDouble(string s)
+        {
+            return double.Parse(s, CultureInfo.InvariantCulture);
+        }
     }
 }

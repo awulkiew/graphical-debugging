@@ -260,22 +260,12 @@ namespace GraphicalDebugging
                             out traits, out result);
             }
         }
-
-        static int ParseInt(string s)
-        {
-            return int.Parse(s);
-        }
-
-        static double ParseDouble(string s)
-        {
-            return double.Parse(s, CultureInfo.InvariantCulture);
-        }
         
         static double LoadAsDouble(Debugger debugger, string name, out bool ok)
         {
             Expression expr = debugger.GetExpression("(double)" + name);
             ok = expr.IsValidValue;
-            return ok ? ParseDouble(expr.Value) : 0.0;
+            return ok ? Util.ParseDouble(expr.Value) : 0.0;
         }
 
         static bool IsOk<T>(T v1)
@@ -558,6 +548,7 @@ namespace GraphicalDebugging
         {
             public override ExpressionLoader.Kind Kind() { return ExpressionLoader.Kind.Container; }            
 
+            // TODO: This method should probably return ulong
             abstract public int LoadSize(Debugger debugger, string name);
 
             public delegate bool ElementPredicate(string elementName);
@@ -628,7 +619,7 @@ namespace GraphicalDebugging
                 List<string> tparams = Util.Tparams(type);
                 if (tparams.Count >= 3)
                 {
-                    int dimension = ParseInt(tparams[1]);
+                    int dimension = int.Parse(tparams[1]);
                     Geometry.CoordinateSystem cs = Geometry.CoordinateSystem.Cartesian;
                     Geometry.Unit unit = Geometry.Unit.None;
                     ParseCSAndUnit(tparams[2], out cs, out unit);
@@ -644,7 +635,7 @@ namespace GraphicalDebugging
                 List<string> tparams = Util.Tparams(type);
                 if (tparams.Count < 2)
                     return null;
-                int dimension = ParseInt(tparams[1]);
+                int dimension = int.Parse(tparams[1]);
                 int count = Math.Min(dimension, 2);
                 return LoadPointParsed(debugger, name, type, name + ".m_values", count);
             }
@@ -654,7 +645,7 @@ namespace GraphicalDebugging
                 List<string> tparams = Util.Tparams(type);
                 if (tparams.Count < 2)
                     return null;
-                int dimension = ParseInt(tparams[1]);
+                int dimension = int.Parse(tparams[1]);
                 int count = Math.Min(dimension, 2);
                 return LoadPointMemory(mreader, name, type, name + ".m_values", count);
             }
@@ -665,7 +656,7 @@ namespace GraphicalDebugging
                 if (tparams.Count < 2)
                     return null;
                 string coordType = tparams[0];
-                int dimension = ParseInt(tparams[1]);
+                int dimension = int.Parse(tparams[1]);
                 int count = Math.Min(dimension, 2);
                 return GetMemoryConverter(mreader, name, name + ".m_values", coordType, count);
             }
@@ -1667,7 +1658,8 @@ namespace GraphicalDebugging
                     return false;
                 name = type.Substring(0, begin);
                 string strSize = type.Substring(begin + 1, end - begin - 1);
-                return int.TryParse(strSize, out size);
+                // Detect Hex in case various versions displayed sizes differently
+                return Util.TryParseInt(strSize, out size);
             }
 
             // int a[5];    -> a
@@ -1680,7 +1672,8 @@ namespace GraphicalDebugging
                 {
                     string strSize = name.Substring(commaPos + 1);
                     int size;
-                    if (int.TryParse(strSize, out size))
+                    // Detect Hex in case various versions displayed sizes differently
+                    if (Util.TryParseInt(strSize, out size))
                         result = name.Substring(0, commaPos);
                 }
                 return result;
@@ -1700,7 +1693,7 @@ namespace GraphicalDebugging
             {
                 Expression expr = debugger.GetExpression(name);
                 return expr.IsValidValue
-                     ? Math.Max(ParseInt(Util.Tparams(expr.Type)[1]), 0)
+                     ? Math.Max(int.Parse(Util.Tparams(expr.Type)[1]), 0)
                      : 0;
             }
         }
@@ -1726,10 +1719,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                Expression expr = debugger.GetExpression(name + ".m_holder.m_size");
-                return expr.IsValidValue
-                     ? Math.Max(ParseInt(expr.Value), 0)
-                     : 0;
+                return LoadSizeParsed(debugger, name + ".m_holder.m_size");
             }
         }
 
@@ -1761,10 +1751,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                Expression expr = debugger.GetExpression(name + ".m_size");
-                return expr.IsValidValue
-                     ? Math.Max(ParseInt(expr.Value), 0)
-                     : 0;
+                return LoadSizeParsed(debugger, name + ".m_size");
             }
         }
 
@@ -1784,10 +1771,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                Expression expr = debugger.GetExpression(SizeStr(name));
-                return expr.IsValidValue
-                     ? Math.Max(ParseInt(expr.Value), 0)
-                     : 0;
+                return LoadSizeParsed(debugger, SizeStr(name));
             }
 
             private string FirstStr(string name)
@@ -1833,11 +1817,11 @@ namespace GraphicalDebugging
                 if (size == 0)
                     return true;
 
-                // Map size                
+                // Map size
                 Expression mapSizeExpr = mreader.Debugger.GetExpression(MapSizeStr(name));
                 if (!mapSizeExpr.IsValidValue)
                     return false;
-                int mapSize = int.Parse(mapSizeExpr.Value);
+                int mapSize = Util.ParseInt(mapSizeExpr.Value, mreader.Debugger.HexDisplayMode);
 
                 // Map - array of pointers                
                 ulong[] pointers = new ulong[mapSize];
@@ -1848,13 +1832,13 @@ namespace GraphicalDebugging
                 Expression dequeSizeExpr = mreader.Debugger.GetExpression("((int)" + name + "._EEN_DS)");
                 if (!dequeSizeExpr.IsValidValue)
                     return false;
-                int dequeSize = int.Parse(dequeSizeExpr.Value);
+                int dequeSize = Util.ParseInt(dequeSizeExpr.Value, mreader.Debugger.HexDisplayMode);
 
                 // Offset
                 Expression offsetExpr = mreader.Debugger.GetExpression(OffsetStr(name));
                 if (!offsetExpr.IsValidValue)
                     return false;
-                int offset = int.Parse(offsetExpr.Value);
+                int offset = Util.ParseInt(offsetExpr.Value, mreader.Debugger.HexDisplayMode);
                     
                 // Initial indexes
                 int firstBlock = ((0 + offset) / dequeSize) % mapSize;
@@ -1906,10 +1890,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                Expression expr = debugger.GetExpression(SizeStr(name));
-                return expr.IsValidValue
-                     ? Math.Max(ParseInt(expr.Value), 0)
-                     : 0;
+                return LoadSizeParsed(debugger, SizeStr(name));
             }
 
             private string MapSizeStr(string name)
@@ -2016,10 +1997,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                Expression expr = debugger.GetExpression(SizeStr(name));
-                return expr.IsValidValue
-                     ? Math.Max(ParseInt(expr.Value), 0)
-                     : 0;
+                return LoadSizeParsed(debugger, SizeStr(name));
             }
 
             public override bool ForEachElement(Debugger debugger, string name, ElementPredicate elementPredicate)
@@ -2078,8 +2056,8 @@ namespace GraphicalDebugging
                 Expression whichExpr = debugger.GetExpression(name + ".which_");
                 if (!whichExpr.IsValidValue)
                     return;
+                int which = Util.ParseInt(whichExpr.Value, debugger.HexDisplayMode);
 
-                int which = ParseInt(whichExpr.Value);
                 List<string> tparams = Util.Tparams(type);
                 if (which < 0 || tparams.Count <= which)
                     return;
@@ -2520,17 +2498,7 @@ namespace GraphicalDebugging
             
             public override int LoadSize(Debugger debugger, string name)
             {
-                string e2 = debugger.GetExpression("&" + name + "[0]").Value;
-                string e3 = debugger.GetExpression("&" + name + "[1]").Value;
-                string e4 = debugger.GetExpression("&" + name + "[2]").Value;
-
-                Expression expr = debugger.GetExpression(name + ".Length");
-                if (!expr.IsValidValue)
-                    return 0;
-                int size = 0;
-                return int.TryParse(expr.Value, out size)
-                     ? size
-                     : 0;
+                return LoadSizeParsed(debugger, name + ".Length");
             }
 
             public override string ElementName(string name)
@@ -2555,13 +2523,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                Expression expr = debugger.GetExpression(name + ".Count");
-                if (!expr.IsValidValue)
-                    return 0;
-                int size = 0;
-                return int.TryParse(expr.Value, out size)
-                     ? size
-                     : 0;
+                return LoadSizeParsed(debugger, name + ".Count");
             }
 
             public override string RandomAccessElementName(string rawName, int i)
@@ -2736,6 +2698,24 @@ namespace GraphicalDebugging
                 ReloadUserTypes(options.UserTypesPathCS, Instance.loadersCS);
                 options.isUserTypesPathCSChanged = false;
             }
+        }
+
+        private static int LoadSizeParsed(Debugger debugger, string name)
+        {
+            Expression expr = debugger.GetExpression(name);
+            return expr.IsValidValue
+                 ? Math.Max(Util.ParseInt(expr.Value, debugger.HexDisplayMode), 0)
+                 : 0;
+        }
+
+        private static bool TryLoadIntParsed(Debugger debugger, string name, out int result)
+        {
+            result = 0;
+            Expression expr = debugger.GetExpression(name);
+            if (!expr.IsValidValue)
+                return false;
+            result = Util.ParseInt(expr.Value, debugger.HexDisplayMode);
+            return true;
         }
     }
 }
