@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GraphicalDebugging>
+
+  <Point Id="MyPoint">
+    <Coordinates>
+      <X>x</X>
+      <Y>y</Y>
+    </Coordinates>
+  </Point>
+
+  <Point Id="tagPOINT">
+    <Coordinates>
+      <X>x</X>
+      <Y>y</Y>
+    </Coordinates>
+  </Point>
+
+  <Point Id="boost::qvm::vec">
+    <Coordinates>
+      <X>a[0]</X>
+      <Y>a[1]</Y>
+    </Coordinates>
+  </Point>
+
+</GraphicalDebugging>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GraphicalDebugging>
+
+  <Point Id="WpfApplication1.MainWindow.MyPoint">
+    <Coordinates>
+      <X>x</X>
+      <Y>y</Y>
+    </Coordinates>
+  </Point>
+
+  <Point Id="System.Windows.Point">
+    <Coordinates>
+      <X>_x</X>
+      <Y>_y</Y>
+    </Coordinates>
+  </Point>
+
+  <Point Id="System.Drawing.Point">
+    <Coordinates>
+      <X>x</X>
+      <Y>y</Y>
+    </Coordinates>
+  </Point>
+
+</GraphicalDebugging>
