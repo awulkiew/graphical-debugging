@@ -112,8 +112,10 @@ namespace GraphicalDebugging
             loadersCS = new Loaders();
 
             loadersCS.Add(new CSList());
+
             loadersCS.Add(new CSArray());
-            // TODO: PointCSArray
+            loadersCS.Add(new PointCSArray());
+
             loadersCS.Add(new PointContainer("System.Collections.Generic.List"));
         }
 
@@ -2516,8 +2518,74 @@ namespace GraphicalDebugging
             }
         }
 
-        // TODO: CSList's of Points MemoryReader doesn't work because of the user of * and & in C#
-        // TODO: PointCSArray is not implemented
+        class PointCSArray : PointRange<ExpressionDrawer.MultiPoint>
+        {
+            public class PointKindConstraint : TypeConstraint
+            {
+                public override bool Ok(Loaders loaders, string name, string type)
+                {
+                    string elementType = CSArray.ElemTypeFromType(type);
+                    if (elementType != "")
+                    {
+                        Loader loader = loaders.FindByType(name + "[0]", elementType);
+                        if (loader != null)
+                            return loader.Kind() == ExpressionLoader.Kind.Point;
+                    }
+                    return false;
+                }
+            }
+
+            public PointCSArray()
+                : base(ExpressionLoader.Kind.MultiPoint)
+            { }
+
+            public override TypeConstraint Constraint() { return new PointKindConstraint(); }
+
+            public override string Id() { return null; }
+
+            public override bool MatchType(string type, string id)
+            {
+                return CSArray.ElemTypeFromType(type) != "";
+            }
+
+            public override void Load(Loaders loaders, MemoryReader mreader,
+                                      Debugger debugger, string name, string type,
+                                      out Geometry.Traits traits,
+                                      out ExpressionDrawer.MultiPoint result)
+            {
+                traits = null;
+                result = null;
+
+                string pointType = CSArray.ElemTypeFromType(type);
+
+                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
+                                                                     name,
+                                                                     type) as ContainerLoader;
+                if (containerLoader == null)
+                    return;
+
+                string pointName = containerLoader.ElementName(name, pointType);
+
+                PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
+                                                             pointName,
+                                                             pointType) as PointLoader;
+                if (pointLoader == null)
+                    return;
+
+                if (mreader != null)
+                {
+                    result = LoadMemory(mreader, name, type,
+                                        pointType, pointLoader, containerLoader);
+                }
+
+                if (result == null)
+                {
+                    result = LoadParsed(mreader, debugger, name, type,
+                                        pointType, pointLoader, containerLoader);
+                }
+            }
+        }
+
 
         class UserPoint : PointLoader
         {
