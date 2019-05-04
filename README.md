@@ -192,6 +192,26 @@ The extension attempts to obtain data through direct memory access if possible. 
 
 This behavior is enabled by default but can be disabled in options under **Tools**->**Options**->**Graphical Debugging**->**General**
 
+##### User-defined types
+
+The extension offers basic support for user-defined point types. You can define points in XML file based on type identifier (without template parameters) and X and Y members and set path to this file in options under **Tools**->**Options**->**Graphical Debugging**->**General**. An example XML file defining C++ type `MyPoint` in global namespace looks like this:
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<GraphicalDebugging>
+
+  <Point Id="MyPoint">
+    <Coordinates>
+      <X>x</X>
+      <Y>y</Y>
+    </Coordinates>
+  </Point>
+
+</GraphicalDebugging>
+```
+
+See more [examples at GitHub](https://github.com/awulkiew/graphical-debugging/tree/master/examples).
+
 ##### Themes
 
 The extension supports Visual Studio themes. The visualization of variables may be drawn in two versions, dark or light depending on the brightness of the theme background color.
