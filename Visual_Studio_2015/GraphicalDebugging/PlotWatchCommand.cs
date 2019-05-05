@@ -1,6 +1,6 @@
 ﻿//------------------------------------------------------------------------------
-// <copyright file="PlotWatchCommand.cs" company="Company">
-//     Copyright (c) Company.  All rights reserved.
+// <copyright file="PlotWatchCommand.cs">
+//     Copyright (c) Adam Wulkiewicz.
 // </copyright>
 //------------------------------------------------------------------------------
 

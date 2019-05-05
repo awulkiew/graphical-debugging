@@ -1,6 +1,6 @@
 ﻿//------------------------------------------------------------------------------
-// <copyright file="GeometryWatch.cs" company="Company">
-//     Copyright (c) Company.  All rights reserved.
+// <copyright file="GeometryWatch.cs">
+//     Copyright (c) Adam Wulkiewicz.
 // </copyright>
 //------------------------------------------------------------------------------
 

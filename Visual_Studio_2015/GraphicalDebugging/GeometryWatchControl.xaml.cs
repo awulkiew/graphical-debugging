@@ -1,6 +1,6 @@
 ﻿//------------------------------------------------------------------------------
-// <copyright file="GeometryWatchControl.xaml.cs" company="Company">
-//     Copyright (c) Company.  All rights reserved.
+// <copyright file="GeometryWatchControl.xaml.cs">
+//     Copyright (c) Adam Wulkiewicz.
 // </copyright>
 //------------------------------------------------------------------------------
 

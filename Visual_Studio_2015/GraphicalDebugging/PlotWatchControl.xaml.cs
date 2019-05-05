@@ -1,6 +1,6 @@
 ﻿//------------------------------------------------------------------------------
-// <copyright file="PlotWatchControl.xaml.cs" company="Company">
-//     Copyright (c) Company.  All rights reserved.
+// <copyright file="PlotWatchControl.xaml.cs">
+//     Copyright (c) Adam Wulkiewicz.
 // </copyright>
 //------------------------------------------------------------------------------
 
