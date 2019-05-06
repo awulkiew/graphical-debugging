@@ -71,7 +71,7 @@ Supported:
   * STL: array, vector, deque, list
   * Boost.Array: array
   * Boost.Container: vector, static_vector
-  * C#: array, List (as containers of coordinates)
+  * C#: array, List
 * 2D cartesian geometries
   * Boost.Geometry: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
   * Boost.Polygon: point_data, segment_data, rectangle_data, polygon_data, polygon_with_holes_data
@@ -162,35 +162,11 @@ where points can be of any supported point type (coordinate system is ignored):
 
 ![Plot Watch](images/plot_watch.png)
 
-##### Zooming/cropping
-
-Geometry Watch and Plot Watch has zooming/cropping feature. Mouse wheel can be used to zoom in/out as well.
-
-![Geometry Watch Zoom](images/geometry_watch_zoom.png)
-
-![Geometry Watch Zoomed](images/geometry_watch_zoomed.png)
-
 ##### Options
 
 Options for each Watch can be found under **Tools**->**Options**->**Graphical Debugging**
 
 ![Plot Watch Various](images/plot_watch_various.png)
-
-##### Direct memory access
-
-The extension attempts to obtain data through direct memory access if possible. From this feature benefit all supported containers of fundamental numeric types and geometries using such coordinate types. E.g.:
-  * `int arr[5]`
-  * `std::array<float, 5>`
-  * `std::vector<double>`
-  * `std::deque<std::pair<float> >`
-  * `std::list<std::complex<double> >`
-  * `boost::container::vector<int>`
-  * `boost::geometry::model::linestring< boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> >`
-  * `boost::polygon::polygon_data<int>`
-  * `double[]` (C#)
-  * etc.
-
-This behavior is enabled by default but can be disabled in options under **Tools**->**Options**->**Graphical Debugging**->**General**
 
 ##### User-defined types
 
@@ -217,6 +193,30 @@ Basic support has limitations:
 (Let me know if you need something more advanced).
 
 See more [examples at GitHub](https://github.com/awulkiew/graphical-debugging/tree/master/examples).
+
+##### Zooming/cropping
+
+Geometry Watch and Plot Watch has zooming/cropping feature. Mouse wheel can be used to zoom in/out as well.
+
+![Geometry Watch Zoom](images/geometry_watch_zoom.png)
+
+![Geometry Watch Zoomed](images/geometry_watch_zoomed.png)
+
+##### Direct memory access
+
+The extension attempts to obtain data through direct memory access if possible. From this feature benefit all supported containers of fundamental numeric types and geometries using such coordinate types. E.g.:
+  * `int arr[5]`
+  * `std::array<float, 5>`
+  * `std::vector<double>`
+  * `std::deque<std::pair<float> >`
+  * `std::list<std::complex<double> >`
+  * `boost::container::vector<int>`
+  * `boost::geometry::model::linestring< boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> >`
+  * `boost::polygon::polygon_data<int>`
+  * `double[]` (C#)
+  * etc.
+
+This behavior is enabled by default but can be disabled in options under **Tools**->**Options**->**Graphical Debugging**->**General**
 
 ##### Themes
 
