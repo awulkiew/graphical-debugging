@@ -72,11 +72,11 @@ Supported:
   * Boost.Array: array
   * Boost.Container: vector, static_vector
   * C#: array, List
-  * containers of user-defined points
 * 2D cartesian geometries
   * Boost.Geometry: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
   * Boost.Polygon: point_data, segment_data, rectangle_data, polygon_data, polygon_with_holes_data
   * STL: pair
+  * user-defined point type
 * Non-cartesian geometries (spherical_equatorial and geographic)
   * Boost.Geometry: point, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
 * Complex numbers
@@ -114,11 +114,11 @@ Supported:
   * Boost.Array: array
   * Boost.Container: vector, static_vector
   * C#: array, List
-  * containers of user-defined points
 * 2D cartesian geometries
   * Boost.Geometry: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
   * Boost.Polygon: point_data, segment_data, rectangle_data, polygon_data, polygon_with_holes_data
   * STL: pair
+  * user-defined point type
 * Non-cartesian geometries (spherical_equatorial and geographic)
   * Boost.Geometry: point, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
 * Complex numbers
@@ -190,6 +190,7 @@ The extension offers basic support for user-defined point types. You can define 
 ```
 
 Basic support has limitations:
+
   * based on identifier so no template parameters, no specializations
   * no support for user-defined coordinate system, cartesian is used by default
 
