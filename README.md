@@ -72,6 +72,7 @@ Supported:
   * Boost.Array: array
   * Boost.Container: vector, static_vector
   * C#: array, List
+  * containers of user-defined points
 * 2D cartesian geometries
   * Boost.Geometry: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
   * Boost.Polygon: point_data, segment_data, rectangle_data, polygon_data, polygon_with_holes_data
@@ -113,6 +114,7 @@ Supported:
   * Boost.Array: array
   * Boost.Container: vector, static_vector
   * C#: array, List
+  * containers of user-defined points
 * 2D cartesian geometries
   * Boost.Geometry: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
   * Boost.Polygon: point_data, segment_data, rectangle_data, polygon_data, polygon_with_holes_data
@@ -159,6 +161,7 @@ where points can be of any supported point type (coordinate system is ignored):
   * STL: complex, pair
   * Boost.Geometry: point, point_xy
   * Boost.Polygon: point_data
+  * user-defined point type
 
 ![Plot Watch](images/plot_watch.png)
 
@@ -190,7 +193,7 @@ Basic support has limitations:
   * based on identifier so no template parameters, no specializations
   * no support for user-defined coordinate system, cartesian is used by default
 
-(Let me know if you need something more advanced).
+Let me know if you need something more advanced.
 
 See more [examples at GitHub](https://github.com/awulkiew/graphical-debugging/tree/master/examples).
 
