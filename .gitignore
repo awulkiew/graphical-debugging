@@ -1,6 +1,7 @@
 Visual_Studio_2015/.vs
 Visual_Studio_2015/GraphicalDebugging/bin
 Visual_Studio_2015/GraphicalDebugging/obj
+Visual_Studio_2015/packages
 Visual_Studio_2015/*.sdf
 Visual_Studio_2015/*.db
 Visual_Studio_2015/*.opendb
