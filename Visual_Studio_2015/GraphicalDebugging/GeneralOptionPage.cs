@@ -46,5 +46,42 @@ namespace GraphicalDebugging
             get { return userTypesPathCS; }
             set { userTypesPathCS = value; isUserTypesPathCSChanged = true; }
         }
+
+        public GeneralOptionPage()
+        {
+            control = new GeneralOptionControl();
+            control.EnableDirectMemoryAccess = EnableDirectMemoryAccess;
+            control.UserTypesPathCpp = UserTypesPathCpp;
+            control.UserTypesPathCS = UserTypesPathCS;
+        }
+
+        protected override System.Windows.Forms.IWin32Window Window
+        {
+            get { return control; }
+        }
+
+        public override void LoadSettingsFromStorage()
+        {
+            base.LoadSettingsFromStorage();
+            control.EnableDirectMemoryAccess = EnableDirectMemoryAccess;
+            control.UserTypesPathCpp = UserTypesPathCpp;
+            control.UserTypesPathCS = UserTypesPathCS;
+        }
+        
+        protected override void OnApply(PageApplyEventArgs e)
+        {
+            if (e.ApplyBehavior == ApplyKind.Apply)
+            {
+                EnableDirectMemoryAccess = control.EnableDirectMemoryAccess;
+                if (UserTypesPathCpp != control.UserTypesPathCpp)
+                    UserTypesPathCpp = control.UserTypesPathCpp;
+                if (UserTypesPathCS != control.UserTypesPathCS)
+                    UserTypesPathCS = control.UserTypesPathCS;                
+            }
+
+            base.OnApply(e);
+        }
+
+        GeneralOptionControl control;
     }
 }
