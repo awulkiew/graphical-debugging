@@ -26,7 +26,7 @@ You need Microsoft Visual Studio 2015 Update 3, .NET Framework 4.5.2 and Visual 
 
 ###### Install
 
-To install after building double-click the *.vsix file from bin/Debug or bin/Relase directory.
+To install after building double-click the *.vsix file from bin/Debug or bin/Release directory.
 
 ###### Use
 
