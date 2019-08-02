@@ -22,7 +22,7 @@ You can download this extension from [Visual Studio Marketplace](https://marketp
 
 ###### Build
 
-You need Microsoft Visual Studio 2015 Update 3, .NET Framework 4.5.2 and Visual Studio 2015 SDK.
+You need Microsoft Visual Studio 2017 Community and .NET Framework 4.5.2.
 
 ###### Install
 
