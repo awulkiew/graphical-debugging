@@ -21,7 +21,7 @@ additions:
 version 0.22
 
 additions:
-- vizualization of containers of coordinates
+- visualization of containers of coordinates
 
 version 0.21
 
@@ -47,8 +47,8 @@ bugfixes:
 version 0.18
 
 additions:
-- vizualization of c-arrays of values or points
-- vizualization of pointers to elements with "size specifier" feature
+- visualization of c-arrays of values or points
+- visualization of pointers to elements with "size specifier" feature
 
 bugfixes:
 - fixed exception while debugging Boost.Variant holding non-supported type
@@ -56,7 +56,7 @@ bugfixes:
 version 0.17
 
 additions:
-- asynchronious loading of the extension
+- asynchronous loading of the extension
 - improved debugging speed of std::deque by direct memory access
 - improved debugging speed of std::list by direct memory access
 - variables of type std::complex<...> can be displayed as Points in complex coordinate system
@@ -73,7 +73,7 @@ additions:
 - Plot Watch now displays MultiPoints / containers of points as Point Plot
 - new options for Plot Watch (Point Plot types)
 - new options for Graphical Watch (image size, Point Plot types, etc.)
-- variables are not realoaded if only redraw is required (e.g. while zooming or view reset)
+- variables are not reloaded if only redraw is required (e.g. while zooming or view reset)
 - various drawing tweaks
 
 bugfixes:
@@ -220,7 +220,7 @@ additions:
 - icons!
 
 bugfixes:
-- GeometryWatch wasn't redrawed if empty geometries were left after removal. Caused by an attempt of drawing of an invalid/inverted AABB.
+- GeometryWatch wasn't redrawn if empty geometries were left after removal. Caused by an attempt of drawing of an invalid/inverted AABB.
 - Transparent color was added into the colors pool after removal of undrawable variable from the GeometryWatch list.
 
 version 0.3
