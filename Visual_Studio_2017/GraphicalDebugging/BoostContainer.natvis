@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+  <!-- boost::container::vector -->
+  <Type Name="boost::container::vector&lt;*&gt;">
+    <DisplayString>{{ size={m_holder.m_size} }}</DisplayString>
+    <Expand>
+      <Item Name="[capacity]" ExcludeView="simple">m_holder.m_capacity</Item>
+      <Item Name="[allocator]" ExcludeView="simple">m_holder</Item>
+      <ArrayItems>
+        <Size>m_holder.m_size</Size>
+        <ValuePointer>m_holder.m_start</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <!-- boost::container::static_vector -->
+  <Type Name="boost::container::static_vector&lt;*&gt;">
+    <DisplayString>{{ size={m_holder.m_size} }}</DisplayString>
+    <Expand>
+      <Item Name="[capacity]" ExcludeView="simple">$T2</Item>
+      <Item Name="[allocator]" ExcludeView="simple">m_holder</Item>
+      <ArrayItems>
+        <Size>m_holder.m_size</Size>
+        <ValuePointer>($T1 *)m_holder.storage.dummy</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+  <Type Name="boost::container::static_vector&lt;*&gt;">
+    <DisplayString>{{ size={m_holder.m_size} }}</DisplayString>
+    <Expand>
+      <Item Name="[capacity]" ExcludeView="simple">$T2</Item>
+      <Item Name="[allocator]" ExcludeView="simple">m_holder</Item>
+      <ArrayItems>
+        <Size>m_holder.m_size</Size>
+        <ValuePointer>($T1 *)m_holder.storage.data</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+  
+</AutoVisualizer>

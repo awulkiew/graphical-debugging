@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+	<!-- boost::array -->
+	<Type Name="boost::array&lt;*&gt;">
+		<DisplayString>{{ size={$T2} }}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>$T2</Size>
+				<ValuePointer>($T1 *)elems</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+	
+</AutoVisualizer>

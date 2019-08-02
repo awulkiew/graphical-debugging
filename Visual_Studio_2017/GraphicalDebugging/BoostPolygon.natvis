@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+  <!-- boost::polygon::point_data -->
+  <Type Name="boost::polygon::point_data&lt;*&gt;">
+    <DisplayString>{{{coords_[0]}, {coords_[1]}}}</DisplayString>
+    <Expand>
+      <ArrayItems>
+        <Size>2</Size>
+        <ValuePointer>coords_</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <!-- boost::polygon::interval_data -->
+  <Type Name="boost::polygon::interval_data&lt;*&gt;">
+  <DisplayString>{{{coords_[0]}, {coords_[1]}}}</DisplayString>
+    <Expand>
+      <ArrayItems>
+        <Size>2</Size>
+        <ValuePointer>coords_</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+    
+  <!-- boost::polygon::segment_data -->
+  <Type Name="boost::polygon::segment_data&lt;*&gt;">
+  <DisplayString>{{{points_[0]}, {points_[1]}}}</DisplayString>
+    <Expand>
+      <ArrayItems>
+        <Size>2</Size>
+        <ValuePointer>points_</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+    
+  <!-- boost::polygon::rectangle_data -->
+  <Type Name="boost::polygon::rectangle_data&lt;*&gt;">
+  <DisplayString>{{{ranges_[0]}, {ranges_[1]}}}</DisplayString>
+    <Expand>
+      <ArrayItems>
+        <Size>2</Size>
+        <ValuePointer>ranges_</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <!-- boost::polygon::polygon_data -->
+  <Type Name="boost::polygon::polygon_data&lt;*&gt;">
+    <DisplayString>{coords_}</DisplayString>
+    <Expand>
+      <ExpandedItem>coords_</ExpandedItem>
+    </Expand>
+  </Type>
+  
+  <!-- boost::polygon::polygon_with_holes_data -->
+  <Type Name="boost::polygon::polygon_with_holes_data&lt;*&gt;">
+    <DisplayString>{{outer={self_}, inners={holes_}}}</DisplayString>
+    <Expand>
+      <Item Name="outer">self_</Item>
+      <Item Name="inners">holes_</Item>
+    </Expand>
+  </Type>
+  
+</AutoVisualizer>

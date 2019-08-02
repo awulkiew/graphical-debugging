@@ -1,0 +1,138 @@
+﻿<UserControl x:Class="GraphicalDebugging.PlotWatchControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib"
+             Background="{DynamicResource VsBrush.Window}"
+             Foreground="{DynamicResource VsBrush.WindowText}"
+             mc:Ignorable="d"
+             d:DesignHeight="300" d:DesignWidth="300"
+             Name="PlotWatchWindow"  SizeChanged="PlotWatchWindow_SizeChanged">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="1*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="0.5*" />
+        </Grid.RowDefinitions>
+        <Grid x:Name="imageGrid" Background="Transparent" Cursor="Cross"
+              MouseDown="imageGrid_MouseDown"
+              MouseMove="imageGrid_MouseMove"
+              MouseUp="imageGrid_MouseUp"
+              MouseLeave="imageGrid_MouseLeave"
+              MouseWheel="imageGrid_MouseWheel" >
+            <Image x:Name="image" Stretch="Fill" Height="Auto" Width="Auto" />
+            <Canvas x:Name="imageCanvas" Height="Auto" Width="Auto" />
+        </Grid>
+        <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch"
+                      ResizeDirection="Rows"
+                      Height="5"
+                      Width="Auto"
+                      DragCompleted="GridSplitter_DragCompleted"
+                      Background="{DynamicResource VsBrush.ScrollBarBackground}" />
+        <DockPanel Grid.Row="2" >
+            <DataGrid x:Name="dataGrid"
+                      AutoGenerateColumns="False"
+                      SelectionMode="Extended"
+                      SelectionUnit="FullRow"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      CanUserReorderColumns="False"
+                      CanUserResizeColumns="True"
+                      CanUserResizeRows="False"
+                      CanUserSortColumns="False"
+                      IsReadOnly="False"
+                      Background="{DynamicResource VsBrush.ToolWindowBackground}"
+                      Foreground="{DynamicResource VsBrush.ToolWindowText}"
+                      BorderThickness="0"
+                      PreviewKeyDown="dataGrid_PreviewKeyDown" BeginningEdit="dataGrid_BeginningEdit" CellEditEnding="dataGrid_CellEditEnding">
+                <DataGrid.ColumnHeaderStyle>
+                    <Style TargetType="{x:Type DataGridColumnHeader}">
+                        <Setter Property="Background" Value="{DynamicResource VsBrush.GridHeadingBackground}" />
+                        <Setter Property="Foreground" Value="{DynamicResource VsBrush.GridHeadingText}" />
+                        <Setter Property="BorderBrush" Value="{DynamicResource VsBrush.ToolWindowBorder}" />
+                        <Setter Property="BorderThickness" Value="0, 1, 1, 1"/>
+                        <Setter Property="Padding" Value="5, 2, 5, 2" />
+                    </Style>
+                </DataGrid.ColumnHeaderStyle>
+                <DataGrid.RowHeaderStyle>
+                    <Style TargetType="{x:Type DataGridRowHeader}">
+                        <Setter Property="Width" Value="0" />
+                    </Style>
+                </DataGrid.RowHeaderStyle>
+                <DataGrid.RowStyle>
+                    <Style TargetType="{x:Type DataGridRow}">
+                        <Setter Property="Background" Value="{DynamicResource VsBrush.ToolWindowBackground}" />
+                        <Setter Property="Foreground" Value="{DynamicResource VsBrush.ToolWindowText}" />
+                    </Style>
+                </DataGrid.RowStyle>
+                <DataGrid.CellStyle>
+                    <Style TargetType="{x:Type DataGridCell}">
+                        <Setter Property="BorderThickness" Value="0" />
+                        <!--Override Highlighting so that its easy to see what is selected even when the control is not focused-->
+                        <Style.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="{x:Static SystemColors.HighlightBrush}" />
+                                <Setter Property="Foreground" Value="{x:Static SystemColors.HighlightTextBrush}" />
+                                <Setter Property="BorderBrush" Value="{x:Static SystemColors.HighlightBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="False">
+                                <Setter Property="Background" Value="{DynamicResource VsBrush.ToolWindowBackground}" />
+                                <Setter Property="Foreground" Value="{DynamicResource VsBrush.ToolWindowText}" />
+                                <Setter Property="BorderBrush" Value="{DynamicResource VsBrush.ToolWindowBorder}" />
+                            </Trigger>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=IsSelected}" Value="True" />
+                                    <Condition Binding="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=DataGrid}, Path=IsKeyboardFocusWithin}" Value="False" />
+                                </MultiDataTrigger.Conditions>
+                                <MultiDataTrigger.Setters>
+                                    <Setter Property="Background" Value="{DynamicResource VsBrush.ToolWindowBackground}" />
+                                    <Setter Property="Foreground" Value="{DynamicResource VsBrush.ToolWindowText}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource VsBrush.ToolWindowBorder}" />
+                                </MultiDataTrigger.Setters>
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGrid.CellStyle>
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Name"  Binding="{Binding Name}" Width="100" />
+                    <DataGridTemplateColumn Header="Color" Width="50">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock>
+                                    <TextBlock.Background>
+                                        <SolidColorBrush Color="{Binding Color}" />
+                                    </TextBlock.Background>
+                                </TextBlock>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="Type" Width="*" IsReadOnly="True">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Type}">
+                                    <TextBlock.ToolTip>
+                                        <TextBlock Text="{Binding Type}" TextWrapping="Wrap" />
+                                    </TextBlock.ToolTip>
+                                    <TextBlock.Style>
+                                        <Style TargetType="{x:Type TextBlock}">
+                                            <Style.Triggers>
+                                                <Trigger Property="Text" Value="{x:Static sys:String.Empty}">
+                                                    <Setter Property="ToolTip.Visibility" Value="Collapsed" />
+                                                </Trigger>
+                                                <Trigger Property="Text" Value="{x:Null}">
+                                                    <Setter Property="ToolTip.Visibility" Value="Collapsed" />
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </DockPanel>
+    </Grid>
+</UserControl>

@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+    <!-- model -->
+    
+	<!-- boost::geometry::model::point -->
+	<Type Name="boost::geometry::model::point&lt;*,1,*&gt;">
+		<DisplayString>{{{m_values[0]}}}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>1</Size>
+				<ValuePointer>m_values</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+	<Type Name="boost::geometry::model::point&lt;*,2,*&gt;">
+		<DisplayString>{{{m_values[0]}, {m_values[1]}}}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>2</Size>
+				<ValuePointer>m_values</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+	<Type Name="boost::geometry::model::point&lt;*,3,*&gt;">
+		<DisplayString>{{{m_values[0]}, {m_values[1]}, {m_values[2]}}}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>3</Size>
+				<ValuePointer>m_values</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+	<Type Name="boost::geometry::model::point&lt;*&gt;">
+		<DisplayString>{{{m_values[0]}, {m_values[1]}, {m_values[2]}, ...}}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>$T2</Size>
+				<ValuePointer>m_values</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+
+	<!-- boost::geometry::model::d2::point_xy -->
+	<Type Name="boost::geometry::model::d2::point_xy&lt;*&gt;">
+		<DisplayString>{{{m_values[0]}, {m_values[1]}}}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>2</Size>
+				<ValuePointer>m_values</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+
+	<!-- boost::geometry::model::box -->
+	<Type Name="boost::geometry::model::box&lt;*&gt;">
+		<DisplayString>{{{m_min_corner}, {m_max_corner}}}</DisplayString>
+		<Expand>
+			<Item Name="[0]">m_min_corner</Item>
+			<Item Name="[1]">m_max_corner</Item>
+		</Expand>
+	</Type>
+
+	<!-- boost::geometry::model::segment -->
+	<Type Name="boost::geometry::model::segment&lt;*&gt;">
+		<DisplayString>{{{first}, {second}}}</DisplayString>
+		<Expand>
+			<Item Name="[0]">first</Item>
+			<Item Name="[1]">second</Item>
+		</Expand>
+	</Type>
+
+	<!-- boost::geometry::model::referring_segment -->
+	<Type Name="boost::geometry::model::referring_segment&lt;*&gt;">
+		<DisplayString>{{{first}, {second}}}</DisplayString>
+		<Expand>
+			<Item Name="[0]">first</Item>
+			<Item Name="[1]">second</Item>
+		</Expand>
+	</Type>
+
+	<!-- boost::geometry::model::polygon -->
+	<Type Name="boost::geometry::model::polygon&lt;*&gt;">
+		<DisplayString>{{outer={m_outer}, inners={m_inners}}}</DisplayString>
+		<Expand>
+			<Item Name="outer">m_outer</Item>
+			<Item Name="inners">m_inners</Item>
+		</Expand>
+	</Type>
+
+  <!-- boost::geometry::model::nsphere -->
+  <Type Name="boost::geometry::model::nsphere&lt;*&gt;">
+    <DisplayString>{{{m_center}, {m_radius}}}</DisplayString>
+    <Expand>
+      <Item Name="center">m_center</Item>
+      <Item Name="radius">m_radius</Item>
+    </Expand>
+  </Type>
+
+    <!-- de9im -->
+    
+    <!-- boost::geometry::de9im::matrix -->
+    <Type Name="boost::geometry::de9im::matrix">
+        <DisplayString>{m_array,9s}</DisplayString>
+        <Expand>
+            <ArrayItems>
+                <Size>9</Size>
+                <ValuePointer>m_array</ValuePointer>
+            </ArrayItems>
+        </Expand>
+    </Type>
+
+    <!-- boost::geometry::de9im::mask -->
+    <Type Name="boost::geometry::de9im::mask">
+        <DisplayString>{m_array,9s}</DisplayString>
+        <Expand>
+            <ArrayItems>
+                <Size>9</Size>
+                <ValuePointer>m_array</ValuePointer>
+            </ArrayItems>
+        </Expand>
+    </Type>
+
+    <!-- boost::geometry::de9im::static_mask -->
+    <Type Name="boost::geometry::de9im::static_mask&lt;*&gt;">
+        <DisplayString>{$T1,c}, {$T2,c}, {$T3,c}, {$T4,c}, {$T5,c}, {$T6,c}, {$T7,c}, {$T8,c}, {$T9,c}</DisplayString>
+    </Type>
+
+    <!-- boost::geometry::segment_ratio -->
+    <Type Name="boost::geometry::segment_ratio&lt;*&gt;">
+        <DisplayString>~{(double)m_numerator/(double)m_denominator}</DisplayString>
+    </Type>
+
+    <!-- detail -->
+
+    <!-- boost::geometry::detail::overlay::turn_info -->
+    <Type Name="boost::geometry::detail::overlay::turn_info&lt;*&gt;">
+        <DisplayString>{{ {method} {operations.elems[0].operation}/{operations.elems[1].operation} }}</DisplayString>
+    </Type>
+    
+    <!-- boost::geometry::detail::overlay::traversal_turn_info -->
+    <Type Name="boost::geometry::detail::overlay::traversal_turn_info&lt;*&gt;">
+        <DisplayString>{{ {method} {operations.elems[0].operation}/{operations.elems[1].operation} }}</DisplayString>
+        <Expand>
+            <ExpandedItem>
+                *(boost::geometry::detail::overlay::turn_info&lt;$T1,$T2,boost::geometry::detail::overlay::traversal_turn_operation&lt;$T1,$T2&gt;,boost::array&lt;boost::geometry::detail::overlay::traversal_turn_operation&lt;$T1,$T2&gt;,2&gt; &gt;*)this,nd
+            </ExpandedItem>
+        </Expand>
+    </Type>
+    
+    <!-- boost::geometry::detail::overlay::turn_operation -->
+    <Type Name="boost::geometry::detail::overlay::turn_operation&lt;*&gt;">
+        <DisplayString>{{ {operation} at {fraction} }}</DisplayString>
+    </Type>
+    
+    <!-- boost::geometry::detail::overlay::turn_operation_linear -->
+    <Type Name="boost::geometry::detail::overlay::turn_operation_linear&lt;*&gt;">
+        <DisplayString>{{ {operation} at {fraction} }}</DisplayString>
+        <Expand>
+            <ExpandedItem>
+                *(boost::geometry::detail::overlay::turn_operation&lt;$T1,$T2&gt;*)this,nd
+            </ExpandedItem>
+            <Item Name="position">position</Item>
+            <Item Name="is_collinear">is_collinear</Item>
+        </Expand>
+    </Type>
+    
+    <!-- boost::geometry::detail::overlay::traversal_turn_operation -->
+    <Type Name="boost::geometry::detail::overlay::traversal_turn_operation&lt;*&gt;">
+        <DisplayString>{{ {operation} at {fraction} }}</DisplayString>
+        <Expand>
+            <ExpandedItem>
+                *(boost::geometry::detail::overlay::turn_operation&lt;$T1,$T2&gt;*)this,nd
+            </ExpandedItem>
+            <Item Name="enriched">enriched</Item>
+            <Item Name="visited">visited</Item>
+        </Expand>
+    </Type>
+
+    <!-- index -->
+
+    <!-- boost::geometry::index::rtree -->
+    <Type Name="boost::geometry::index::rtree&lt;*&gt;">
+        <DisplayString>{{ size = {m_members.values_count} }}</DisplayString>
+        <Expand>
+            <Item Name="root">m_members.root</Item>
+            <Item Name="leafs_level">m_members.leafs_level</Item>
+        </Expand>
+    </Type>
+
+    <!-- boost::geometry::index::detail::varray -->
+    <Type Name="boost::geometry::index::detail::varray&lt;*&gt;">
+        <DisplayString>{{ size={m_size} }}</DisplayString>
+        <Expand>
+            <ArrayItems>
+                <Size>m_size</Size>
+                <ValuePointer>($T1 *)m_storage.data_.buf</ValuePointer>
+            </ArrayItems>
+        </Expand>
+    </Type>
+
+</AutoVisualizer>
