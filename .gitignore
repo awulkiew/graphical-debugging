@@ -1,4 +1,5 @@
 Visual_Studio_2015/.vs
+Visual_Studio_2015/GraphicalDebugging/GraphicalDebugging.csproj.user
 Visual_Studio_2015/GraphicalDebugging/bin
 Visual_Studio_2015/GraphicalDebugging/obj
 Visual_Studio_2015/packages
@@ -6,6 +7,7 @@ Visual_Studio_2015/*.sdf
 Visual_Studio_2015/*.db
 Visual_Studio_2015/*.opendb
 Visual_Studio_2017/.vs
+Visual_Studio_2017/GraphicalDebugging/GraphicalDebugging.csproj.user
 Visual_Studio_2017/GraphicalDebugging/bin
 Visual_Studio_2017/GraphicalDebugging/obj
 Visual_Studio_2017/packages
