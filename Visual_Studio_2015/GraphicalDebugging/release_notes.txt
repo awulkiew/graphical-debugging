@@ -1,3 +1,8 @@
+version 0.26
+
+additions:
+- improvement of general options
+
 version 0.25
 
 additions:
