@@ -68,6 +68,8 @@
   <ItemGroup>
     <Compile Include="Colors.cs" />
     <Compile Include="ExpressionDrawer.cs" />
+    <Compile Include="ExpressionLoader_ContainerLoader.cs" />
+    <Compile Include="ExpressionLoader_BoostGil.cs" />
     <Compile Include="ExpressionLoader.cs" />
     <Compile Include="GeneralOptionControl.cs">
       <SubType>UserControl</SubType>

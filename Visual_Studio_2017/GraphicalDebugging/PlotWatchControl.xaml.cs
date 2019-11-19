@@ -329,7 +329,7 @@ namespace GraphicalDebugging
                                         d = new ExpressionDrawer.PointsContainer(d as ExpressionDrawer.MultiPoint);
                                     }
                                     else
-                                        ExpressionLoader.Load(names[i], ExpressionLoader.OnlyContainers, out t, out d);
+                                        ExpressionLoader.Load(names[i], ExpressionLoader.OnlyValuesContainers, out t, out d);
                                     Plots[i].Drawable = d;
                                     Plots[i].Traits = t;
                                 }
