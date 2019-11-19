@@ -211,11 +211,14 @@ namespace GraphicalDebugging
         // Load
 
         /// <summary>
-        /// Loads object into watch to visualize.
+        /// Loads debugged variable into ExpressionDrawer.IDrawable and additional
+        /// geometrical information into Geometry.Traits. These classes then
+        /// can be passed into ExpressionDrawer.Draw() in order to draw them
+        /// on Graphics surface.
         /// </summary>
         /// <param name="name">Name of variable or actual expression added to watch</param>
-        /// <param name="traits"></param>
-        /// <param name="result"></param>
+        /// <param name="traits">Geometrical traits</param>
+        /// <param name="result">An object that can be drawn by ExpressionDrawer</param>
         public static void Load(string name,
                                 out Geometry.Traits traits,
                                 out ExpressionDrawer.IDrawable result)
@@ -224,12 +227,16 @@ namespace GraphicalDebugging
         }
 
         /// <summary>
-        /// Loads object into watch to visualize.
+        /// Loads debugged variable into ExpressionDrawer.IDrawable and additional
+        /// geometrical information into Geometry.Traits. These classes then
+        /// can be passed into ExpressionDrawer.Draw() in order to draw them
+        /// on Graphics surface. This version loads only those kinds of variables
+        /// that are defined by KindConstraint.
         /// </summary>
         /// <param name="name">Name of variable or actual expression added to watch</param>
-        /// <param name="kindConstraint"></param>
-        /// <param name="traits"></param>
-        /// <param name="result"></param>
+        /// <param name="kindConstraint">Predicate defining the kind of debugged variable</param>
+        /// <param name="traits">Geometrical traits</param>
+        /// <param name="result">An object that can be drawn by ExpressionDrawer</param>
         public static void Load(string name,
                                 KindConstraint kindConstraint,
                                 out Geometry.Traits traits,
@@ -276,6 +283,10 @@ namespace GraphicalDebugging
 
         // Loaders container
 
+        /// <summary>
+        /// The container of Loaders providing utilities to add and find
+        /// Loaders based on Kind.
+        /// </summary>
         class Loaders
         {
             static int KindsCount = Enum.GetValues(typeof(Kind)).Length;
@@ -300,6 +311,13 @@ namespace GraphicalDebugging
                     lists[i].Add(loader);
             }
 
+            /// <summary>
+            /// Finds loader by given Kind and C++ or C# qualified identifier.
+            /// </summary>
+            /// <param name="kindConstraint">Predicate defining the kind of Loader</param>
+            /// <param name="name">Name of variable or actual expression added to watch</param>
+            /// <param name="type">C++ or C# type of variable</param>
+            /// <returns>Loader object or null if not found</returns>
             public Loader FindById(Kind kind, string name, string id)
             {
                 foreach (Loader l in lists[(int)kind])
@@ -313,6 +331,13 @@ namespace GraphicalDebugging
                 return null;
             }
 
+            /// <summary>
+            /// Finds loader by given Kind and C++ or C# type.
+            /// </summary>
+            /// <param name="kindConstraint">Predicate defining the kind of Loader</param>
+            /// <param name="name">Name of variable or actual expression added to watch</param>
+            /// <param name="type">C++ or C# type of variable</param>
+            /// <returns>Loader object or null if not found</returns>
             public Loader FindByType(Kind kind, string name, string type)
             {
                 string id = Util.BaseType(type);
@@ -329,12 +354,12 @@ namespace GraphicalDebugging
             }
 
             /// <summary>
-            /// Finds loader by given C++ or C# type.
+            /// Finds loader by given KindConstraint and C++ or C# type.
             /// </summary>
             /// <param name="kindConstraint">Predicate defining the kind of Loader</param>
             /// <param name="name">Name of variable or actual expression added to watch</param>
             /// <param name="type">C++ or C# type of variable</param>
-            /// <returns></returns>
+            /// <returns>Loader object or null if not found</returns>
             public Loader FindByType(KindConstraint kindConstraint, string name, string type)
             {
                 string id = Util.BaseType(type);
@@ -414,48 +439,84 @@ namespace GraphicalDebugging
             Kind kind;
         }
         */
+
+        /// <summary>
+        /// The base Loader class from which all Loaders has to be derived.
+        /// </summary>
         abstract class Loader
         {
+            /// <summary>
+            /// Returns true for user-defined Loaders which has to be reloaded
+            /// before loading variables.
+            /// </summary>
             virtual public bool IsUserDefined()
             {
                 return false;
             }
 
+            /// <summary>
+            /// Returns kind of Loader.
+            /// </summary>
             abstract public ExpressionLoader.Kind Kind();
 
+            /// <summary>
+            /// Returns C++ or C# qualified identifier.
+            /// </summary>
             abstract public string Id();
 
             // TODO: Both MatchType() and Constraint() are probably not needed
-          
+
             /// <summary>
-            /// Matches type by type ID.
+            /// Matches type and/or qualified identifier.
             /// Type and identifier can both receove the same value e.g. unsigned char[4]
             /// </summary>
-            /// <param name="type">Name of type</param>
-            /// <param name="id">Idenifier of type</param>
-            /// <returns></returns>
+            /// <param name="type">Full type</param>
+            /// <param name="id">Qualified idenifier of type</param>
             virtual public bool MatchType(string type, string id)
             {
                 return id == Id();
             }
 
+            /// <summary>
+            /// Returns predicate used to match type.
+            /// </summary>
             virtual public TypeConstraint Constraint()
             {
                 return null;
             }
 
+            /// <summary>
+            /// Initializes the Loader before it's used to load a debugged
+            /// variable.
+            /// </summary>
             virtual public void Initialize(Debugger debugger, string name)
             { }
         }
 
+        /// <summary>
+        /// The base class of loaders which can load variables that can be drawn.
+        /// </summary>
         abstract class DrawableLoader : Loader
         {
+            /// <summary>
+            /// Loads debugged variable into ExpressionDrawer.IDrawable and additional
+            /// geometrical information into Geometry.Traits. These classes then
+            /// can be passed into ExpressionDrawer.Draw() in order to draw them
+            /// on Graphics surface.
+            /// </summary>
             abstract public void Load(Loaders loaders,
                                       MemoryReader mreader, Debugger debugger,
                                       string name, string type,
                                       out Geometry.Traits traits,
                                       out ExpressionDrawer.IDrawable result);
 
+            /// <summary>
+            /// Returns MemoryReader.Converter object defining conversion
+            /// from raw memory containing variables of various types,
+            /// structures, arrays, etc. into an array of doubles.
+            /// This object then can be used to convert blocks of memory
+            /// while e.g. loading variables of a given type from a container.
+            /// </summary>
             virtual public MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader,
                                                                              string name,
                                                                              string type)
@@ -464,6 +525,11 @@ namespace GraphicalDebugging
             }
         }
 
+        /// <summary>
+        /// The base class of loaders which can load variables that can be drawn.
+        /// It's more convenient to derive from this class than from DrawableLoader
+        /// since it allows to define the exact ResultType.
+        /// </summary>
         abstract class LoaderR<ResultType> : DrawableLoader
             where ResultType : ExpressionDrawer.IDrawable
         {
