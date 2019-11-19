@@ -210,6 +210,12 @@ namespace GraphicalDebugging
 
         // Load
 
+        /// <summary>
+        /// Loads object into watch to visualize.
+        /// </summary>
+        /// <param name="name">Name of variable or actual expression added to watch</param>
+        /// <param name="traits"></param>
+        /// <param name="result"></param>
         public static void Load(string name,
                                 out Geometry.Traits traits,
                                 out ExpressionDrawer.IDrawable result)
@@ -217,6 +223,13 @@ namespace GraphicalDebugging
             Load(name, AllDrawables, out traits, out result);
         }
 
+        /// <summary>
+        /// Loads object into watch to visualize.
+        /// </summary>
+        /// <param name="name">Name of variable or actual expression added to watch</param>
+        /// <param name="kindConstraint"></param>
+        /// <param name="traits"></param>
+        /// <param name="result"></param>
         public static void Load(string name,
                                 KindConstraint kindConstraint,
                                 out Geometry.Traits traits,
@@ -315,6 +328,13 @@ namespace GraphicalDebugging
                 return null;
             }
 
+            /// <summary>
+            /// Finds loader by given C++ or C# type.
+            /// </summary>
+            /// <param name="kindConstraint">Predicate defining the kind of Loader</param>
+            /// <param name="name">Name of variable or actual expression added to watch</param>
+            /// <param name="type">C++ or C# type of variable</param>
+            /// <returns></returns>
             public Loader FindByType(KindConstraint kindConstraint, string name, string type)
             {
                 string id = Util.BaseType(type);
@@ -405,7 +425,15 @@ namespace GraphicalDebugging
 
             abstract public string Id();
 
-            // TODO: Both MatchType and Constraint are probably not needed
+            // TODO: Both MatchType() and Constraint() are probably not needed
+          
+            /// <summary>
+            /// Matches type by type ID.
+            /// Type and identifier can both receove the same value e.g. unsigned char[4]
+            /// </summary>
+            /// <param name="type">Name of type</param>
+            /// <param name="id">Idenifier of type</param>
+            /// <returns></returns>
             virtual public bool MatchType(string type, string id)
             {
                 return id == Id();
@@ -913,6 +941,9 @@ namespace GraphicalDebugging
                 this.containerTIndex = containerTIndex;
             }
 
+            /// <summary>
+            /// Qualified name as identifier of C++ or C# type (e.g. std::vector)
+            /// </summary>
             public override string Id() { return id; }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
