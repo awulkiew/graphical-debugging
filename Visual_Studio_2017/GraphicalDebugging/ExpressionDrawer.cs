@@ -979,6 +979,34 @@ namespace GraphicalDebugging
             private List<Turn> turns;
         }
 
+        public class Image : IDrawable
+        {
+            public Image(System.Drawing.Image image)
+            {
+                this.image = image;
+            }
+
+            public void Draw(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
+            {
+                // TODO: Axes shouldn't be drawn
+                //       The size should be picked so the image pixels are least distorted,
+                //       taking into account the VisibleClipBounds and size of image.
+                // TODO: should probably be set globally based on settings
+                graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
+                // TODO: only stretch for now
+                // TODO: if image is upscaled there is a white frame around it
+                graphics.DrawImage(image, graphics.VisibleClipBounds);
+            }
+
+            public Geometry.Box Aabb(Geometry.Traits traits, bool calculateEnvelope)
+            {
+                return new Geometry.Box(new Geometry.Point(-1, -1),
+                                        new Geometry.Point(1, 1));
+            }
+
+            System.Drawing.Image image;
+        }
+
         // -------------------------------------------------
         // Drawing
         // -------------------------------------------------

@@ -27,11 +27,15 @@ namespace GraphicalDebugging
         private Loaders loadersCpp;
         private Loaders loadersCS;
 
+        // TODO: It's not clear what to do with Variant
+        // At the initial stage it's not known what is stored in Variant
+        // so currently the kind of the stored object is not filtered properly.
+
         public enum Kind
         {
             Container = 0, MultiPoint, TurnsContainer, ValuesContainer,
             Point, Segment, Box, NSphere, Linestring, Ring, Polygon, MultiLinestring, MultiPolygon, Turn,
-            Variant
+            Variant, Image
         };
 
         private static ExpressionLoader Instance { get; set; }
@@ -96,6 +100,8 @@ namespace GraphicalDebugging
             loadersCpp.Add(new BGTurnContainer());
             loadersCpp.Add(new PointContainer());
             loadersCpp.Add(new ValuesContainer());
+
+            loadersCpp.Add(new BoostGilImage());
 
             loadersCS = new Loaders();
 
@@ -181,7 +187,9 @@ namespace GraphicalDebugging
         {
             public bool Check(Kind kind)
             {
-                return kind != Kind.Container && kind != Kind.ValuesContainer;
+                return kind != Kind.Container
+                    && kind != Kind.ValuesContainer
+                    && kind != Kind.Image;
             }
         }
 
@@ -1706,8 +1714,6 @@ namespace GraphicalDebugging
                     result = new ExpressionDrawer.TurnsContainer(turns);
                 }
             }
-
-            string id;
         }
 
         class PointContainer : PointRange<ExpressionDrawer.MultiPoint>

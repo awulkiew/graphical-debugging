@@ -395,7 +395,7 @@ namespace GraphicalDebugging
         }
 
         // TODO: redundant
-        private bool ReadBytes(string valName, byte[] buffer)
+        public bool ReadBytes(string valName, byte[] buffer)
         {
             ulong address = GetValueAddress(valName);
             if (address == 0)
@@ -404,7 +404,7 @@ namespace GraphicalDebugging
             return ReadBytes(address, buffer);
         }
 
-        private bool ReadBytes(ulong address, byte[] buffer)
+        public bool ReadBytes(ulong address, byte[] buffer)
         {
             if (buffer.Length < 1)
                 return true;
