@@ -992,10 +992,29 @@ namespace GraphicalDebugging
                 //       The size should be picked so the image pixels are least distorted,
                 //       taking into account the VisibleClipBounds and size of image.
                 // TODO: should probably be set globally based on settings
+
                 graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
+                graphics.PixelOffsetMode = PixelOffsetMode.Half;
+
                 // TODO: only stretch for now
-                // TODO: if image is upscaled there is a white frame around it
-                graphics.DrawImage(image, graphics.VisibleClipBounds);
+
+                RectangleF rect = graphics.VisibleClipBounds;
+
+                // Upscale preserving pixels
+                /*if (image.Width < rect.Width)
+                {
+                    float w = (float)Math.Floor(rect.Width / image.Width) * image.Width;
+                    rect.X = (float)Math.Floor((rect.Width - w) / 2);
+                    rect.Width = w;
+                }
+                if (image.Height < rect.Height)
+                {
+                    float h = (float)Math.Floor(rect.Height / image.Height) * image.Height;
+                    rect.Y = (float)Math.Floor((rect.Height - h) / 2);
+                    rect.Height = h;
+                }*/
+
+                graphics.DrawImage(image, rect);
             }
 
             public Geometry.Box Aabb(Geometry.Traits traits, bool calculateEnvelope)
