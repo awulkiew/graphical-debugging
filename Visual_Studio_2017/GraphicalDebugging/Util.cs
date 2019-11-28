@@ -152,6 +152,28 @@ namespace GraphicalDebugging
             return result;
         }
 
+        public static bool Tparams(string type, out string param1)
+        {
+            param1 = "";
+            List<string> list = Tparams(type);
+            if (list.Count < 1)
+                return false;
+            param1 = list[0];
+            return true;
+        }
+
+        public static bool Tparams(string type, out string param1, out string param2)
+        {
+            param1 = "";
+            param2 = "";
+            List<string> list = Tparams(type);
+            if (list.Count < 2)
+                return false;
+            param1 = list[0];
+            param2 = list[1];
+            return true;
+        }
+
         public static T GetDialogPage<T>()
             where T : DialogPage
         {
