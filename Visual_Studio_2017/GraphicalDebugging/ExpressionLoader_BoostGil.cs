@@ -33,6 +33,12 @@ namespace GraphicalDebugging
                 traits = null;
                 result = null;
 
+                // NOTE: If the image is not created at the point of debugging, so the variable is
+                // uninitialized, the size may be out of bounds of int32 range. In this case the
+                // exception is thrown here and this is ok. However if there is some garbage in
+                // memory random size could be loaded here. Then also the memory probably points
+                // to some random place in memory (maybe protected?) so the result will probably
+                // be another exception which is fine or an image containing noise from memory.
                 int width = LoadSizeParsed(debugger, name + "._view._dimensions.x");
                 int height = LoadSizeParsed(debugger, name + "._view._dimensions.y");
                 if (width < 1 || height < 1)
@@ -74,12 +80,7 @@ namespace GraphicalDebugging
                 if (layout == Layout.Unknown)
                     return;
 
-                // TODO: only 8-bit channels supported for now
-                if (channelValueSize != 1)
-                    return;
-
-                LayoutMapper layoutMapper = GetLayoutMapper(layout);
-                if (layoutMapper == null)
+                if (channelValueSize != 1 && channelValueSize != 2 && channelValueSize != 4)
                     return;
 
                 int colorBytesCount = colorSpaceSize * channelValueSize;
@@ -100,14 +101,30 @@ namespace GraphicalDebugging
                     return;
                 }
 
+                LayoutMapper layoutMapper = GetLayoutMapper(layout);
+                if (layoutMapper == null)
+                    return;
+
                 // Use Pixel format native to Gil Image?
                 System.Drawing.Bitmap bmp = new System.Drawing.Bitmap(width, height);
                 for (int j = 0; j < height; ++j)
                 {
                     for (int i = 0; i < width; ++i)
                     {
-                        int b = (j * width + i) * colorBytesCount;
-                        System.Drawing.Color c = layoutMapper.GetColor(memory, b);
+                        int offset = (j * width + i) * colorBytesCount;
+
+                        // The raw bytes are converted into channel values pixel by pixel.
+                        //  It could be more efficient to convert all channel values at once first
+                        //  and only create pixels from array of channels in this loop.
+                        // Another thing is that when channels are always converted to byte
+                        //  the information is lost. This information could be used during potential
+                        //  conversion in GetColor() below (cmyk->rgb). Channels could be returned
+                        //  as float[]. In practice the eye will probably not notice the difference.
+                        byte[] channels = GetChannels(memory, offset, channelValueSize, colorSpaceSize);
+                        if (channels == null)
+                            return;
+
+                        System.Drawing.Color c = layoutMapper.GetColor(channels);
                         bmp.SetPixel(i, j, c);
                     }
                 }
@@ -244,83 +261,112 @@ namespace GraphicalDebugging
                 return Layout.Unknown;
             }
 
+            byte[] GetChannels(byte[] memory, int offset, int channelSize, int channelsCount)
+            {
+                byte[] result = new byte[channelsCount];
+
+                if (channelSize == 1)
+                {
+                    Array.Copy(memory, offset, result, 0, channelsCount);
+                }
+                else if (channelSize == 2)
+                {
+                    ushort[] tmp = new ushort[channelsCount];
+                    Buffer.BlockCopy(memory, offset, tmp, 0, 2 * channelsCount);
+                    for (int i = 0; i < channelsCount; ++i)
+                        result[i] = (byte)((float)tmp[i] / ushort.MaxValue * byte.MaxValue);
+                }
+                else if (channelSize == 4)
+                {
+                    uint[] tmp = new uint[channelsCount];
+                    Buffer.BlockCopy(memory, offset, tmp, 0, 4 * channelsCount);
+                    for (int i = 0; i < channelsCount; ++i)
+                        result[i] = (byte)((float)tmp[i] / uint.MaxValue * byte.MaxValue);
+                }
+                else
+                {
+                    result = null;
+                }
+                return result;
+            }
+
             abstract class LayoutMapper
             {
-                public abstract System.Drawing.Color GetColor(byte[] memory, int offset);
+                public abstract System.Drawing.Color GetColor(byte[] channels);
             }
 
             class RgbMapper : LayoutMapper
             {
-                public override System.Drawing.Color GetColor(byte[] memory, int offset)
+                public override System.Drawing.Color GetColor(byte[] channels)
                 {
-                    return System.Drawing.Color.FromArgb(memory[offset],
-                                                         memory[offset + 1],
-                                                         memory[offset + 2]);
+                    return System.Drawing.Color.FromArgb(channels[0],
+                                                         channels[1],
+                                                         channels[2]);
                 }
             }
 
             class BgrMapper : LayoutMapper
             {
-                public override System.Drawing.Color GetColor(byte[] memory, int offset)
+                public override System.Drawing.Color GetColor(byte[] channels)
                 {
-                    return System.Drawing.Color.FromArgb(memory[offset + 2],
-                                                         memory[offset + 1],
-                                                         memory[offset]);
+                    return System.Drawing.Color.FromArgb(channels[2],
+                                                         channels[1],
+                                                         channels[0]);
                 }
             }
 
             class RgbaMapper : LayoutMapper
             {
-                public override System.Drawing.Color GetColor(byte[] memory, int offset)
+                public override System.Drawing.Color GetColor(byte[] channels)
                 {
-                    return System.Drawing.Color.FromArgb(memory[offset + 3],
-                                                         memory[offset],
-                                                         memory[offset + 1],
-                                                         memory[offset + 2]);
+                    return System.Drawing.Color.FromArgb(channels[3],
+                                                         channels[0],
+                                                         channels[1],
+                                                         channels[2]);
                 }
             }
 
             class BgraMapper : LayoutMapper
             {
-                public override System.Drawing.Color GetColor(byte[] memory, int offset)
+                public override System.Drawing.Color GetColor(byte[] channels)
                 {
-                    return System.Drawing.Color.FromArgb(memory[offset + 3],
-                                                         memory[offset + 2],
-                                                         memory[offset + 1],
-                                                         memory[offset]);
+                    return System.Drawing.Color.FromArgb(channels[3],
+                                                         channels[2],
+                                                         channels[1],
+                                                         channels[0]);
                 }
             }
 
             class ArgbMapper : LayoutMapper
             {
-                public override System.Drawing.Color GetColor(byte[] memory, int offset)
+                public override System.Drawing.Color GetColor(byte[] channels)
                 {
-                    return System.Drawing.Color.FromArgb(memory[offset],
-                                                         memory[offset + 1],
-                                                         memory[offset + 2],
-                                                         memory[offset + 3]);
+                    return System.Drawing.Color.FromArgb(channels[0],
+                                                         channels[1],
+                                                         channels[2],
+                                                         channels[3]);
                 }
             }
 
             class AbgrMapper : LayoutMapper
             {
-                public override System.Drawing.Color GetColor(byte[] memory, int offset)
+                public override System.Drawing.Color GetColor(byte[] channels)
                 {
-                    return System.Drawing.Color.FromArgb(memory[offset],
-                                                         memory[offset + 3],
-                                                         memory[offset + 2],
-                                                         memory[offset + 1]);
+                    return System.Drawing.Color.FromArgb(channels[0],
+                                                         channels[3],
+                                                         channels[2],
+                                                         channels[1]);
                 }
             }
 
             class CmykMapper : LayoutMapper
             {
-                public override System.Drawing.Color GetColor(byte[] memory, int offset)
+                public override System.Drawing.Color GetColor(byte[] channels)
                 {
-                    float c = memory[offset] / 255.0f;
-                    float m = memory[offset + 1] / 255.0f;
-                    float y = memory[offset + 2] / 255.0f;
-                    float k = memory[offset + 3] / 255.0f;
+                    float c = channels[0] / 255.0f;
+                    float m = channels[1] / 255.0f;
+                    float y = channels[2] / 255.0f;
+                    float k = channels[3] / 255.0f;
                     
                     int r = Convert.ToInt32(255 * (1.0f - Math.Min(1.0f, c * (1 - k) + k)));
                     int g = Convert.ToInt32(255 * (1.0f - Math.Min(1.0f, m * (1 - k) + k)));
@@ -332,11 +378,11 @@ namespace GraphicalDebugging
 
             class GrayMapper : LayoutMapper
             {
-                public override System.Drawing.Color GetColor(byte[] memory, int offset)
+                public override System.Drawing.Color GetColor(byte[] channels)
                 {
-                    return System.Drawing.Color.FromArgb(memory[offset],
-                                                         memory[offset],
-                                                         memory[offset]);
+                    return System.Drawing.Color.FromArgb(channels[0],
+                                                         channels[0],
+                                                         channels[0]);
                 }
             }
 
