@@ -64,10 +64,17 @@ namespace GraphicalDebugging
                 if (! Util.Tparams(layoutType, out colorSpaceType, out channelMappingType))
                     return;
 
-                int channelValueSize = 0;
-                // TODO: only unsigned integral channels supported for now
-                if (IsUnsignedIntegralType(channelValueType))
-                    channelValueSize = GetSizeOfType(debugger, channelValueType);
+                // TODO: only integral channels supported for now
+                bool isUnsignedIntegral = IsUnsignedIntegralType(channelValueType);
+                bool isSignedIntegral = IsSignedIntegralType(channelValueType);
+                bool isIntegral = isUnsignedIntegral || isSignedIntegral;
+
+                if (!isIntegral)
+                    return;
+
+                int channelValueSize = isIntegral
+                                     ? GetSizeOfType(debugger, channelValueType)
+                                     : 0;
 
                 string colorSpaceId = Util.BaseType(colorSpaceType);
                 ColorSpace colorSpace = ParseColorSpace(colorSpaceType);
@@ -120,7 +127,7 @@ namespace GraphicalDebugging
                         //  the information is lost. This information could be used during potential
                         //  conversion in GetColor() below (cmyk->rgb). Channels could be returned
                         //  as float[]. In practice the eye will probably not notice the difference.
-                        byte[] channels = GetChannels(memory, offset, channelValueSize, colorSpaceSize);
+                        byte[] channels = GetChannels(memory, offset, channelValueSize, colorSpaceSize, isSignedIntegral);
                         if (channels == null)
                             return;
 
@@ -139,6 +146,20 @@ namespace GraphicalDebugging
                     || type == "unsigned int"
                     || type == "unsigned long"
                     || type == "unsigned __int64";
+            }
+
+            private bool IsSignedIntegralType(string type)
+            {
+                return type == "char"
+                    || type == "signed char"
+                    || type == "short"
+                    || type == "signed short"
+                    || type == "int"
+                    || type == "signed int"
+                    || type == "long"
+                    || type == "signed long"
+                    || type == "__int64"
+                    || type == "signed __int64";
             }
 
             private int GetSizeOfType(Debugger debugger, string type)
@@ -261,18 +282,38 @@ namespace GraphicalDebugging
                 return Layout.Unknown;
             }
 
-            byte[] GetChannels(byte[] memory, int offset, int channelSize, int channelsCount)
+            byte[] GetChannels(byte[] memory, int offset, int channelSize, int channelsCount, bool isSigned)
             {
                 byte[] result = new byte[channelsCount];
 
                 if (channelSize == 1)
                 {
-                    Array.Copy(memory, offset, result, 0, channelsCount);
+                    Buffer.BlockCopy(memory, offset, result, 0, channelsCount);
+                    if (isSigned)
+                    {
+                        for (int i = 0; i < channelsCount; ++i)
+                        {
+                            if (result[i] <= 127)
+                                result[i] += 128;
+                            else
+                                result[i] -= 128;
+                        }
+                    }
                 }
                 else if (channelSize == 2)
                 {
                     ushort[] tmp = new ushort[channelsCount];
                     Buffer.BlockCopy(memory, offset, tmp, 0, 2 * channelsCount);
+                    if (isSigned)
+                    {
+                        for (int i = 0; i < channelsCount; ++i)
+                        {
+                            if (tmp[i] <= 32767)
+                                tmp[i] += 32768;
+                            else
+                                tmp[i] -= 32768;
+                        }
+                    }
                     for (int i = 0; i < channelsCount; ++i)
                         result[i] = (byte)((float)tmp[i] / ushort.MaxValue * byte.MaxValue);
                 }
@@ -280,6 +321,16 @@ namespace GraphicalDebugging
                 {
                     uint[] tmp = new uint[channelsCount];
                     Buffer.BlockCopy(memory, offset, tmp, 0, 4 * channelsCount);
+                    if (isSigned)
+                    {
+                        for (int i = 0; i < channelsCount; ++i)
+                        {
+                            if (tmp[i] <= 2147483647)
+                                tmp[i] += 2147483648;
+                            else
+                                tmp[i] -= 2147483648;
+                        }
+                    }
                     for (int i = 0; i < channelsCount; ++i)
                         result[i] = (byte)((float)tmp[i] / uint.MaxValue * byte.MaxValue);
                 }
