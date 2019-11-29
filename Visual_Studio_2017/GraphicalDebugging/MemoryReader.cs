@@ -210,7 +210,12 @@ namespace GraphicalDebugging
                     || valType == "long"
                     || valType == "__int64"
                     || valType == "short"
-                    || valType == "char";
+                    || valType == "char" // TODO: this could actually depend on compiler flags
+                    || valType == "signed int"
+                    || valType == "signed long"
+                    || valType == "signed __int64"
+                    || valType == "signed short"
+                    || valType == "signed char";
             }
         }
 

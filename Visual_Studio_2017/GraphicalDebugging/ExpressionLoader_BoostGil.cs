@@ -150,7 +150,7 @@ namespace GraphicalDebugging
 
             private bool IsSignedIntegralType(string type)
             {
-                return type == "char"
+                return type == "char" // TODO: this could actually depend on compiler flags
                     || type == "signed char"
                     || type == "short"
                     || type == "signed short"
