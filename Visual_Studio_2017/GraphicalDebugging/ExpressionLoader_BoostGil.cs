@@ -66,17 +66,11 @@ namespace GraphicalDebugging
                 if (! Util.Tparams(layoutType, out colorSpaceType, out channelMappingType))
                     return;
 
-                // TODO: only integral channels supported for now
-                bool isUnsignedIntegral = IsUnsignedIntegralType(channelValueType);
-                bool isSignedIntegral = IsSignedIntegralType(channelValueType);
-                bool isIntegral = isUnsignedIntegral || isSignedIntegral;
-
-                if (!isIntegral)
+                ChannelValueKind channelValueKind = ChannelValueKind.Unknown;
+                int channelValueSize = 0;
+                ParseChannelValue(debugger, channelValueType, out channelValueKind, out channelValueSize);
+                if (channelValueKind == ChannelValueKind.Unknown || channelValueSize == 0)
                     return;
-
-                int channelValueSize = isIntegral
-                                     ? GetSizeOfType(debugger, channelValueType)
-                                     : 0;
 
                 string colorSpaceId = Util.BaseType(colorSpaceType);
                 ColorSpace colorSpace = ParseColorSpace(colorSpaceType);
@@ -89,7 +83,10 @@ namespace GraphicalDebugging
                 if (layout == Layout.Unknown)
                     return;
 
-                if (channelValueSize != 1 && channelValueSize != 2 && channelValueSize != 4)
+                if (channelValueSize != 1
+                    && channelValueSize != 2
+                    && channelValueSize != 4
+                    && channelValueSize != 8)
                     return;
 
                 // TODO: size_t? ulong?
@@ -131,10 +128,10 @@ namespace GraphicalDebugging
                         byte[] channels = isPlanar
                                         ? GetChannelsPlanar(memory,
                                                             pixelIndex,
-                                                            channelValueSize, colorSpaceSize, isSignedIntegral)
+                                                            channelValueKind, channelValueSize, colorSpaceSize)
                                         : GetChannelsInterleaved(memory,
                                                                  pixelIndex,
-                                                                 channelValueSize, colorSpaceSize, isSignedIntegral);
+                                                                 channelValueKind, channelValueSize, colorSpaceSize);
                         if (channels == null)
                             return;
 
@@ -146,27 +143,61 @@ namespace GraphicalDebugging
                 result = new ExpressionDrawer.Image(bmp);
             }
 
-            private bool IsUnsignedIntegralType(string type)
+            private enum ChannelValueKind { Unknown, UnsignedIntegral, SignedIntegral, FloatingPoint, ScopedFloatingPoint };
+
+            private void ParseChannelValue(Debugger debugger, string type,
+                                           out ChannelValueKind channelValueKind,
+                                           out int channelValueSize)
             {
-                return type == "unsigned char"
+                channelValueKind = ChannelValueKind.Unknown;
+                channelValueSize = 0;
+
+                string rawType = type;
+
+                if (type == "unsigned char"
                     || type == "unsigned short"
                     || type == "unsigned int"
                     || type == "unsigned long"
-                    || type == "unsigned __int64";
-            }
+                    || type == "unsigned __int64")
+                {
+                    channelValueKind = ChannelValueKind.UnsignedIntegral;
+                }
+                else if (type == "char" // TODO: this could actually depend on compiler flags
+                        || type == "signed char"
+                        || type == "short"
+                        || type == "signed short"
+                        || type == "int"
+                        || type == "signed int"
+                        || type == "long"
+                        || type == "signed long"
+                        || type == "__int64"
+                        || type == "signed __int64")
+                {
+                    channelValueKind = ChannelValueKind.SignedIntegral;
+                }
+                else if (type == "float"
+                        || type == "double")
+                {
+                    channelValueKind = ChannelValueKind.FloatingPoint;
+                }
+                else if (Util.BaseType(type) == "boost::gil::scoped_channel_value")
+                {
+                    List<string> tparams = Util.Tparams(type);
+                    if (tparams.Count >= 1)
+                    {
+                        rawType = tparams[0];
+                        if (rawType == "float"
+                            || rawType == "double")
+                        {
+                            // NOTE: Assuming scope [0, 1]
+                            channelValueKind = ChannelValueKind.ScopedFloatingPoint;
+                        }
+                    }
+                }
 
-            private bool IsSignedIntegralType(string type)
-            {
-                return type == "char" // TODO: this could actually depend on compiler flags
-                    || type == "signed char"
-                    || type == "short"
-                    || type == "signed short"
-                    || type == "int"
-                    || type == "signed int"
-                    || type == "long"
-                    || type == "signed long"
-                    || type == "__int64"
-                    || type == "signed __int64";
+                channelValueSize = channelValueKind != ChannelValueKind.Unknown
+                                 ? GetSizeOfType(debugger, rawType)
+                                 : 0;
             }
 
             private int GetSizeOfType(Debugger debugger, string type)
@@ -183,7 +214,10 @@ namespace GraphicalDebugging
             {
                 string colorSpaceId = Util.BaseType(colorSpaceType);
                 List<string> tparams = Util.Tparams(colorSpaceType);
-                if (colorSpaceId == "boost::mpl::vector3" && tparams.Count == 3)
+                // NOTE: Do not check the Util.BaseType(colorSpaceType)
+                //  to avoid checking all MPL and MP11 vectors and lists
+                //  Besides the check below should already be strong enough.
+                if (tparams.Count == 3)
                 {
                     if (tparams[0] == "boost::gil::red_t"
                         && tparams[1] == "boost::gil::green_t"
@@ -192,7 +226,7 @@ namespace GraphicalDebugging
                         return ColorSpace.Rgb;
                     }
                 }
-                else if (colorSpaceId == "boost::mpl::vector4" && tparams.Count == 4)
+                else if (tparams.Count == 4)
                 {
                     if (tparams[0] == "boost::gil::red_t"
                         && tparams[1] == "boost::gil::green_t"
@@ -209,7 +243,7 @@ namespace GraphicalDebugging
                         return ColorSpace.Cmyk;
                     }
                 }
-                else if (colorSpaceId == "boost::mpl::vector1" && tparams.Count == 1)
+                else if (tparams.Count == 1)
                 {
                     if (tparams[0] == "boost::gil::gray_color_t")
                     {
@@ -234,54 +268,99 @@ namespace GraphicalDebugging
             {
                 string channelMappingId = Util.BaseType(channelMappingType);
                 List<string> tparams = Util.Tparams(channelMappingType);
+
+                bool isRange = false;
+                if (channelMappingId == "boost::mpl::range_c")
+                {
+                    tparams.RemoveAt(0);
+                    isRange = true;
+                }
+                else if (channelMappingId == "boost::mpl::vector3_c"
+                        || channelMappingId == "boost::mpl::vector4_c")
+                {
+                    tparams.RemoveAt(0);
+                }
+                else if (channelMappingId == "boost::mp11::mp_list")
+                {
+                    for (int i = 0; i < tparams.Count; ++i)
+                    {
+                        // integral_constant<T, N>
+                        List<string> tparams2 = Util.Tparams(tparams[i]);
+                        if (tparams2.Count >= 2)
+                            tparams[i] = tparams2[1];
+                    }
+                }
+                else
+                    return Layout.Unknown;
+
                 if (colorSpace == ColorSpace.Rgb)
                 {
-                    if (channelMappingId == "boost::mpl::range_c" && tparams.Count == 3
-                        && tparams[1] == "0" && tparams[2] == "3")
+                    if (isRange && tparams.Count == 2
+                        && tparams[0] == "0" && tparams[1] == "3")
                     {
                         return Layout.Rgb;
                     }
-                    else if (channelMappingId == "boost::mpl::vector3_c" && tparams.Count == 4
-                        && tparams[1] == "2" && tparams[2] == "1" && tparams[3] == "0")
+                    else if (!isRange && tparams.Count == 3
+                        && tparams[0] == "0" && tparams[1] == "1" && tparams[2] == "2")
+                    {
+                        return Layout.Rgb;
+                    }
+                    else if (!isRange && tparams.Count == 3
+                        && tparams[0] == "2" && tparams[1] == "1" && tparams[2] == "0")
                     {
                         return Layout.Bgr;
                     }
                 }
                 else if (colorSpace == ColorSpace.Rgba)
                 {
-                    if (channelMappingId == "boost::mpl::range_c" && tparams.Count == 3
-                        && tparams[1] == "0" && tparams[2] == "4")
+                    if (isRange && tparams.Count == 2
+                        && tparams[0] == "0" && tparams[1] == "4")
                     {
                         return Layout.Rgba;
                     }
-                    else if (channelMappingId == "boost::mpl::vector4_c" && tparams.Count == 5
-                        && tparams[1] == "2" && tparams[2] == "1" && tparams[3] == "0" && tparams[4] == "3")
+                    else if (!isRange && tparams.Count == 4
+                        && tparams[0] == "0" && tparams[1] == "1" && tparams[2] == "2" && tparams[3] == "3")
+                    {
+                        return Layout.Rgba;
+                    }
+                    else if (!isRange && tparams.Count == 4
+                        && tparams[0] == "2" && tparams[1] == "1" && tparams[2] == "0" && tparams[3] == "3")
                     {
                         return Layout.Bgra;
                     }
-                    else if (channelMappingId == "boost::mpl::vector4_c" && tparams.Count == 5
-                        && tparams[1] == "3" && tparams[2] == "0" && tparams[3] == "1" && tparams[4] == "2")
+                    else if (!isRange && tparams.Count == 4
+                        && tparams[0] == "3" && tparams[1] == "0" && tparams[2] == "1" && tparams[3] == "2")
                     {
                         return Layout.Argb;
                     }
-                    else if (channelMappingId == "boost::mpl::vector4_c" && tparams.Count == 5
-                        && tparams[1] == "3" && tparams[2] == "2" && tparams[3] == "1" && tparams[4] == "0")
+                    else if (!isRange && tparams.Count == 4
+                        && tparams[0] == "3" && tparams[1] == "2" && tparams[2] == "1" && tparams[3] == "0")
                     {
                         return Layout.Abgr;
                     }
                 }
                 else if (colorSpace == ColorSpace.Cmyk)
                 {
-                    if (channelMappingId == "boost::mpl::range_c" && tparams.Count == 3
-                        && tparams[1] == "0" && tparams[2] == "4")
+                    if (isRange && tparams.Count == 2
+                        && tparams[0] == "0" && tparams[1] == "4")
+                    {
+                        return Layout.Cmyk;
+                    }
+                    else if (!isRange && tparams.Count == 4
+                        && tparams[0] == "0" && tparams[1] == "1" && tparams[2] == "2" && tparams[3] == "3")
                     {
                         return Layout.Cmyk;
                     }
                 }
                 else if (colorSpace == ColorSpace.Gray)
                 {
-                    if (channelMappingId == "boost::mpl::range_c" && tparams.Count == 3
-                        && tparams[1] == "0" && tparams[2] == "1")
+                    if (isRange && tparams.Count == 2
+                        && tparams[0] == "0" && tparams[1] == "1")
+                    {
+                        return Layout.Gray;
+                    }
+                    else if (!isRange && tparams.Count == 1
+                        && tparams[0] == "0")
                     {
                         return Layout.Gray;
                     }
@@ -289,7 +368,7 @@ namespace GraphicalDebugging
                 return Layout.Unknown;
             }
 
-            byte[] GetChannelsPlanar(byte[] memory, int pixelIndex, int channelSize, int channelsCount, bool isSigned)
+            byte[] GetChannelsPlanar(byte[] memory, int pixelIndex, ChannelValueKind channelValueKind, int channelSize, int channelsCount)
             {
                 byte[] result = new byte[channelsCount];
 
@@ -301,7 +380,7 @@ namespace GraphicalDebugging
                     for (int i = 0; i < channelsCount; ++i)
                         //Buffer.BlockCopy(memory, i * rowSize + offset, result, i, 1);
                         result[i] = memory[i * rowSize + offset];
-                    if (isSigned)
+                    if (channelValueKind == ChannelValueKind.SignedIntegral)
                         SignedToUnsigned(result);
                 }
                 else if (channelSize == 2)
@@ -309,18 +388,55 @@ namespace GraphicalDebugging
                     ushort[] tmp = new ushort[channelsCount];
                     for (int i = 0; i < channelsCount; ++i)
                         Buffer.BlockCopy(memory, i * rowSize + offset, tmp, 2 * i, 2);
-                    if (isSigned)
+                    if (channelValueKind == ChannelValueKind.SignedIntegral)
                         SignedToUnsigned(tmp);
                     ConvertChannels(tmp, result);
                 }
                 else if (channelSize == 4)
                 {
-                    uint[] tmp = new uint[channelsCount];
-                    for (int i = 0; i < channelsCount; ++i)
-                        Buffer.BlockCopy(memory, i * rowSize + offset, tmp, 4 * i, 4);
-                    if (isSigned)
-                        SignedToUnsigned(tmp);
-                    ConvertChannels(tmp, result);
+                    if (channelValueKind == ChannelValueKind.UnsignedIntegral
+                        || channelValueKind == ChannelValueKind.SignedIntegral)
+                    {
+                        uint[] tmp = new uint[channelsCount];
+                        for (int i = 0; i < channelsCount; ++i)
+                            Buffer.BlockCopy(memory, i * rowSize + offset, tmp, 4 * i, 4);
+                        if (channelValueKind == ChannelValueKind.SignedIntegral)
+                            SignedToUnsigned(tmp);
+                        ConvertChannels(tmp, result);
+                    }
+                    else
+                    {
+                        float[] tmp = new float[channelsCount];
+                        for (int i = 0; i < channelsCount; ++i)
+                            Buffer.BlockCopy(memory, i * rowSize + offset, tmp, 4 * i, 4);
+                        if (channelValueKind == ChannelValueKind.FloatingPoint)
+                            ConvertChannels(tmp, result);
+                        else // ScopedFloatingPoint
+                            ConvertChannelsScoped(tmp, result);
+                    }
+                }
+                else if (channelSize == 8)
+                {
+                    if (channelValueKind == ChannelValueKind.UnsignedIntegral
+                        || channelValueKind == ChannelValueKind.SignedIntegral)
+                    {
+                        ulong[] tmp = new ulong[channelsCount];
+                        for (int i = 0; i < channelsCount; ++i)
+                            Buffer.BlockCopy(memory, i * rowSize + offset, tmp, 8 * i, 8);
+                        if (channelValueKind == ChannelValueKind.SignedIntegral)
+                            SignedToUnsigned(tmp);
+                        ConvertChannels(tmp, result);
+                    }
+                    else
+                    {
+                        double[] tmp = new double[channelsCount];
+                        for (int i = 0; i < channelsCount; ++i)
+                            Buffer.BlockCopy(memory, i * rowSize + offset, tmp, 8 * i, 8);
+                        if (channelValueKind == ChannelValueKind.FloatingPoint)
+                            ConvertChannels(tmp, result);
+                        else // ScopedFloatingPoint
+                            ConvertChannelsScoped(tmp, result);
+                    }
                 }
                 else
                 {
@@ -329,7 +445,7 @@ namespace GraphicalDebugging
                 return result;
             }
 
-            byte[] GetChannelsInterleaved(byte[] memory, int pixelIndex, int channelSize, int channelsCount, bool isSigned)
+            byte[] GetChannelsInterleaved(byte[] memory, int pixelIndex, ChannelValueKind channelValueKind, int channelSize, int channelsCount)
             {
                 byte[] result = new byte[channelsCount];
 
@@ -338,24 +454,58 @@ namespace GraphicalDebugging
                 if (channelSize == 1)
                 {
                     Buffer.BlockCopy(memory, offset, result, 0, channelsCount);
-                    if (isSigned)
+                    if (channelValueKind == ChannelValueKind.SignedIntegral)
                         SignedToUnsigned(result);
                 }
                 else if (channelSize == 2)
                 {
                     ushort[] tmp = new ushort[channelsCount];
                     Buffer.BlockCopy(memory, offset, tmp, 0, 2 * channelsCount);
-                    if (isSigned)
+                    if (channelValueKind == ChannelValueKind.SignedIntegral)
                         SignedToUnsigned(tmp);
                     ConvertChannels(tmp, result);
                 }
                 else if (channelSize == 4)
                 {
-                    uint[] tmp = new uint[channelsCount];
-                    Buffer.BlockCopy(memory, offset, tmp, 0, 4 * channelsCount);
-                    if (isSigned)
-                        SignedToUnsigned(tmp);
-                    ConvertChannels(tmp, result);
+                    if (channelValueKind == ChannelValueKind.UnsignedIntegral
+                        || channelValueKind == ChannelValueKind.SignedIntegral)
+                    {
+                        uint[] tmp = new uint[channelsCount];
+                        Buffer.BlockCopy(memory, offset, tmp, 0, 4 * channelsCount);
+                        if (channelValueKind == ChannelValueKind.SignedIntegral)
+                            SignedToUnsigned(tmp);
+                        ConvertChannels(tmp, result);
+                    }
+                    else
+                    {
+                        float[] tmp = new float[channelsCount];
+                        Buffer.BlockCopy(memory, offset, tmp, 0, 4 * channelsCount);
+                        if (channelValueKind == ChannelValueKind.FloatingPoint)
+                            ConvertChannels(tmp, result);
+                        else // ScopedFloatingPoint
+                            ConvertChannelsScoped(tmp, result);
+                    }
+                }
+                else if (channelSize == 8)
+                {
+                    if (channelValueKind == ChannelValueKind.UnsignedIntegral
+                        || channelValueKind == ChannelValueKind.SignedIntegral)
+                    {
+                        ulong[] tmp = new ulong[channelsCount];
+                        Buffer.BlockCopy(memory, offset, tmp, 0, 8 * channelsCount);
+                        if (channelValueKind == ChannelValueKind.SignedIntegral)
+                            SignedToUnsigned(tmp);
+                        ConvertChannels(tmp, result);
+                    }
+                    else
+                    {
+                        double[] tmp = new double[channelsCount];
+                        Buffer.BlockCopy(memory, offset, tmp, 0, 8 * channelsCount);
+                        if (channelValueKind == ChannelValueKind.FloatingPoint)
+                            ConvertChannels(tmp, result);
+                        else // ScopedFloatingPoint
+                            ConvertChannelsScoped(tmp, result);
+                    }
                 }
                 else
                 {
@@ -397,20 +547,61 @@ namespace GraphicalDebugging
                 }
             }
 
+            void SignedToUnsigned(ulong[] buffer)
+            {
+                for (int i = 0; i < buffer.Length; ++i)
+                {
+                    if (buffer[i] <= 9223372036854775807)
+                        buffer[i] += 9223372036854775808;
+                    else
+                        buffer[i] -= 9223372036854775808;
+                }
+            }
+
             void ConvertChannels(ushort[] src, byte[] dst)
             {
-                System.Diagnostics.Debug.Assert(src.Length == dst.Length);
-
                 for (int i = 0; i < src.Length; ++i)
                     dst[i] = (byte)((float)src[i] / ushort.MaxValue * byte.MaxValue);
             }
 
             void ConvertChannels(uint[] src, byte[] dst)
             {
-                System.Diagnostics.Debug.Assert(src.Length == dst.Length);
-
                 for (int i = 0; i < src.Length; ++i)
                     dst[i] = (byte)((double)src[i] / uint.MaxValue * byte.MaxValue);
+            }
+
+            void ConvertChannels(ulong[] src, byte[] dst)
+            {
+                for (int i = 0; i < src.Length; ++i)
+                    dst[i] = (byte)((double)src[i] / ulong.MaxValue * byte.MaxValue);
+            }
+
+            void ConvertChannels(float[] src, byte[] dst)
+            {
+                for (int i = 0; i < src.Length; ++i)
+                    dst[i] = (byte)(src[i] / float.MaxValue * byte.MaxValue);
+            }
+
+            void ConvertChannels(double[] src, byte[] dst)
+            {
+                for (int i = 0; i < src.Length; ++i)
+                    dst[i] = (byte)(src[i] / double.MaxValue * byte.MaxValue);
+            }
+
+            // NOTE: Assuming that the channel's value is in [0, 1]
+            //  though GIL allows different ranges too
+            void ConvertChannelsScoped(float[] src, byte[] dst)
+            {
+                for (int i = 0; i < src.Length; ++i)
+                    dst[i] = (byte)(src[i] * byte.MaxValue);
+            }
+
+            // TODO: Assuming that the channel's value is in [0, 1]
+            //  though GIL allows different ranges too
+            void ConvertChannelsScoped(double[] src, byte[] dst)
+            {
+                 for (int i = 0; i < src.Length; ++i)
+                    dst[i] = (byte)(src[i] * byte.MaxValue);
             }
 
             abstract class LayoutMapper
