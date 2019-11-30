@@ -44,13 +44,15 @@ namespace GraphicalDebugging
                 if (width < 1 || height < 1)
                     return;
 
-                string pixelType, isPlanar;
-                if (! Util.Tparams(type, out pixelType, out isPlanar))
+                string pixelType, isPlanarStr;
+                if (! Util.Tparams(type, out pixelType, out isPlanarStr))
                     return;
 
                 string pixelId = Util.BaseType(pixelType);
                 if (pixelId != "boost::gil::pixel")
                     return;
+
+                bool isPlanar = (isPlanarStr == "1");
 
                 string channelValueType, layoutType;
                 if (! Util.Tparams(pixelType, out channelValueType, out layoutType))
@@ -90,9 +92,8 @@ namespace GraphicalDebugging
                 if (channelValueSize != 1 && channelValueSize != 2 && channelValueSize != 4)
                     return;
 
-                int colorBytesCount = colorSpaceSize * channelValueSize;
                 // TODO: size_t? ulong?
-                int bytesCount = width * height * colorBytesCount;
+                int bytesCount = width * height * colorSpaceSize * channelValueSize;
 
                 byte[] memory = new byte[bytesCount];
                 bool isLoaded = false;
@@ -118,7 +119,7 @@ namespace GraphicalDebugging
                 {
                     for (int i = 0; i < width; ++i)
                     {
-                        int offset = (j * width + i) * colorBytesCount;
+                        int pixelIndex = (j * width + i);
 
                         // The raw bytes are converted into channel values pixel by pixel.
                         //  It could be more efficient to convert all channel values at once first
@@ -127,7 +128,13 @@ namespace GraphicalDebugging
                         //  the information is lost. This information could be used during potential
                         //  conversion in GetColor() below (cmyk->rgb). Channels could be returned
                         //  as float[]. In practice the eye will probably not notice the difference.
-                        byte[] channels = GetChannels(memory, offset, channelValueSize, colorSpaceSize, isSignedIntegral);
+                        byte[] channels = isPlanar
+                                        ? GetChannelsPlanar(memory,
+                                                            pixelIndex,
+                                                            channelValueSize, colorSpaceSize, isSignedIntegral)
+                                        : GetChannelsInterleaved(memory,
+                                                                 pixelIndex,
+                                                                 channelValueSize, colorSpaceSize, isSignedIntegral);
                         if (channels == null)
                             return;
 
@@ -282,63 +289,128 @@ namespace GraphicalDebugging
                 return Layout.Unknown;
             }
 
-            byte[] GetChannels(byte[] memory, int offset, int channelSize, int channelsCount, bool isSigned)
+            byte[] GetChannelsPlanar(byte[] memory, int pixelIndex, int channelSize, int channelsCount, bool isSigned)
             {
                 byte[] result = new byte[channelsCount];
 
+                int rowSize = memory.Length / channelsCount;
+                int offset = pixelIndex * channelSize;
+
                 if (channelSize == 1)
                 {
-                    Buffer.BlockCopy(memory, offset, result, 0, channelsCount);
+                    for (int i = 0; i < channelsCount; ++i)
+                        //Buffer.BlockCopy(memory, i * rowSize + offset, result, i, 1);
+                        result[i] = memory[i * rowSize + offset];
                     if (isSigned)
-                    {
-                        for (int i = 0; i < channelsCount; ++i)
-                        {
-                            if (result[i] <= 127)
-                                result[i] += 128;
-                            else
-                                result[i] -= 128;
-                        }
-                    }
+                        SignedToUnsigned(result);
                 }
                 else if (channelSize == 2)
                 {
                     ushort[] tmp = new ushort[channelsCount];
-                    Buffer.BlockCopy(memory, offset, tmp, 0, 2 * channelsCount);
-                    if (isSigned)
-                    {
-                        for (int i = 0; i < channelsCount; ++i)
-                        {
-                            if (tmp[i] <= 32767)
-                                tmp[i] += 32768;
-                            else
-                                tmp[i] -= 32768;
-                        }
-                    }
                     for (int i = 0; i < channelsCount; ++i)
-                        result[i] = (byte)((float)tmp[i] / ushort.MaxValue * byte.MaxValue);
+                        Buffer.BlockCopy(memory, i * rowSize + offset, tmp, 2 * i, 2);
+                    if (isSigned)
+                        SignedToUnsigned(tmp);
+                    ConvertChannels(tmp, result);
                 }
                 else if (channelSize == 4)
                 {
                     uint[] tmp = new uint[channelsCount];
-                    Buffer.BlockCopy(memory, offset, tmp, 0, 4 * channelsCount);
-                    if (isSigned)
-                    {
-                        for (int i = 0; i < channelsCount; ++i)
-                        {
-                            if (tmp[i] <= 2147483647)
-                                tmp[i] += 2147483648;
-                            else
-                                tmp[i] -= 2147483648;
-                        }
-                    }
                     for (int i = 0; i < channelsCount; ++i)
-                        result[i] = (byte)((float)tmp[i] / uint.MaxValue * byte.MaxValue);
+                        Buffer.BlockCopy(memory, i * rowSize + offset, tmp, 4 * i, 4);
+                    if (isSigned)
+                        SignedToUnsigned(tmp);
+                    ConvertChannels(tmp, result);
                 }
                 else
                 {
                     result = null;
                 }
                 return result;
+            }
+
+            byte[] GetChannelsInterleaved(byte[] memory, int pixelIndex, int channelSize, int channelsCount, bool isSigned)
+            {
+                byte[] result = new byte[channelsCount];
+
+                int offset = pixelIndex * channelSize * channelsCount;
+
+                if (channelSize == 1)
+                {
+                    Buffer.BlockCopy(memory, offset, result, 0, channelsCount);
+                    if (isSigned)
+                        SignedToUnsigned(result);
+                }
+                else if (channelSize == 2)
+                {
+                    ushort[] tmp = new ushort[channelsCount];
+                    Buffer.BlockCopy(memory, offset, tmp, 0, 2 * channelsCount);
+                    if (isSigned)
+                        SignedToUnsigned(tmp);
+                    ConvertChannels(tmp, result);
+                }
+                else if (channelSize == 4)
+                {
+                    uint[] tmp = new uint[channelsCount];
+                    Buffer.BlockCopy(memory, offset, tmp, 0, 4 * channelsCount);
+                    if (isSigned)
+                        SignedToUnsigned(tmp);
+                    ConvertChannels(tmp, result);
+                }
+                else
+                {
+                    result = null;
+                }
+                return result;
+            }
+
+            void SignedToUnsigned(byte[] buffer)
+            {
+                for (int i = 0; i < buffer.Length; ++i)
+                {
+                    if (buffer[i] <= 127)
+                        buffer[i] += 128;
+                    else
+                        buffer[i] -= 128;
+                }
+            }
+
+            void SignedToUnsigned(ushort[] buffer)
+            {
+                for (int i = 0; i < buffer.Length; ++i)
+                {
+                    if (buffer[i] <= 32767)
+                        buffer[i] += 32768;
+                    else
+                        buffer[i] -= 32768;
+                }
+            }
+
+            void SignedToUnsigned(uint[] buffer)
+            {
+                for (int i = 0; i < buffer.Length; ++i)
+                {
+                    if (buffer[i] <= 2147483647)
+                        buffer[i] += 2147483648;
+                    else
+                        buffer[i] -= 2147483648;
+                }
+            }
+
+            void ConvertChannels(ushort[] src, byte[] dst)
+            {
+                System.Diagnostics.Debug.Assert(src.Length == dst.Length);
+
+                for (int i = 0; i < src.Length; ++i)
+                    dst[i] = (byte)((float)src[i] / ushort.MaxValue * byte.MaxValue);
+            }
+
+            void ConvertChannels(uint[] src, byte[] dst)
+            {
+                System.Diagnostics.Debug.Assert(src.Length == dst.Length);
+
+                for (int i = 0; i < src.Length; ++i)
+                    dst[i] = (byte)((double)src[i] / uint.MaxValue * byte.MaxValue);
             }
 
             abstract class LayoutMapper
