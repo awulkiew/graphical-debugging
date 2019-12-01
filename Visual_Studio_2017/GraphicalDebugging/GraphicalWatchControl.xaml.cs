@@ -199,6 +199,7 @@ namespace GraphicalDebugging
                     settings.showDir = optionPage.EnableDirections;
                     settings.showLabels = optionPage.EnableLabels;
                     settings.showDots = false;
+                    settings.image_maintainAspectRatio = optionPage.Image_MaintainAspectRatio;
                     imageHeight = Math.Max(optionPage.ImageHeight, 20);
                     imageWidth = Math.Max(optionPage.ImageWidth, 20);                    
                     displayMultiPointsAsPlots = optionPage.MultiPointDisplayMode == GraphicalWatchOptionPage.MultiPointDisplayModeValue.PointPlot;

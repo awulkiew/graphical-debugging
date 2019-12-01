@@ -26,6 +26,8 @@ namespace GraphicalDebugging
         private bool ValuePlot_enableLines = false;
         private bool ValuePlot_enablePoints = false;
 
+        private bool Image_maintainAspectRatio = false;
+
         public enum MultiPointDisplayModeValue
         {
             [Description("Geometry")]
@@ -86,6 +88,15 @@ namespace GraphicalDebugging
         {
             get { return multiPointDisplayMode; }
             set { multiPointDisplayMode = value; }
+        }
+
+        [Category("Image")]
+        [DisplayName("Maintain Aspect Ratio")]
+        [Description("Maintain aspect ratio of an image.")]
+        public bool Image_MaintainAspectRatio
+        {
+            get { return Image_maintainAspectRatio; }
+            set { Image_maintainAspectRatio = value; }
         }
 
         [Category("Point Plot")]

@@ -60,6 +60,7 @@ namespace GraphicalDebugging
             public bool valuePlot_enablePoints = false;
             public bool pointPlot_enableLines = false;
             public bool pointPlot_enablePoints = true;
+            public bool image_maintainAspectRatio = false;
         }
 
         // -------------------------------------------------
@@ -121,6 +122,8 @@ namespace GraphicalDebugging
         {
             void Draw(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits);
             Geometry.Box Aabb(Geometry.Traits traits, bool calculateEnvelope);
+
+            bool DrawAxes();
         }
 
         private static void DrawPoint(Geometry.Point point, Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
@@ -157,6 +160,11 @@ namespace GraphicalDebugging
             public Geometry.Box Aabb(Geometry.Traits traits, bool calculateEnvelope)
             {
                 return new Geometry.Box(this, this);
+            }
+
+            public bool DrawAxes()
+            {
+                return true;
             }
         }
 
@@ -235,6 +243,11 @@ namespace GraphicalDebugging
                      ? Geometry.Envelope(this, traits)
                      : Geometry.Aabb(this.Min, this.Max, traits.Unit);
             }
+
+            public bool DrawAxes()
+            {
+                return true;
+            }
         }
 
         public class NSphere : Geometry.NSphere, IDrawable
@@ -290,6 +303,11 @@ namespace GraphicalDebugging
                      ? Geometry.Envelope(p_min, p_max, traits)
                      : Geometry.Aabb(p_min, p_max, traits.Unit);
             }
+
+            public bool DrawAxes()
+            {
+                return true;
+            }
         }
 
         public class Segment : Geometry.Segment, IDrawable
@@ -324,6 +342,11 @@ namespace GraphicalDebugging
                 return calculateEnvelope
                      ? Geometry.Envelope(this, traits)
                      : Geometry.Aabb(this, traits);
+            }
+
+            public bool DrawAxes()
+            {
+                return true;
             }
         }
 
@@ -369,6 +392,11 @@ namespace GraphicalDebugging
             {
                 return AabbRange(this, false, traits, calculateEnvelope);
             }
+
+            public bool DrawAxes()
+            {
+                return true;
+            }
         }
 
         public class Ring : Geometry.Ring, IDrawable
@@ -408,6 +436,11 @@ namespace GraphicalDebugging
             public Geometry.Box Aabb(Geometry.Traits traits, bool calculateEnvelope)
             {
                 return AabbRange(this, true, traits, calculateEnvelope);
+            }
+
+            public bool DrawAxes()
+            {
+                return true;
             }
         }
 
@@ -508,6 +541,11 @@ namespace GraphicalDebugging
             {
                 return AabbPolygon(this, traits, calculateEnvelope);
             }
+
+            public bool DrawAxes()
+            {
+                return true;
+            }
         }
 
         public class MultiPoint : Geometry.MultiPoint, IDrawable
@@ -548,6 +586,11 @@ namespace GraphicalDebugging
 
                 return box;
             }
+
+            public bool DrawAxes()
+            {
+                return true;
+            }
         }
 
         public class MultiLinestring : Geometry.MultiLinestring, IDrawable
@@ -584,6 +627,11 @@ namespace GraphicalDebugging
 
                 return box;
             }
+
+            public bool DrawAxes()
+            {
+                return true;
+            }
         }
 
         public class MultiPolygon : Geometry.MultiPolygon, IDrawable
@@ -619,6 +667,11 @@ namespace GraphicalDebugging
                     Geometry.AssignInverse(box);
 
                 return box;
+            }
+
+            public bool DrawAxes()
+            {
+                return true;
             }
         }
 
@@ -771,6 +824,11 @@ namespace GraphicalDebugging
                 return box;
             }
 
+            public bool DrawAxes()
+            {
+                return true;
+            }
+
             private List<double> values;
         }
 
@@ -864,6 +922,11 @@ namespace GraphicalDebugging
                 return box;
             }
 
+            public bool DrawAxes()
+            {
+                return true;
+            }
+
             private MultiPoint points;
         }
 
@@ -915,7 +978,12 @@ namespace GraphicalDebugging
             {
                 return new Geometry.Box(point, point);
             }
-            
+
+            public bool DrawAxes()
+            {
+                return true;
+            }
+
             public Geometry.Point Point { get { return point; } }
 
             Geometry.Point point;
@@ -975,7 +1043,12 @@ namespace GraphicalDebugging
 
                 return box;
             }
-            
+
+            public bool DrawAxes()
+            {
+                return true;
+            }
+
             private List<Turn> turns;
         }
 
@@ -996,23 +1069,19 @@ namespace GraphicalDebugging
                 graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
                 graphics.PixelOffsetMode = PixelOffsetMode.Half;
 
-                // TODO: only stretch for now
-
                 RectangleF rect = graphics.VisibleClipBounds;
 
-                // Upscale preserving pixels
-                /*if (image.Width < rect.Width)
+                if (settings.image_maintainAspectRatio)
                 {
-                    float w = (float)Math.Floor(rect.Width / image.Width) * image.Width;
-                    rect.X = (float)Math.Floor((rect.Width - w) / 2);
-                    rect.Width = w;
+                    float wr = (float)rect.Width / image.Width;
+                    float hr = (float)rect.Height / image.Height;
+                    float r = Math.Min(wr, hr); // r < 1 <=> downscale
+                    rect.Width = image.Width * r;
+                    rect.Height = image.Height * r;
                 }
-                if (image.Height < rect.Height)
-                {
-                    float h = (float)Math.Floor(rect.Height / image.Height) * image.Height;
-                    rect.Y = (float)Math.Floor((rect.Height - h) / 2);
-                    rect.Height = h;
-                }*/
+
+                rect.X = (float)Math.Floor(Math.Max(graphics.VisibleClipBounds.Width - rect.Width, 0.0f) / 2.0f);
+                rect.Y = (float)Math.Floor(Math.Max(graphics.VisibleClipBounds.Height - rect.Height, 0.0f) / 2.0f);
 
                 graphics.DrawImage(image, rect);
             }
@@ -1021,6 +1090,11 @@ namespace GraphicalDebugging
             {
                 return new Geometry.Box(new Geometry.Point(-1, -1),
                                         new Geometry.Point(1, 1));
+            }
+
+            public bool DrawAxes()
+            {
+                return false;
             }
 
             System.Drawing.Image image;
@@ -1077,7 +1151,8 @@ namespace GraphicalDebugging
             {
                 Geometry.Unit unit = (traits != null) ? traits.Unit : Geometry.Unit.None;
                 bool fill = (traits == null);
-                Drawer.DrawAxes(graphics, aabb, unit, colors, fill);
+                if (drawable.DrawAxes())
+                    Drawer.DrawAxes(graphics, aabb, unit, colors, fill);
                 drawable.Draw(aabb, graphics, settings, traits);
             }
             return true;
