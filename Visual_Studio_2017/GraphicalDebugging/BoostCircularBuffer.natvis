@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+  <!-- boost::circular_buffer -->
+  <Type Name="boost::circular_buffer&lt;*&gt;">
+    <DisplayString>{{ size={m_size} }}</DisplayString>
+    <Expand>
+      <Item Name="[capacity]" ExcludeView="simple">(m_end - m_buff)</Item>
+      <Item Name="[allocator]" ExcludeView="simple">*(($T2 *)this)</Item>
+      <IndexListItems>
+        <Size>m_size</Size>
+        <ValueNode>*(m_first + ($i &lt; (m_end - m_first) ? $i : $i - (m_end - m_buff)))</ValueNode>
+      </IndexListItems>
+    </Expand>
+  </Type>
+
+</AutoVisualizer>

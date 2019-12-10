@@ -121,6 +121,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="BoostCircularBuffer.natvis" />
     <Content Include="BoostContainer.natvis">
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
