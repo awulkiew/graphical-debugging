@@ -251,6 +251,91 @@ namespace GraphicalDebugging
             }
         }
 
+        class BoostCircularBuffer : RandomAccessContainer
+        {
+            public override string Id() { return "boost::circular_buffer"; }
+
+            public override int LoadSize(Debugger debugger, string name)
+            {
+                return LoadSizeParsed(debugger, name + ".m_size");
+            }
+
+            public override string ElementName(string name, string elType)
+            {
+                return "(*(" + name + ".m_first))";
+            }
+
+            public override bool ForEachElement(Debugger debugger, string name, ElementPredicate elementPredicate)
+            {
+                int size1, size2;
+                LoadSizes(debugger, name, out size1, out size2);
+                
+                for (int i = 0; i < size1; ++i)
+                {
+                    string elName = "(*(" + name + ".m_first + " + i + "))";
+                    if (!elementPredicate(elName))
+                        return false;
+                }
+
+                for (int i = 0; i < size2; ++i)
+                {
+                    string elName = "(*(" + name + ".m_buff + " + i + "))";
+                    if (!elementPredicate(elName))
+                        return false;
+                }
+
+                return true;
+            }
+
+            public override bool ForEachMemoryBlock(MemoryReader mreader, string name, string type,
+                                                    MemoryReader.Converter<double> elementConverter,
+                                                    MemoryBlockPredicate memoryBlockPredicate)
+            {
+                if (elementConverter == null)
+                    return false;
+
+                int size1, size2;
+                LoadSizes(mreader.Debugger, name, out size1, out size2);
+                if (size1 <= 0)
+                    return false;
+
+                {
+                    var blockConverter = new MemoryReader.ArrayConverter<double>(elementConverter, size1);
+                    double[] values = new double[blockConverter.ValueCount()];
+                    if (!mreader.Read("(*(" + name + ".m_first))", values, blockConverter))
+                        return false;
+                    if (!memoryBlockPredicate(values))
+                        return false;
+                }
+
+                if (size2 > 0)
+                {
+                    var blockConverter = new MemoryReader.ArrayConverter<double>(elementConverter, size2);
+                    double[] values = new double[blockConverter.ValueCount()];
+                    if (!mreader.Read("(*(" + name + ".m_buff))", values, blockConverter))
+                        return false;
+                    if (!memoryBlockPredicate(values))
+                        return false;
+                }
+
+                return true;
+            }
+
+            private void LoadSizes(Debugger debugger, string name, out int size1, out int size2)
+            {
+                int size = LoadSize(debugger, name);
+                int size_fe = LoadSizeParsed(debugger, "(" + name + ".m_end - " + name + ".m_first)");
+
+                size1 = size;
+                size2 = 0;
+                if (size > size_fe)
+                {
+                    size1 = size_fe;
+                    size2 = size - size_fe;
+                }
+            }
+        }
+
         class StdVector : ContiguousContainer
         {
             public override string Id() { return "std::vector"; }

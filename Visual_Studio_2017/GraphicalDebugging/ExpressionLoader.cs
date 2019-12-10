@@ -88,6 +88,7 @@ namespace GraphicalDebugging
             loadersCpp.Add(new BGVarray());
             loadersCpp.Add(new BoostContainerVector());
             loadersCpp.Add(new BoostContainerStaticVector());
+            loadersCpp.Add(new BoostCircularBuffer());
             loadersCpp.Add(new StdVector());
             loadersCpp.Add(new StdDeque());
             loadersCpp.Add(new StdList());
