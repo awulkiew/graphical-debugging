@@ -208,7 +208,7 @@ namespace GraphicalDebugging
                      : 0;
             }
             
-            enum ColorSpace { Unknown, Rgb, Rgba, Cmyk, Gray };
+            enum ColorSpace { Unknown, Rgb, Rgba, Cmyk, Gray, GrayAlpha };
 
             ColorSpace ParseColorSpace(string colorSpaceType)
             {
@@ -250,6 +250,14 @@ namespace GraphicalDebugging
                         return ColorSpace.Gray;
                     }
                 }
+                else if (tparams.Count == 2)
+                {
+                    if (tparams[0] == "boost::gil::gray_color_t"
+                        && tparams[1] == "boost::gil::alpha_t")
+                    {
+                        return ColorSpace.GrayAlpha;
+                    }
+                }
                 return ColorSpace.Unknown;
             }
 
@@ -259,10 +267,11 @@ namespace GraphicalDebugging
                        colorSpace == ColorSpace.Rgba ? 4 :
                        colorSpace == ColorSpace.Cmyk ? 4 :
                        colorSpace == ColorSpace.Gray ? 1 :
+                       colorSpace == ColorSpace.GrayAlpha ? 2 :
                        0;
             }
 
-            enum Layout { Unknown, Rgb, Bgr, Rgba, Bgra, Argb, Abgr, Cmyk, Gray };
+            enum Layout { Unknown, Rgb, Bgr, Rgba, Bgra, Argb, Abgr, Cmyk, Gray, GrayAlpha, AlphaGray };
 
             Layout ParseChannelMapping(ColorSpace colorSpace, string channelMappingType)
             {
@@ -363,6 +372,24 @@ namespace GraphicalDebugging
                         && tparams[0] == "0")
                     {
                         return Layout.Gray;
+                    }
+                }
+                else if (colorSpace == ColorSpace.GrayAlpha)
+                {
+                    if (isRange && tparams.Count == 2
+                        && tparams[0] == "0" && tparams[1] == "2")
+                    {
+                        return Layout.GrayAlpha;
+                    }
+                    else if (!isRange && tparams.Count == 2
+                        && tparams[0] == "0" && tparams[1] == "1")
+                    {
+                        return Layout.GrayAlpha;
+                    }
+                    else if (!isRange && tparams.Count == 2
+                        && tparams[0] == "1" && tparams[1] == "0")
+                    {
+                        return Layout.AlphaGray;
                     }
                 }
                 return Layout.Unknown;
@@ -700,6 +727,28 @@ namespace GraphicalDebugging
                 }
             }
 
+            class GrayAlphaMapper : LayoutMapper
+            {
+                public override System.Drawing.Color GetColor(byte[] channels)
+                {
+                    return System.Drawing.Color.FromArgb(channels[1],
+                                                         channels[0],
+                                                         channels[0],
+                                                         channels[0]);
+                }
+            }
+
+            class AlphaGrayMapper : LayoutMapper
+            {
+                public override System.Drawing.Color GetColor(byte[] channels)
+                {
+                    return System.Drawing.Color.FromArgb(channels[0],
+                                                         channels[1],
+                                                         channels[1],
+                                                         channels[1]);
+                }
+            }
+
             LayoutMapper GetLayoutMapper(Layout layout)
             {
                 LayoutMapper layoutMapper = null;
@@ -719,6 +768,10 @@ namespace GraphicalDebugging
                     layoutMapper = new CmykMapper();
                 else if (layout == Layout.Gray)
                     layoutMapper = new GrayMapper();
+                else if (layout == Layout.GrayAlpha)
+                    layoutMapper = new GrayAlphaMapper();
+                else if (layout == Layout.AlphaGray)
+                    layoutMapper = new AlphaGrayMapper();
                 return layoutMapper;
             }
         }
