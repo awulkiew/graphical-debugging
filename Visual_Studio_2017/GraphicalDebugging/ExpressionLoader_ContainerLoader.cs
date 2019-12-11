@@ -105,7 +105,7 @@ namespace GraphicalDebugging
         {
             public override string Id() { return null; }
 
-            public override bool MatchType(string type, string id)
+            public override bool MatchType(Loaders loaders, string name, string type, string id)
             {
                 string foo;
                 int bar;
@@ -622,7 +622,7 @@ namespace GraphicalDebugging
         {
             public override string Id() { return null; }
 
-            public override bool MatchType(string type, string id)
+            public override bool MatchType(Loaders loaders, string name, string type, string id)
             {
                 return ElementType(type).Length > 0;
             }

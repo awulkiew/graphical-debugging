@@ -303,21 +303,15 @@ namespace GraphicalDebugging
             {
                 int i = (int)loader.Kind();
                 System.Diagnostics.Debug.Assert(0 <= i && i < KindsCount);
-                // Put the loaders constrained by types at the beginning
-                // to check them first while searching for correct one
-                // NOTE: This may not be enough in general case of arbitrary constraints
-                if (loader.Constraint() != null)
-                    lists[i].Insert(0, loader);
-                else
-                    lists[i].Add(loader);
+                lists[i].Add(loader);
             }
 
             /// <summary>
             /// Finds loader by given Kind and C++ or C# qualified identifier.
             /// </summary>
-            /// <param name="kindConstraint">Predicate defining the kind of Loader</param>
+            /// <param name="kind">Kind of Loader</param>
             /// <param name="name">Name of variable or actual expression added to watch</param>
-            /// <param name="type">C++ or C# type of variable</param>
+            /// <param name="id">C++ or C# qualified name of the type of variable</param>
             /// <returns>Loader object or null if not found</returns>
             public Loader FindById(Kind kind, string name, string id)
             {
@@ -335,7 +329,7 @@ namespace GraphicalDebugging
             /// <summary>
             /// Finds loader by given Kind and C++ or C# type.
             /// </summary>
-            /// <param name="kindConstraint">Predicate defining the kind of Loader</param>
+            /// <param name="kind">Kind of Loader</param>
             /// <param name="name">Name of variable or actual expression added to watch</param>
             /// <param name="type">C++ or C# type of variable</param>
             /// <returns>Loader object or null if not found</returns>
@@ -344,8 +338,7 @@ namespace GraphicalDebugging
                 string id = Util.BaseType(type);
                 foreach (Loader l in lists[(int)kind])
                 {
-                    TypeConstraint tc = l.Constraint();
-                    if (l.MatchType(type, id) && (tc == null || tc.Ok(this, name, type)))
+                    if (l.MatchType(this, name, type, id))
                     {
                         l.Initialize(ExpressionLoader.Instance.debugger, name);
                         return l;
@@ -370,8 +363,7 @@ namespace GraphicalDebugging
                     {
                         foreach (Loader l in lists[i])
                         {
-                            TypeConstraint tc = l.Constraint();
-                            if (l.MatchType(type, id) && (tc == null || tc.Ok(this, name, type)))
+                            if (l.MatchType(this, name, type, id))
                             {
                                 l.Initialize(ExpressionLoader.Instance.debugger, name);
                                 return l;
@@ -398,49 +390,6 @@ namespace GraphicalDebugging
             List<Loader>[] lists;
         }
 
-        // Type Constraints
-
-        interface TypeConstraint
-        {
-            bool Ok(Loaders loaders, string name, string type);
-        }
-        /*
-        abstract class TparamConstraint : TypeConstraint
-        {
-            abstract public bool Ok(Loaders loaders, string name, List<string> tparams);
-
-            public bool Ok(Loaders loaders, string name, string type)
-            {
-                return Ok(loaders, name, Util.Tparams(type));
-            }
-        }
-
-        class TparamKindConstraint : TparamConstraint, KindConstraint
-        {
-            public TparamKindConstraint(int i, Kind kind)
-            {
-                this.i = i;
-                this.kind = kind;
-            }
-
-            public override bool Ok(Loaders loaders, string name, List<string> tparams)
-            {
-                if (i < tparams.Count)
-                {
-                    Loader loader = loaders.FindByType(this, name, tparams[i]);
-                    if (loader != null)
-                        return loader.Kind() == kind; // TODO: return loader != null
-                }
-                return false;
-            }
-
-            public bool Check(Kind kind) { return kind == this.kind; }
-
-            int i;
-            Kind kind;
-        }
-        */
-
         /// <summary>
         /// The base Loader class from which all Loaders has to be derived.
         /// </summary>
@@ -465,25 +414,15 @@ namespace GraphicalDebugging
             /// </summary>
             abstract public string Id();
 
-            // TODO: Both MatchType() and Constraint() are probably not needed
-
             /// <summary>
             /// Matches type and/or qualified identifier.
             /// Type and identifier can both receove the same value e.g. unsigned char[4]
             /// </summary>
             /// <param name="type">Full type</param>
             /// <param name="id">Qualified idenifier of type</param>
-            virtual public bool MatchType(string type, string id)
+            virtual public bool MatchType(Loaders loaders, string name, string type, string id)
             {
                 return id == Id();
-            }
-
-            /// <summary>
-            /// Returns predicate used to match type.
-            /// </summary>
-            virtual public TypeConstraint Constraint()
-            {
-                return null;
             }
 
             /// <summary>
@@ -1745,33 +1684,20 @@ namespace GraphicalDebugging
                 : base(ExpressionLoader.Kind.TurnsContainer)
             {}
 
-            public class ContainerKindConstraint : TypeConstraint
-            {
-                public bool Ok(Loaders loaders, string name, string type)
-                {
-                    // Is a Container
-                    ContainerLoader loader = loaders.FindByType(ExpressionLoader.Kind.Container, name, type) as ContainerLoader;
-                    if (loader == null)
-                        return false;
-
-                    // Element is a Turn
-                    string elType = loader.ElementType(type);
-                    string elName = loader.ElementName(name, elType);
-                    return loaders.FindByType(ExpressionLoader.Kind.Turn, elName, elType) != null;
-                }
-            }
-
             public override string Id() { return null; }
 
-            public override bool MatchType(string type, string id)
+            public override bool MatchType(Loaders loaders, string name, string type, string id)
             {
-                // match all types here and use TypeConstraint to filter
-                return true;
-            }
+                // Is a Container
+                ContainerLoader loader = loaders.FindByType(ExpressionLoader.Kind.Container, name, type) as ContainerLoader;
+                if (loader == null)
+                    return false;
 
-            public override TypeConstraint Constraint()
-            {
-                return new ContainerKindConstraint();
+                // Element is a Turn
+                string elType = loader.ElementType(type);
+                string elName = loader.ElementName(name, elType);
+                // WARNING: Potentially recursive call, search for Turns only
+                return loaders.FindByType(ExpressionLoader.Kind.Turn, elName, elType) != null;
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -1820,33 +1746,20 @@ namespace GraphicalDebugging
                 : base(ExpressionLoader.Kind.MultiPoint)
             {}
 
-            public class ContainerKindConstraint : TypeConstraint
-            {
-                public bool Ok(Loaders loaders, string name, string type)
-                {
-                    // Is a Container
-                    ContainerLoader loader = loaders.FindByType(ExpressionLoader.Kind.Container, name, type) as ContainerLoader;
-                    if (loader == null)
-                        return false;
-
-                    // Element is a Point
-                    string elType = loader.ElementType(type);
-                    string elName = loader.ElementName(name, elType);
-                    return loaders.FindByType(ExpressionLoader.Kind.Point, elName, elType) != null;
-                }
-            }
-            
             public override string Id() { return null; }
 
-            public override bool MatchType(string type, string id)
+            public override bool MatchType(Loaders loaders, string name, string type, string id)
             {
-                // match all types here and use TypeConstraint to filter
-                return true;
-            }
+                // Is a Container
+                ContainerLoader loader = loaders.FindByType(ExpressionLoader.Kind.Container, name, type) as ContainerLoader;
+                if (loader == null)
+                    return false;
 
-            public override TypeConstraint Constraint()
-            {
-                return new ContainerKindConstraint();
+                // Element is a Point
+                string elType = loader.ElementType(type);
+                string elName = loader.ElementName(name, elType);
+                // WARNING: Potentially recursive call, search for Points only
+                return loaders.FindByType(ExpressionLoader.Kind.Point, elName, elType) != null;
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -1888,36 +1801,22 @@ namespace GraphicalDebugging
 
         class ValuesContainer : LoaderR<ExpressionDrawer.ValuesContainer>
         {
-            public class ContainerKindConstraint : TypeConstraint
-            {
-                public bool Ok(Loaders loaders, string name, string type)
-                {
-                    // Is a Container
-                    ContainerLoader loader = loaders.FindByType(ExpressionLoader.Kind.Container, name, type) as ContainerLoader;
-                    if (loader == null)
-                        return false;
-
-                    // Element is not a Geometry
-                    string elType = loader.ElementType(type);
-                    string elName = loader.ElementName(name, elType);
-                    // WARNING: Potentially recursive call, avoid searching for ValuesContainers
-                    return loaders.FindByType(OnlyGeometries, elName, elType) == null;
-                }
-            }
-
             public override ExpressionLoader.Kind Kind() { return ExpressionLoader.Kind.ValuesContainer; }
 
             public override string Id() { return null; }
 
-            public override bool MatchType(string type, string id)
+            public override bool MatchType(Loaders loaders, string name, string type, string id)
             {
-                // match all types here and use TypeConstraint to filter
-                return true;
-            }
+                // Is a Container
+                ContainerLoader loader = loaders.FindByType(ExpressionLoader.Kind.Container, name, type) as ContainerLoader;
+                if (loader == null)
+                    return false;
 
-            public override TypeConstraint Constraint()
-            {
-                return new ContainerKindConstraint();
+                // Element is not a Geometry
+                string elType = loader.ElementType(type);
+                string elName = loader.ElementName(name, elType);
+                // WARNING: Potentially recursive call, avoid searching for ValuesContainers
+                return loaders.FindByType(OnlyGeometries, elName, elType) == null;
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
