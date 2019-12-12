@@ -92,6 +92,7 @@ namespace GraphicalDebugging
             loadersCpp.Add(new StdVector());
             loadersCpp.Add(new StdDeque());
             loadersCpp.Add(new StdList());
+            loadersCpp.Add(new StdSet());
             loadersCpp.Add(new CArray());
 
             loadersCpp.Add(new BGTurn("boost::geometry::detail::overlay::turn_info"));

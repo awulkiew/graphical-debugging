@@ -618,6 +618,140 @@ namespace GraphicalDebugging
             private Version version = Version.Msvc14_15;
         }
 
+        class StdSet : ContainerLoader
+        {
+            public override string Id() { return "std::set"; }
+
+            public override string ElementName(string name, string elType)
+            {
+                return HeadStr(name) + "->_Myval";
+            }
+
+            public override bool ForEachMemoryBlock(MemoryReader mreader, string name, string type,
+                                                    MemoryReader.Converter<double> elementConverter,
+                                                    MemoryBlockPredicate memoryBlockPredicate)
+            {
+                int size = LoadSize(mreader.Debugger, name);
+                if (size <= 0)
+                    return true;
+
+                string headName = HeadStr(name);
+                string leftName = headName + "->_Left";
+                string rightName = headName + "->_Right";
+                string isNilName = headName + "->_Isnil";
+                string valName = headName + "->_Myval";
+
+                MemoryReader.ValueConverter<byte, byte> boolConverter = new MemoryReader.ValueConverter<byte, byte>();
+                MemoryReader.ValueConverter<ulong> ptrConverter = mreader.GetPointerConverter(headName, null);
+                if (ptrConverter == null)
+                    return false;
+
+                long leftDiff = mreader.GetAddressDifference("(*" + headName + ")", leftName);
+                long rightDiff = mreader.GetAddressDifference("(*" + headName + ")", rightName);
+                long isNilDiff = mreader.GetAddressDifference("(*" + headName + ")", isNilName);
+                long valDiff = mreader.GetAddressDifference("(*" + headName + ")", valName);
+                if (MemoryReader.IsInvalidAddressDifference(leftDiff)
+                 || MemoryReader.IsInvalidAddressDifference(rightDiff)
+                 || MemoryReader.IsInvalidAddressDifference(isNilDiff)
+                 || MemoryReader.IsInvalidAddressDifference(valDiff)
+                 || leftDiff < 0 || rightDiff < 0 || isNilDiff < 0 || valDiff < 0)
+                    return false;
+
+                ulong[] headAddr = new ulong[1];
+                if (!mreader.Read(headName, headAddr, ptrConverter))
+                    return false;
+
+                return ForEachMemoryBlockRecursive(mreader, elementConverter, memoryBlockPredicate,
+                                                   boolConverter, ptrConverter,
+                                                   headAddr[0], leftDiff, rightDiff, isNilDiff, valDiff);
+            }
+
+            private bool ForEachMemoryBlockRecursive(MemoryReader mreader,
+                                                     MemoryReader.Converter<double> elementConverter,
+                                                     MemoryBlockPredicate memoryBlockPredicate,
+                                                     MemoryReader.ValueConverter<byte, byte> boolConverter,
+                                                     MemoryReader.ValueConverter<ulong> ptrConverter,
+                                                     ulong nodeAddr,
+                                                     long leftDiff, long rightDiff,
+                                                     long isNilDiff, long valDiff)
+            {
+                byte[] isNil = new byte[1];
+                if (!mreader.Read(nodeAddr + (ulong)isNilDiff, isNil, boolConverter))
+                    return false;
+                if (isNil[0] == 0) // _Isnil == false
+                {
+                    ulong[] leftAddr = new ulong[1];
+                    ulong[] rightAddr = new ulong[1];
+                    double[] values = new double[elementConverter.ValueCount()];
+
+                    return mreader.Read(nodeAddr + (ulong)leftDiff, leftAddr, ptrConverter)
+                        && mreader.Read(nodeAddr + (ulong)rightDiff, rightAddr, ptrConverter)
+                        && mreader.Read(nodeAddr + (ulong)valDiff, values, elementConverter)
+                        && ForEachMemoryBlockRecursive(mreader, elementConverter, memoryBlockPredicate,
+                                                       boolConverter, ptrConverter,
+                                                       leftAddr[0], leftDiff, rightDiff, isNilDiff, valDiff)
+                        && memoryBlockPredicate(values)
+                        && ForEachMemoryBlockRecursive(mreader, elementConverter, memoryBlockPredicate,
+                                                       boolConverter, ptrConverter,
+                                                       rightAddr[0], leftDiff, rightDiff, isNilDiff, valDiff);
+                }
+
+                return true;
+            }
+
+            public override int LoadSize(Debugger debugger, string name)
+            {
+                return LoadSizeParsed(debugger, SizeStr(name));
+            }
+
+            public override bool ForEachElement(Debugger debugger, string name, ElementPredicate elementPredicate)
+            {
+                int size = LoadSize(debugger, name);
+                if (size <= 0)
+                    return true;
+
+                string nodeName = HeadStr(name);
+                return ForEachElementRecursive(debugger, nodeName, elementPredicate);
+            }
+
+            private bool ForEachElementRecursive(Debugger debugger, string nodeName, ElementPredicate elementPredicate)
+            {
+                Expression expr = debugger.GetExpression("(" + nodeName + "->_Isnil == false)");
+                if (expr.IsValidValue && (expr.Value == "true" || expr.Value == "1"))
+                {
+                    return ForEachElementRecursive(debugger, nodeName + "->_Left", elementPredicate)
+                        && elementPredicate(nodeName + "->_Myval")
+                        && ForEachElementRecursive(debugger, nodeName + "->_Right", elementPredicate);
+                }
+                return true; // ignore leaf
+            }
+
+            private string HeadStr(string name)
+            {
+                return version == Version.Msvc12
+                     ? name + "._Myhead->_Parent"
+                     : name + "._Mypair._Myval2._Myval2._Myhead->_Parent";
+            }
+
+            private string SizeStr(string name)
+            {
+                return version == Version.Msvc12
+                     ? name + "._Mysize"
+                     : name + "._Mypair._Myval2._Myval2._Mysize";
+            }
+
+            public override void Initialize(Debugger debugger, string name)
+            {
+                string name12 = name + "._Mysize";
+                //string name14_15 = name + "._Mypair._Myval2._Myval2._Mysize";
+
+                if (debugger.GetExpression(name12).IsValidValue)
+                    version = Version.Msvc12;
+            }
+            private enum Version { Unknown, Msvc12, Msvc14_15 };
+            private Version version = Version.Msvc14_15;
+        }
+
         class CSArray : ContiguousContainer
         {
             public override string Id() { return null; }
