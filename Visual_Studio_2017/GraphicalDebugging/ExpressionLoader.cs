@@ -1293,7 +1293,7 @@ namespace GraphicalDebugging
                 traits = null;
                 result = null;
 
-                int size = LoadSizeParsed(debugger, name + ".m_members.values_count");
+                int size = LoadSize(debugger, name);
                 if (size <= 0)
                     return;
 
@@ -1345,40 +1345,23 @@ namespace GraphicalDebugging
                 if (indexableLoader == null)
                     return;
 
-                string nodePtrName = "(" + name + ".m_members.root)";
+                string nodePtrName = RootNodePtr(name);
                 Expression rootExpr = debugger.GetExpression("*" + nodePtrName);
                 if (!rootExpr.IsValidValue)
                     return;
                 string nodeVariantType = rootExpr.Type;
 
-                tparams = Util.Tparams(nodeVariantType);
-                if (tparams.Count < 2)
-                    return;
-                string leafType = tparams[0];
-                string internalNodeType = tparams[1];
-
-                string leafPtrName = "((" + leafType + "*)" + nodePtrName + "->storage_.data_.buf)";
-                string internalNodePtrName = "((" + internalNodeType + "*)" + nodePtrName + "->storage_.data_.buf)";
-
-                string leafElementsName = leafPtrName + "->elements";
-                string internalNodeElementsName = internalNodePtrName + "->elements";
-                Expression leafExpr = debugger.GetExpression(leafElementsName);
-                if (!leafExpr.IsValidValue)
+                string leafType, internalNodeType;
+                if (!Util.Tparams(nodeVariantType, out leafType, out internalNodeType))
                     return;
 
-                ContainerLoader leafElementsLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
-                                                                        leafExpr.Name,
-                                                                        leafExpr.Type) as ContainerLoader;
+                ContainerLoader leafElementsLoader = ElementsLoader(loaders, debugger,
+                                                                    nodePtrName, leafType);
                 if (leafElementsLoader == null)
                     return;
 
-                Expression internalNodeExpr = debugger.GetExpression(internalNodeElementsName);
-                if (!internalNodeExpr.IsValidValue)
-                    return;
-
-                ContainerLoader internalNodeElementsLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
-                                                                                internalNodeExpr.Name,
-                                                                                internalNodeExpr.Type) as ContainerLoader;
+                ContainerLoader internalNodeElementsLoader = ElementsLoader(loaders, debugger,
+                                                                            nodePtrName, internalNodeType);
                 if (internalNodeElementsLoader == null)
                     return;
 
@@ -1409,14 +1392,18 @@ namespace GraphicalDebugging
             {
                 traits = null;
 
-                int which = 0;
-                if (!TryLoadIntParsed(debugger, nodePtrName + "->which_", out which))
+                bool isLeaf;
+                if (!IsLeaf(debugger, nodePtrName, out isLeaf))
                     return false;
 
-                bool isLeaf = (which == 0);
-                string nodeType = isLeaf ? leafType : internalNodeType;
-                string elementsName = "((" + nodeType + "*)" + nodePtrName + "->storage_.data_.buf)" + "->elements";
-                ContainerLoader elementsLoader = isLeaf ? leafElementsLoader : internalNodeElementsLoader;
+                string nodeType = leafType;
+                ContainerLoader elementsLoader = leafElementsLoader;
+                if (!isLeaf)
+                {
+                    nodeType = internalNodeType;
+                    elementsLoader = internalNodeElementsLoader;
+                }
+                string elementsName = NodeElements(nodePtrName, nodeType);
 
                 Geometry.Traits tr = null;
                 bool ok = elementsLoader.ForEachElement(debugger, elementsName, delegate (string elName)
@@ -1451,6 +1438,46 @@ namespace GraphicalDebugging
                 traits = tr;
 
                 return ok;
+            }
+
+            ContainerLoader ElementsLoader(Loaders loaders, Debugger debugger,
+                                           string nodePtrName, string castedNodeType)
+            {
+                string elementsName = NodeElements(nodePtrName, castedNodeType);
+
+                Expression expr = debugger.GetExpression(elementsName);
+                if (!expr.IsValidValue)
+                    return null;
+
+                return loaders.FindByType(ExpressionLoader.Kind.Container,
+                                          expr.Name, expr.Type) as ContainerLoader;
+            }
+
+            int LoadSize(Debugger debugger, string name)
+            {
+                return LoadSizeParsed(debugger, name + ".m_members.values_count");
+            }
+
+            string RootNodePtr(string name)
+            {
+                return name + ".m_members.root";
+            }
+
+            string NodeElements(string nodePtrName, string castedNodeType)
+            {
+                return "((" + castedNodeType + "*)" + nodePtrName + "->storage_.data_.buf)->elements";
+            }
+
+            bool IsLeaf(Debugger debugger, string nodePtrName, out bool result)
+            {
+                result = false;
+
+                int which = 0;
+                if (!TryLoadIntParsed(debugger, nodePtrName + "->which_", out which))
+                    return false;
+
+                result = (which == 0);
+                return true;
             }
         }
 
