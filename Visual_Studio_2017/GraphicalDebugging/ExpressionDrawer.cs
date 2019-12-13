@@ -159,7 +159,7 @@ namespace GraphicalDebugging
 
             public Geometry.Box Aabb(Geometry.Traits traits, bool calculateEnvelope)
             {
-                return new Geometry.Box(this, this);
+                return new Geometry.Box(this.Clone(), this.Clone());
             }
 
             public bool DrawAxes()
@@ -667,6 +667,47 @@ namespace GraphicalDebugging
                     Geometry.AssignInverse(box);
 
                 return box;
+            }
+
+            public bool DrawAxes()
+            {
+                return true;
+            }
+        }
+
+        public class DrawablesContainer : List<IDrawable>, IDrawable
+        {
+            public void Draw(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
+            {
+                for (int i = 0; i < this.Count; ++i)
+                {
+                    this[i].Draw(box, graphics, settings, traits);
+                }
+            }
+
+            public Geometry.Box Aabb(Geometry.Traits traits, bool calculateEnvelope)
+            {
+                Geometry.Box result = null;
+
+                for (int i = 0; i < this.Count; ++i)
+                {
+                    Geometry.Box box = this[i].Aabb(traits, calculateEnvelope);
+
+                    if (result == null)
+                        result = box;
+                    else
+                    {
+                        if (calculateEnvelope)
+                            Geometry.Expand(result, box, traits);
+                        else
+                            Geometry.Expand(result, box);
+                    }
+                }
+
+                if (result == null)
+                    Geometry.AssignInverse(result);
+
+                return result;
             }
 
             public bool DrawAxes()

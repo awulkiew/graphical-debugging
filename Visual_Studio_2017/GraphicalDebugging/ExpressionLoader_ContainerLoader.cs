@@ -618,6 +618,8 @@ namespace GraphicalDebugging
             private Version version = Version.Msvc14_15;
         }
 
+        // TODO: limit number of processed values with size
+        //       in case some pointers were invalid
         class StdSet : ContainerLoader
         {
             public override string Id() { return "std::set"; }

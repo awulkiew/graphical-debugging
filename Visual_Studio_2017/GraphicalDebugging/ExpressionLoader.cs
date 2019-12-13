@@ -34,7 +34,7 @@ namespace GraphicalDebugging
         public enum Kind
         {
             Container = 0, MultiPoint, TurnsContainer, ValuesContainer,
-            Point, Segment, Box, NSphere, Linestring, Ring, Polygon, MultiLinestring, MultiPolygon, Turn,
+            Point, Segment, Box, NSphere, Linestring, Ring, Polygon, MultiLinestring, MultiPolygon, Turn, OtherGeometry,
             Variant, Image
         };
 
@@ -71,6 +71,8 @@ namespace GraphicalDebugging
             loadersCpp.Add(new BGMultiPolygon());
             loadersCpp.Add(new BGBufferedRing());
             loadersCpp.Add(new BGBufferedRingCollection());
+
+            loadersCpp.Add(new BGIRtree());
 
             loadersCpp.Add(new BPPoint());
             loadersCpp.Add(new BPSegment());
@@ -205,10 +207,21 @@ namespace GraphicalDebugging
             public bool Check(Kind kind) { return kind == Kind.MultiPoint; }
         }
 
+        public class IndexableKindConstraint : KindConstraint
+        {
+            public bool Check(Kind kind)
+            {
+                return kind == Kind.Point
+                    || kind == Kind.Box
+                    || kind == Kind.Segment;
+            }
+        }
+
         public static DrawableKindConstraint AllDrawables { get; } = new DrawableKindConstraint();
         public static GeometryKindConstraint OnlyGeometries { get; } = new GeometryKindConstraint();
         public static ValuesContainerKindConstraint OnlyValuesContainers { get; } = new ValuesContainerKindConstraint();
         public static MultiPointKindConstraint OnlyMultiPoints { get; } = new MultiPointKindConstraint();
+        public static IndexableKindConstraint OnlyIndexables { get; } = new IndexableKindConstraint();
 
         // Load
 
@@ -1259,6 +1272,185 @@ namespace GraphicalDebugging
                     traits = t;
                     result = mpoly;
                 }
+            }
+        }
+
+        // NOTE: Technically R-tree could be treated as a Container of Points or MultiPoint
+        //       and displayed in a PlotWatch.
+        // TODO: Consider this.
+
+        class BGIRtree : GeometryLoader<ExpressionDrawer.DrawablesContainer>
+        {
+            public BGIRtree() : base(ExpressionLoader.Kind.OtherGeometry) { }
+
+            public override string Id() { return "boost::geometry::index::rtree"; }
+
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
+                                      out Geometry.Traits traits,
+                                      out ExpressionDrawer.DrawablesContainer result)
+            {
+                traits = null;
+                result = null;
+
+                int size = LoadSizeParsed(debugger, name + ".m_members.values_count");
+                if (size <= 0)
+                    return;
+
+                List<string> tparams = Util.Tparams(type);
+                if (tparams.Count < 3)
+                    return;
+
+                string valueType = tparams[0];
+                string valueId = Util.BaseType(valueType);
+                string indexableGetterType = tparams[2];
+                string indexableGetterId = Util.BaseType(indexableGetterType);
+                DrawableLoader indexableLoader = null;
+                string indexableMember = "";
+                string indexableType = valueType;
+                if (valueId == "std::pair" || valueId == "std::tuple" || valueId == "boost::tuple")
+                {
+                    tparams = Util.Tparams(valueType);
+                    if (tparams.Count < 1)
+                        return;
+                    string firstType = tparams[0];
+
+                    // C++ so dereferencing nullptr is probably enough as a name
+                    indexableLoader = loaders.FindByType(OnlyIndexables,
+                                                         "(*((" + firstType + "*)0))",
+                                                         firstType) as DrawableLoader;
+
+                    // The first type of pair/tuple is an Indexable
+                    // so assume the pair/tuple is not a Geometry itself
+                    if (indexableLoader != null)
+                    {
+                        indexableType = firstType;
+                        if (valueId == "std::pair")
+                            indexableMember = ".first";
+                        else if (valueId == "std::tuple")
+                            indexableMember = "._Myfirst._Val";
+                        else // boost::tuple
+                            indexableMember = ".head";
+                    }
+                }
+
+                if (indexableLoader == null)
+                {
+                    // C++ so dereferencing nullptr is probably enough as a name
+                    indexableLoader = loaders.FindByType(OnlyIndexables,
+                                                         "(*((" + indexableType + "*)0))",
+                                                         indexableType) as DrawableLoader;
+                }
+
+                if (indexableLoader == null)
+                    return;
+
+                string nodePtrName = "(" + name + ".m_members.root)";
+                Expression rootExpr = debugger.GetExpression("*" + nodePtrName);
+                if (!rootExpr.IsValidValue)
+                    return;
+                string nodeVariantType = rootExpr.Type;
+
+                tparams = Util.Tparams(nodeVariantType);
+                if (tparams.Count < 2)
+                    return;
+                string leafType = tparams[0];
+                string internalNodeType = tparams[1];
+
+                string leafPtrName = "((" + leafType + "*)" + nodePtrName + "->storage_.data_.buf)";
+                string internalNodePtrName = "((" + internalNodeType + "*)" + nodePtrName + "->storage_.data_.buf)";
+
+                string leafElementsName = leafPtrName + "->elements";
+                string internalNodeElementsName = internalNodePtrName + "->elements";
+                Expression leafExpr = debugger.GetExpression(leafElementsName);
+                if (!leafExpr.IsValidValue)
+                    return;
+
+                ContainerLoader leafElementsLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
+                                                                        leafExpr.Name,
+                                                                        leafExpr.Type) as ContainerLoader;
+                if (leafElementsLoader == null)
+                    return;
+
+                Expression internalNodeExpr = debugger.GetExpression(internalNodeElementsName);
+                if (!internalNodeExpr.IsValidValue)
+                    return;
+
+                ContainerLoader internalNodeElementsLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
+                                                                                internalNodeExpr.Name,
+                                                                                internalNodeExpr.Type) as ContainerLoader;
+                if (internalNodeElementsLoader == null)
+                    return;
+
+                Geometry.Traits tr = null;
+                ExpressionDrawer.DrawablesContainer res = new ExpressionDrawer.DrawablesContainer();
+                if (LoadParsedRecursive(loaders, mreader, debugger,
+                                        nodePtrName,
+                                        leafElementsLoader, internalNodeElementsLoader, indexableLoader,
+                                        leafType, internalNodeType, indexableMember, indexableType,
+                                        out tr, res))
+                {
+                    traits = tr;
+                    result = res;
+                }
+            }
+
+            private bool LoadParsedRecursive(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                             string nodePtrName,
+                                             ContainerLoader leafElementsLoader,
+                                             ContainerLoader internalNodeElementsLoader,
+                                             DrawableLoader indexableLoader,
+                                             string leafType,
+                                             string internalNodeType,
+                                             string indexableMember,
+                                             string indexableType,
+                                             out Geometry.Traits traits,
+                                             ExpressionDrawer.DrawablesContainer result)
+            {
+                traits = null;
+
+                int which = 0;
+                if (!TryLoadIntParsed(debugger, nodePtrName + "->which_", out which))
+                    return false;
+
+                bool isLeaf = (which == 0);
+                string nodeType = isLeaf ? leafType : internalNodeType;
+                string elementsName = "((" + nodeType + "*)" + nodePtrName + "->storage_.data_.buf)" + "->elements";
+                ContainerLoader elementsLoader = isLeaf ? leafElementsLoader : internalNodeElementsLoader;
+
+                Geometry.Traits tr = null;
+                bool ok = elementsLoader.ForEachElement(debugger, elementsName, delegate (string elName)
+                {
+                    if (isLeaf)
+                    {
+                        ExpressionDrawer.IDrawable indexable = null;
+
+                        indexableLoader.Load(loaders, mreader, debugger,
+                                             elName + indexableMember, indexableType,
+                                             out tr, out indexable);
+
+                        if (tr == null || indexable == null)
+                            return false;
+
+                        result.Add(indexable);
+                    }
+                    else
+                    {
+                        string nextNodePtrName = elName + ".second";
+                        if (!LoadParsedRecursive(loaders, mreader, debugger,
+                                                 nextNodePtrName,
+                                                 leafElementsLoader, internalNodeElementsLoader, indexableLoader,
+                                                 leafType, internalNodeType, indexableMember, indexableType,
+                                                 out tr, result))
+                            return false;
+                    }
+
+                    return true;
+                });
+
+                traits = tr;
+
+                return ok;
             }
         }
 
