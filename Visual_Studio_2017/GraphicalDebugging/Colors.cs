@@ -55,6 +55,7 @@ namespace GraphicalDebugging
                 MultiLinestringColor = Color.DarkGreen;
                 MultiPolygonColor = Color.FromArgb(0xFF, 0, 0, 128);
                 TurnColor = Color.DarkOrange;
+                GeometriesContainerColor = Color.SaddleBrown;
 
                 foreach (var v in DarkColorValues)
                     m_colors.Add(Color.FromArgb((int)v));
@@ -79,6 +80,7 @@ namespace GraphicalDebugging
                 MultiLinestringColor = Color.FromArgb(0xFF, 128, 172, 128);
                 MultiPolygonColor = Color.FromArgb(0xFF, 128, 128, 172);
                 TurnColor = Color.FromArgb(0xFF, 255, 197, 128);
+                GeometriesContainerColor = Color.Tan;
 
                 foreach (var v in LightColorValues)
                     m_colors.Add(Color.FromArgb((int)v));
@@ -131,6 +133,7 @@ namespace GraphicalDebugging
         public Color MultiLinestringColor { get; set; }
         public Color MultiPolygonColor { get; set; }
         public Color TurnColor { get; set; }
+        public Color GeometriesContainerColor { get; set; }
 
         public int Count { get { return m_colors.Count; } }
         public Color this[int i]

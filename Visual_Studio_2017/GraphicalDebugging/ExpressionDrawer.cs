@@ -679,6 +679,7 @@ namespace GraphicalDebugging
         {
             public void Draw(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
             {
+                // TODO: Draw using IDrawable color?
                 for (int i = 0; i < this.Count; ++i)
                 {
                     this[i].Draw(box, graphics, settings, traits);
@@ -1169,6 +1170,8 @@ namespace GraphicalDebugging
                 return colors.MultiPolygonColor;
             else if (drawable is Turn || drawable is TurnsContainer)
                 return colors.TurnColor;
+            else if (drawable is DrawablesContainer)
+                return colors.GeometriesContainerColor;
             else
                 return colors.DrawColor;
         }
