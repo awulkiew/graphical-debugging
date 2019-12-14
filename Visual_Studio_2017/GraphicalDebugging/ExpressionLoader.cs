@@ -1297,51 +1297,10 @@ namespace GraphicalDebugging
                 if (size <= 0)
                     return;
 
-                List<string> tparams = Util.Tparams(type);
-                if (tparams.Count < 3)
-                    return;
-
-                string valueType = tparams[0];
-                string valueId = Util.BaseType(valueType);
-                string indexableGetterType = tparams[2];
-                string indexableGetterId = Util.BaseType(indexableGetterType);
-                DrawableLoader indexableLoader = null;
-                string indexableMember = "";
-                string indexableType = valueType;
-                if (valueId == "std::pair" || valueId == "std::tuple" || valueId == "boost::tuple")
-                {
-                    tparams = Util.Tparams(valueType);
-                    if (tparams.Count < 1)
-                        return;
-                    string firstType = tparams[0];
-
-                    // C++ so dereferencing nullptr is probably enough as a name
-                    indexableLoader = loaders.FindByType(OnlyIndexables,
-                                                         "(*((" + firstType + "*)0))",
-                                                         firstType) as DrawableLoader;
-
-                    // The first type of pair/tuple is an Indexable
-                    // so assume the pair/tuple is not a Geometry itself
-                    if (indexableLoader != null)
-                    {
-                        indexableType = firstType;
-                        if (valueId == "std::pair")
-                            indexableMember = ".first";
-                        else if (valueId == "std::tuple")
-                            indexableMember = "._Myfirst._Val";
-                        else // boost::tuple
-                            indexableMember = ".head";
-                    }
-                }
-
-                if (indexableLoader == null)
-                {
-                    // C++ so dereferencing nullptr is probably enough as a name
-                    indexableLoader = loaders.FindByType(OnlyIndexables,
-                                                         "(*((" + indexableType + "*)0))",
-                                                         indexableType) as DrawableLoader;
-                }
-
+                string indexableMember, indexableType;
+                DrawableLoader indexableLoader = IndexableLoader(loaders, name, type,
+                                                                 out indexableMember,
+                                                                 out indexableType);
                 if (indexableLoader == null)
                     return;
 
@@ -1438,6 +1397,56 @@ namespace GraphicalDebugging
                 traits = tr;
 
                 return ok;
+            }
+
+            DrawableLoader IndexableLoader(Loaders loaders, string name, string type,
+                                           out string indexableMember, out string indexableType)
+            {
+                indexableMember = "";
+                indexableType = "";
+
+                string valueType;
+                if (!Util.Tparams(type, out valueType))
+                    return null;
+
+                string valueId = Util.BaseType(valueType);
+                DrawableLoader indexableLoader = null;
+                indexableMember = "";
+                indexableType = valueType;
+                if (valueId == "std::pair" || valueId == "std::tuple" || valueId == "boost::tuple")
+                {
+                    string firstType;
+                    if (!Util.Tparams(valueType, out firstType))
+                        return null;                    
+
+                    // C++ so dereferencing nullptr is probably enough as a name
+                    indexableLoader = loaders.FindByType(OnlyIndexables,
+                                                         "(*((" + firstType + "*)0))",
+                                                         firstType) as DrawableLoader;
+
+                    // The first type of pair/tuple is an Indexable
+                    // so assume the pair/tuple is not a Geometry itself
+                    if (indexableLoader != null)
+                    {
+                        indexableType = firstType;
+                        if (valueId == "std::pair")
+                            indexableMember = ".first";
+                        else if (valueId == "std::tuple")
+                            indexableMember = "._Myfirst._Val";
+                        else // boost::tuple
+                            indexableMember = ".head";
+                    }
+                }
+
+                if (indexableLoader == null)
+                {
+                    // C++ so dereferencing nullptr is probably enough as a name
+                    indexableLoader = loaders.FindByType(OnlyIndexables,
+                                                         "(*((" + indexableType + "*)0))",
+                                                         indexableType) as DrawableLoader;
+                }
+
+                return indexableLoader;
             }
 
             ContainerLoader ElementsLoader(Loaders loaders, Debugger debugger,
