@@ -122,33 +122,35 @@ namespace GraphicalDebugging
             protected Converter<ValueType> elementConverter = null;
         }
         
-        public class Member
+        public class Member<ValueType>
+            where ValueType : struct
         {
-            public Member(Converter<double> converter)
+            public Member(Converter<ValueType> converter)
             {
                 this.Converter = converter;
                 this.ByteOffset = 0;
             }
 
-            public Member(Converter<double> converter, int byteOffset)
+            public Member(Converter<ValueType> converter, int byteOffset)
             {
                 this.Converter = converter;
                 this.ByteOffset = byteOffset;
             }
 
-            public Converter<double> Converter { get; private set; }
+            public Converter<ValueType> Converter { get; private set; }
             public int ByteOffset { get; private set; }
         }
 
-        public class StructConverter : Converter<double>
+        public class StructConverter<ValueType> : Converter<ValueType>
+            where ValueType : struct
         {
-            public StructConverter(int byteSize, Member member)
+            public StructConverter(int byteSize, Member<ValueType> member)
             {
                 this.members = new[] {member};
                 initialize(byteSize);               
             }
 
-            public StructConverter(int byteSize, Member member1, Member member2)
+            public StructConverter(int byteSize, Member<ValueType> member1, Member<ValueType> member2)
             {
                 this.members = new[] {member1, member2};
                 initialize(byteSize);
@@ -164,13 +166,13 @@ namespace GraphicalDebugging
                 return byteSize;
             }
             
-            public override void Copy(byte[] bytes, int bytesOffset, double[] result, int resultOffset)
+            public override void Copy(byte[] bytes, int bytesOffset, ValueType[] result, int resultOffset)
             {
                 // TODO: Copy in one block if possible
                 // if offsets and sizes defined in valueConverters create contigeous block
 
                 int vOff = 0;
-                foreach (Member member in members)
+                foreach (Member<ValueType> member in members)
                 {
                     member.Converter.Copy(bytes, bytesOffset + member.ByteOffset,
                                           result, resultOffset + vOff);
@@ -183,13 +185,13 @@ namespace GraphicalDebugging
                 this.byteSize = byteSize;
 
                 this.internalValueCount = 0;
-                foreach (Member m in members)
+                foreach (Member<ValueType> m in members)
                 {
                     this.internalValueCount += m.Converter.ValueCount();
                 }
             }
 
-            Member[] members = null;
+            Member<ValueType>[] members = null;
             int byteSize = 0;
 
             int internalValueCount = 0;
@@ -239,7 +241,14 @@ namespace GraphicalDebugging
             }
         }
 
-        public ValueConverter<double> GetNumericConverter(string valName, string valType)
+        public ValueConverter<double> GetNumericConverter(string valName, string valType = null)
+        {
+            return GetNumericConverter<double>(valName, valType);
+        }
+
+        // 
+        public ValueConverter<ValueType> GetNumericConverter<ValueType>(string valName, string valType = null)
+            where ValueType : struct
         {
             if (valType == null)
                 valType = GetValueType(valName);
@@ -250,37 +259,37 @@ namespace GraphicalDebugging
 
             if (valType == "double")
             {
-                return new ValueConverter<double, double>();
+                return new ValueConverter<ValueType, double>();
             }
             else if (valType == "float")
             {
-                return new ValueConverter<double, float>();
+                return new ValueConverter<ValueType, float>();
             }
             else if (IsSignedIntegralType(valType))
             {
                 if (valSize == 4)
-                    return new ValueConverter<double, int>();
+                    return new ValueConverter<ValueType, int>();
                 else if (valSize == 8)
-                    return new ValueConverter<double, long>();
+                    return new ValueConverter<ValueType, long>();
                 else if (valSize == 2)
-                    return new ValueConverter<double, short>();
+                    return new ValueConverter<ValueType, short>();
                 else if (valSize == 1)
-                    return new ValueConverter<double, sbyte>();
+                    return new ValueConverter<ValueType, sbyte>();
             }
             else if (IsUnsignedIntegralType(valType))
             {
                 if (valSize == 4)
-                    return new ValueConverter<double, uint>();
+                    return new ValueConverter<ValueType, uint>();
                 else if (valSize == 8)
-                    return new ValueConverter<double, ulong>();
+                    return new ValueConverter<ValueType, ulong>();
                 else if (valSize == 2)
-                    return new ValueConverter<double, ushort>();
+                    return new ValueConverter<ValueType, ushort>();
                 else if (valSize == 1)
-                    return new ValueConverter<double, byte>();
+                    return new ValueConverter<ValueType, byte>();
             }
             else if (valType == "decimal") // C# only
             {
-                return new ValueConverter<double, decimal>();
+                return new ValueConverter<ValueType, decimal>();
             }
 
             return null;
@@ -288,7 +297,7 @@ namespace GraphicalDebugging
 
         // valName - pointer name
         // valType - pointer type, must end with *
-        public ValueConverter<ulong> GetPointerConverter(string valName, string valType)
+        public ValueConverter<ulong> GetPointerConverter(string valName, string valType = null)
         {
             if (valType == null)
                 valType = GetValueType(valName);

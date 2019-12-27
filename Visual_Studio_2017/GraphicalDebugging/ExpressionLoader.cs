@@ -72,7 +72,7 @@ namespace GraphicalDebugging
             loadersCpp.Add(new BGBufferedRing());
             loadersCpp.Add(new BGBufferedRingCollection());
 
-            loadersCpp.Add(new BGIRtree());
+            //loadersCpp.Add(new BGIRtree());
 
             loadersCpp.Add(new BPPoint());
             loadersCpp.Add(new BPSegment());
@@ -471,7 +471,8 @@ namespace GraphicalDebugging
             /// This object then can be used to convert blocks of memory
             /// while e.g. loading variables of a given type from a container.
             /// </summary>
-            virtual public MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader,
+            virtual public MemoryReader.Converter<double> GetMemoryConverter(Loaders loaders,
+                                                                             MemoryReader mreader,
                                                                              string name,
                                                                              string type)
             {
@@ -612,8 +613,8 @@ namespace GraphicalDebugging
                 long byteOffset = mreader.GetAddressDifference(name, elemName);
                 if (MemoryReader.IsInvalidAddressDifference(byteOffset))
                     return null;
-                return new MemoryReader.StructConverter(byteSize,
-                            new MemoryReader.Member(arrayConverter, (int)byteOffset));
+                return new MemoryReader.StructConverter<double>(byteSize,
+                            new MemoryReader.Member<double>(arrayConverter, (int)byteOffset));
             }
         }
 
@@ -657,7 +658,7 @@ namespace GraphicalDebugging
                 return LoadPointMemory(mreader, name, type, name + ".m_values", count);
             }
 
-            public override MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader, string name, string type)
+            public override MemoryReader.Converter<double> GetMemoryConverter(Loaders loaders, MemoryReader mreader, string name, string type)
             {
                 List<string> tparams = Util.Tparams(type);
                 if (tparams.Count < 2)
@@ -727,7 +728,7 @@ namespace GraphicalDebugging
                 return LoadPointMemory(mreader, name, type, name + ".m_values", 2);
             }
 
-            public override MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader, string name, string type)
+            public override MemoryReader.Converter<double> GetMemoryConverter(Loaders loaders, MemoryReader mreader, string name, string type)
             {
                 List<string> tparams = Util.Tparams(type);
                 if (tparams.Count < 1)
@@ -774,6 +775,42 @@ namespace GraphicalDebugging
                 result = Util.IsOk(fp, sp)
                        ? new ExpressionDrawer.Box(fp, sp)
                        : null;
+            }
+
+            public override MemoryReader.Converter<double> GetMemoryConverter(Loaders loaders, MemoryReader mreader, string name, string type)
+            {
+                List<string> tparams = Util.Tparams(type);
+                if (tparams.Count < 1)
+                    return null;
+
+                string m_min_corner = name + ".m_min_corner";
+                string m_max_corner = name + ".m_max_corner";
+
+                string pointType = tparams[0];
+                PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
+                                                             m_min_corner,
+                                                             pointType) as PointLoader;
+                if (pointLoader == null)
+                    return null;
+
+                MemoryReader.Converter<double> pointConverter = pointLoader.GetMemoryConverter(loaders, mreader, m_min_corner, pointType);
+
+                int size = mreader.GetValueSizeof(name);
+                long minDiff = mreader.GetAddressDifference(name, m_min_corner);
+                long maxDiff = mreader.GetAddressDifference(name, m_max_corner);
+
+                if (size <= 0
+                    || MemoryReader.IsInvalidAddressDifference(minDiff)
+                    || MemoryReader.IsInvalidAddressDifference(maxDiff)
+                    || minDiff < 0
+                    || maxDiff < 0
+                    || minDiff >= size
+                    || maxDiff >= size)
+                    return null;
+
+                return new MemoryReader.StructConverter<double>(size,
+                            new MemoryReader.Member<double>(pointConverter, (int)minDiff),
+                            new MemoryReader.Member<double>(pointConverter, (int)maxDiff));
             }
         }
 
@@ -905,7 +942,8 @@ namespace GraphicalDebugging
                 return result;
             }
 
-            protected ResultType LoadMemory(MemoryReader mreader,
+            protected ResultType LoadMemory(Loaders loaders,
+                                            MemoryReader mreader,
                                             string name, string type,
                                             string pointType,
                                             PointLoader pointLoader,
@@ -916,7 +954,7 @@ namespace GraphicalDebugging
                 string pointName = containerLoader.ElementName(name, pointType);
                 if (pointName != null)
                 {
-                    MemoryReader.Converter<double> pointConverter = pointLoader.GetMemoryConverter(mreader, pointName, pointType);
+                    MemoryReader.Converter<double> pointConverter = pointLoader.GetMemoryConverter(loaders, mreader, pointName, pointType);
                     if (pointConverter != null)
                     {
                         int dimension = pointConverter.ValueCount();
@@ -998,7 +1036,7 @@ namespace GraphicalDebugging
 
                 if (mreader != null)
                 {
-                    result = LoadMemory(mreader, name, type,
+                    result = LoadMemory(loaders, mreader, name, type,
                                         pointType, pointLoader, containerLoader);
                 }
 
@@ -1297,15 +1335,17 @@ namespace GraphicalDebugging
                 if (size <= 0)
                     return;
 
-                string indexableMember, indexableType;
+                string valueType, indexableMember, indexableType;
                 DrawableLoader indexableLoader = IndexableLoader(loaders, name, type,
+                                                                 out valueType,
                                                                  out indexableMember,
                                                                  out indexableType);
                 if (indexableLoader == null)
                     return;
 
                 string nodePtrName = RootNodePtr(name);
-                Expression rootExpr = debugger.GetExpression("*" + nodePtrName);
+                string nodeVariantName = "*" + nodePtrName;
+                Expression rootExpr = debugger.GetExpression(nodeVariantName);
                 if (!rootExpr.IsValidValue)
                     return;
                 string nodeVariantType = rootExpr.Type;
@@ -1314,15 +1354,113 @@ namespace GraphicalDebugging
                 if (!Util.Tparams(nodeVariantType, out leafType, out internalNodeType))
                     return;
 
+                string leafElemsName, leafElemsType;
                 ContainerLoader leafElementsLoader = ElementsLoader(loaders, debugger,
-                                                                    nodePtrName, leafType);
+                                                                    nodePtrName, leafType,
+                                                                    out leafElemsName, out leafElemsType);
                 if (leafElementsLoader == null)
                     return;
 
+                string internalNodeElemsName, internalNodeElemsType;
                 ContainerLoader internalNodeElementsLoader = ElementsLoader(loaders, debugger,
-                                                                            nodePtrName, internalNodeType);
+                                                                            nodePtrName, internalNodeType,
+                                                                            out internalNodeElemsName, out internalNodeElemsType);
                 if (internalNodeElementsLoader == null)
                     return;
+
+                //if (mreader != null)
+                //{
+                //    long leafElemsDiff = mreader.GetAddressDifference(nodeVariantName,
+                //                                                      NodeElements(nodePtrName, leafType));
+                //    long internalNodeElemsDiff = mreader.GetAddressDifference(nodeVariantName,
+                //                                                              NodeElements(nodePtrName, internalNodeType));
+
+                //    if (MemoryReader.IsInvalidAddressDifference(leafElemsDiff)
+                //        || MemoryReader.IsInvalidAddressDifference(internalNodeElemsDiff))
+                //        return;
+
+                //    string leafElemName = internalNodeElementsLoader.ElementName(leafElemsName,
+                //                                                                 leafElementsLoader.ElementType(leafElemsType));
+                //    string internalElemName = internalNodeElementsLoader.ElementName(internalNodeElemsName,
+                //                                                                     internalNodeElementsLoader.ElementType(internalNodeElemsType));
+
+                //    long indexableDiff = mreader.GetAddressDifference(leafElemName,
+                //                                                      leafElemName + indexableMember);
+                //    long nodePtrDiff = mreader.GetAddressDifference(internalElemName,
+                //                                                    internalElemName + ".second");
+
+                //    string whichName = "(" + nodeVariantName + ").which_";
+                //    long whichDiff = mreader.GetAddressDifference(nodeVariantName,
+                //                                                  whichName);
+
+                //    if (MemoryReader.IsInvalidAddressDifference(indexableDiff)
+                //        || MemoryReader.IsInvalidAddressDifference(nodePtrDiff)
+                //        || MemoryReader.IsInvalidAddressDifference(whichDiff))
+                //        return;
+
+                //    MemoryReader.Converter<int> whichConverter = mreader.GetNumericConverter<int>(whichName);
+                    
+                //    if (whichConverter == null)
+                //        return; // TODO
+
+                //    int nodeVariantSizeof = mreader.GetValueSizeof(nodeVariantName);
+
+                //    if (nodeVariantSizeof <= 0)
+                //        return; // TODO
+
+                //    MemoryReader.StructConverter<int> nodeVariantConverter = new MemoryReader.StructConverter<int>(
+                //        nodeVariantSizeof,
+                //        new MemoryReader.Member<int>(whichConverter, (int)whichDiff));
+
+                //    ulong rootAddr = mreader.GetValueAddress(nodeVariantName);
+
+                //    MemoryReader.ValueConverter<ulong> nodePtrConverter = mreader.GetPointerConverter(nodePtrName);
+
+                //    if (nodePtrConverter == null)
+                //        return; // TODO
+
+                //    int nodePtrPairSizeof = mreader.GetValueSizeof(internalElemName);
+                //    MemoryReader.Converter<ulong> nodePtrPairConverter = new MemoryReader.StructConverter<ulong>(
+                //                                nodePtrPairSizeof,
+                //                                new MemoryReader.Member<ulong>(nodePtrConverter, (int)nodePtrDiff));
+
+                //    MemoryReader.Converter<double> indexableConverter = indexableLoader.GetMemoryConverter(loaders,
+                //                                                                                           mreader,
+                //                                                                                           leafElemName + indexableMember,
+                //                                                                                           indexableType);
+                //    if (indexableConverter == null)
+                //        return; // TODO
+
+                //    MemoryReader.Converter<double> valueConverter = indexableConverter;
+
+                //    if (indexableMember != "" /*&& indexableDiff > 0*/)
+                //    {
+                //        int valueSizeof = mreader.GetValueSizeof(leafElemName);
+
+                //        valueConverter = new MemoryReader.StructConverter<double>(
+                //                                valueSizeof,
+                //                                new MemoryReader.Member<double>(indexableConverter, (int)indexableDiff));
+                //    }
+
+                //    ExpressionDrawer.DrawablesContainer resMem = new ExpressionDrawer.DrawablesContainer();
+                //    if (LoadMemoryRecursive(mreader, rootAddr,
+                //                            nodeVariantConverter,
+                //                            indexableLoader,
+                //                            leafElementsLoader,
+                //                            leafElemsName,
+                //                            leafElemsType,
+                //                            valueConverter,
+                //                            internalNodeElementsLoader,
+                //                            internalNodeElemsName,
+                //                            internalNodeElemsType,
+                //                            nodePtrPairConverter,
+                //                            resMem))
+                //    {
+                //        // TODO traits
+                //        //result = resMem;
+                //        int a = 10;
+                //    }
+                //}
 
                 Geometry.Traits tr = null;
                 ExpressionDrawer.DrawablesContainer res = new ExpressionDrawer.DrawablesContainer();
@@ -1336,6 +1474,87 @@ namespace GraphicalDebugging
                     result = res;
                 }
             }
+
+            //private bool LoadMemoryRecursive(MemoryReader mreader,
+            //                                 ulong nodeAddr,
+            //                                 MemoryReader.StructConverter<int> nodeVariantConverter,
+            //                                 DrawableLoader indexableLoader,
+            //                                 ContainerLoader leafElementsLoader,
+            //                                 MemoryReader.Converter<double> valueConverter,
+            //                                 ContainerLoader internalNodeElementsLoader,
+            //                                 MemoryReader.Converter<ulong> nodePtrPairConverter,
+            //                                 ExpressionDrawer.DrawablesContainer result)
+            //{
+            //    int[] which = new int[1];
+            //    if (!mreader.Read(nodeAddr, which, nodeVariantConverter))
+            //        return false;
+
+            //    bool isLeaf = (which[0] == 0);
+            //    if (isLeaf)
+            //    {
+            //        string leafElementsName = NodeElements(nodePtrName, leafType);
+
+            //        // TODO: currently this method may still use Dubugger and parse size
+            //        if (! leafElementsLoader.ForEachMemoryBlock(mreader,
+            //                                                    leafElementsName, // THIS
+            //                                                    leafElementsType,
+            //                                                    valueConverter,
+            //                delegate (double[] values)
+            //                {
+            //                    if (indexableLoader is PointLoader)
+            //                    {
+            //                        result.Add(new ExpressionDrawer.Point(values[0], values[1]));
+            //                        return true;
+            //                    }
+            //                    else if (indexableLoader is BoxLoader)
+            //                    {
+            //                        result.Add(new ExpressionDrawer.Box(
+            //                                    new ExpressionDrawer.Point(values[0], values[1]),
+            //                                    new ExpressionDrawer.Point(values[2], values[3])));
+            //                        return true;
+            //                    }
+            //                    else if (indexableLoader is SegmentLoader)
+            //                    {
+            //                        result.Add(new ExpressionDrawer.Segment(
+            //                                    new ExpressionDrawer.Point(values[0], values[1]),
+            //                                    new ExpressionDrawer.Point(values[2], values[3])));
+            //                        return true;
+            //                    }
+            //                    else
+            //                        return false;
+            //                }))
+            //            return false;
+            //    }
+            //    else
+            //    {
+            //        string internalNodeElementsName = NodeElements(nodePtrName, internalNodeType);
+
+            //        // TODO: currently this method may still use Dubugger and parse size
+            //        if (! internalNodeElementsLoader.ForEachMemoryBlock(mreader,
+            //                internalNodeElementsName, internalNodeElementsType, nodePtrPairConverter,
+            //                delegate (ulong[] ptrs)
+            //                {
+            //                    foreach(ulong addr in ptrs)
+            //                    {
+            //                        if (!LoadMemoryRecursive(mreader, addr,
+            //                                                 nodeVariantConverter,
+            //                                                 indexableLoader,
+            //                                                 leafElementsLoader,
+            //                                                 valueConverter,
+            //                                                 internalNodeElementsLoader,
+            //                                                 nodePtrPairConverter,                                                             
+            //                                                 result))
+            //                        {
+            //                            return false;
+            //                        }
+            //                    }
+            //                    return true;
+            //                }))
+            //            return false;
+            //    }
+
+            //    return true;
+            //}
 
             private bool LoadParsedRecursive(Loaders loaders, MemoryReader mreader, Debugger debugger,
                                              string nodePtrName,
@@ -1400,12 +1619,13 @@ namespace GraphicalDebugging
             }
 
             DrawableLoader IndexableLoader(Loaders loaders, string name, string type,
-                                           out string indexableMember, out string indexableType)
+                                           out string valueType,
+                                           out string indexableMember,
+                                           out string indexableType)
             {
                 indexableMember = "";
                 indexableType = "";
 
-                string valueType;
                 if (!Util.Tparams(type, out valueType))
                     return null;
 
@@ -1450,13 +1670,18 @@ namespace GraphicalDebugging
             }
 
             ContainerLoader ElementsLoader(Loaders loaders, Debugger debugger,
-                                           string nodePtrName, string castedNodeType)
+                                           string nodePtrName, string castedNodeType,
+                                           out string elementsName, out string containerType)
             {
-                string elementsName = NodeElements(nodePtrName, castedNodeType);
+                elementsName = NodeElements(nodePtrName, castedNodeType);
+                containerType = "";
 
                 Expression expr = debugger.GetExpression(elementsName);
                 if (!expr.IsValidValue)
                     return null;
+
+                elementsName = expr.Name;
+                containerType = expr.Type;
 
                 return loaders.FindByType(ExpressionLoader.Kind.Container,
                                           expr.Name, expr.Type) as ContainerLoader;
@@ -1509,7 +1734,7 @@ namespace GraphicalDebugging
                 return LoadPointMemory(mreader, name, type, name + ".coords_", 2);
             }
 
-            public override MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader, string name, string type)
+            public override MemoryReader.Converter<double> GetMemoryConverter(Loaders loaders, MemoryReader mreader, string name, string type)
             {
                 List<string> tparams = Util.Tparams(type);
                 if (tparams.Count < 1)
@@ -1613,7 +1838,7 @@ namespace GraphicalDebugging
 
                 if (mreader != null)
                 {
-                    result = LoadMemory(mreader, containerName, type,
+                    result = LoadMemory(loaders, mreader, containerName, type,
                                         pointType, pointLoader, containerLoader);
                 }
 
@@ -1764,7 +1989,12 @@ namespace GraphicalDebugging
                 return null;
             }
 
-            public override MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader, string name, string type)
+            public override MemoryReader.Converter<double> GetMemoryConverter(Loaders loaders, MemoryReader mreader, string name, string type)
+            {
+                return GetMemoryConverter(mreader, name, type);
+            }
+
+            protected MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader, string name, string type)
             {
                 List<string> tparams = Util.Tparams(type);
                 if (tparams.Count < 2)
@@ -1785,10 +2015,10 @@ namespace GraphicalDebugging
                 int sizeOfPair = mreader.GetValueTypeSizeof(type);
                 if (sizeOfPair == 0)
                     return null;
-                return new MemoryReader.StructConverter(
+                return new MemoryReader.StructConverter<double>(
                             sizeOfPair,
-                            new MemoryReader.Member(firstConverter, (int)firstOffset),
-                            new MemoryReader.Member(secondConverter, (int)secondOffset));
+                            new MemoryReader.Member<double>(firstConverter, (int)firstOffset),
+                            new MemoryReader.Member<double>(secondConverter, (int)secondOffset));
             }
         }
 
@@ -1811,7 +2041,7 @@ namespace GraphicalDebugging
                 return LoadPointMemory(mreader, name, type, name + "._Val", 2);
             }
 
-            public override MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader, string name, string type)
+            public override MemoryReader.Converter<double> GetMemoryConverter(Loaders loaders, MemoryReader mreader, string name, string type)
             {
                 List<string> tparams = Util.Tparams(type);
                 if (tparams.Count < 1)
@@ -2016,7 +2246,7 @@ namespace GraphicalDebugging
 
                 if (mreader != null)
                 {
-                    result = LoadMemory(mreader, name, type,
+                    result = LoadMemory(loaders, mreader, name, type,
                                         pointType, pointLoader, containerLoader);
                 }
 
@@ -2275,7 +2505,12 @@ namespace GraphicalDebugging
                 return null;
             }
 
-            public override MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader, string name, string type)
+            public override MemoryReader.Converter<double> GetMemoryConverter(Loaders loaders, MemoryReader mreader, string name, string type)
+            {
+                return GetMemoryConverter(mreader, name, type);
+            }
+
+            protected MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader, string name, string type)
             {
                 if (sizeOf == 0 /*|| member_type_x == null || member_type_y == null*/)
                     return null;
@@ -2300,10 +2535,10 @@ namespace GraphicalDebugging
                 if (firstConverter == null || secondConverter == null)
                     return null;
 
-                return new MemoryReader.StructConverter(
+                return new MemoryReader.StructConverter<double>(
                             sizeOf,
-                            new MemoryReader.Member(firstConverter, (int)firstOffset),
-                            new MemoryReader.Member(secondConverter, (int)secondOffset));
+                            new MemoryReader.Member<double>(firstConverter, (int)firstOffset),
+                            new MemoryReader.Member<double>(secondConverter, (int)secondOffset));
             }
 
             string id;
