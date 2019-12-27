@@ -96,7 +96,7 @@ namespace GraphicalDebugging
                 bool isLoaded = false;
                 if (mreader != null)
                 {
-                    isLoaded = mreader.ReadBytes(name + "._memory[0]", memory);
+                    isLoaded = mreader.ReadBytes(debugger, name + "._memory[0]", memory);
                 }
 
                 if (!isLoaded)

@@ -241,20 +241,20 @@ namespace GraphicalDebugging
             }
         }
 
-        public ValueConverter<double> GetNumericConverter(string valName, string valType = null)
-        {
-            return GetNumericConverter<double>(valName, valType);
-        }
-
-        // 
-        public ValueConverter<ValueType> GetNumericConverter<ValueType>(string valName, string valType = null)
+        public ValueConverter<ValueType> GetNumericConverter<ValueType>(Debugger debugger, string valName, string valType = null)
             where ValueType : struct
         {
             if (valType == null)
                 valType = ExpressionParser.GetValueType(debugger, valName);
             int valSize = ExpressionParser.GetTypeSizeof(debugger, valType);
 
-            if (valType == null || valSize == 0)
+            return GetNumericConverter<ValueType>(valType, valSize);
+        }
+
+        public ValueConverter<ValueType> GetNumericConverter<ValueType>(string valType, int valSize)
+            where ValueType : struct
+        {
+            if (valType == null || valSize <= 0)
                 return null;
 
             if (valType == "double")
@@ -275,6 +275,8 @@ namespace GraphicalDebugging
                     return new ValueConverter<ValueType, short>();
                 else if (valSize == 1)
                     return new ValueConverter<ValueType, sbyte>();
+                else
+                    return null;
             }
             else if (IsUnsignedIntegralType(valType))
             {
@@ -286,6 +288,8 @@ namespace GraphicalDebugging
                     return new ValueConverter<ValueType, ushort>();
                 else if (valSize == 1)
                     return new ValueConverter<ValueType, byte>();
+                else
+                    return null;
             }
             else if (valType == "decimal") // C# only
             {
@@ -297,7 +301,7 @@ namespace GraphicalDebugging
 
         // valName - pointer name
         // valType - pointer type, must end with *
-        public ValueConverter<ulong> GetPointerConverter(string valName, string valType = null)
+        public ValueConverter<ulong> GetPointerConverter(Debugger debugger, string valName, string valType = null)
         {
             if (valType == null)
                 valType = ExpressionParser.GetValueType(debugger, valName);
@@ -318,25 +322,26 @@ namespace GraphicalDebugging
         }
 
         // valName - name of the first element in array
-        public ArrayConverter<double> GetNumericArrayConverter(string valName, string valType, int size)
+        public ArrayConverter<double> GetNumericArrayConverter(Debugger debugger, string valName, string valType, int size)
         {
-            ValueConverter<double> valueConverter = GetNumericConverter(valName, valType);
+            ValueConverter<double> valueConverter = GetNumericConverter<double>(debugger, valName, valType);
             return valueConverter == null
                  ? null
                  : new ArrayConverter<double>(valueConverter, size);
         }
 
         // valName - name of the first pointer in array
-        public ArrayConverter<ulong> GetPointerArrayConverter(string valName, string valType, int size)
+        public ArrayConverter<ulong> GetPointerArrayConverter(Debugger debugger, string valName, string valType, int size)
         {
-            ValueConverter<ulong> pointerConverter = GetPointerConverter(valName, valType);
+            ValueConverter<ulong> pointerConverter = GetPointerConverter(debugger, valName, valType);
             return pointerConverter == null
                  ? null
                  : new ArrayConverter<ulong>(pointerConverter, size);
         }
 
         // valName - name of the variable starting the block
-        public bool Read<ValueType>(string valName,
+        public bool Read<ValueType>(Debugger debugger,
+                                    string valName,
                                     ValueType[] values,
                                     Converter<ValueType> converter)
             where ValueType : struct
@@ -350,7 +355,7 @@ namespace GraphicalDebugging
             if (byteSize < 1)
                 return true;
             byte[] bytes = new byte[byteSize];
-            bool ok = ReadBytes(valName, bytes);
+            bool ok = ReadBytes(debugger, valName, bytes);
             if (!ok)
                 return false;
 
@@ -381,35 +386,35 @@ namespace GraphicalDebugging
         }
 
         // valName - first value in range
-        public bool ReadNumericArray(string valName, double[] values)
+        public bool ReadNumericArray(Debugger debugger, string valName, double[] values)
         {
             int count = values.Length;
             if (count < 1)
                 return true;
 
-            ArrayConverter<double> converter = GetNumericArrayConverter(valName, null, count);
+            ArrayConverter<double> converter = GetNumericArrayConverter(debugger, valName, null, count);
             if (converter == null)
                 return false;
 
-            return Read(valName, values, converter);
+            return Read(debugger, valName, values, converter);
         }
 
         // valName - first pointer in range
-        public bool ReadPointerArray(string valName, ulong[] values)
+        public bool ReadPointerArray(Debugger debugger, string valName, ulong[] values)
         {
             int count = values.Length;
             if (count < 1)
                 return true;
 
-            ArrayConverter<ulong> converter = GetPointerArrayConverter(valName, null, count);
+            ArrayConverter<ulong> converter = GetPointerArrayConverter(debugger, valName, null, count);
             if (converter == null)
                 return false;
 
-            return Read(valName, values, converter);
+            return Read(debugger, valName, values, converter);
         }
 
         // TODO: redundant
-        public bool ReadBytes(string valName, byte[] buffer)
+        public bool ReadBytes(Debugger debugger, string valName, byte[] buffer)
         {
             ulong address = ExpressionParser.GetValueAddress(debugger, valName);
             if (address == 0)
@@ -453,8 +458,6 @@ namespace GraphicalDebugging
             this.language = language == "C#" ? Language.CS : Language.Cpp;
 
             this.process = GetDebuggedProcess(debugger);
-
-            this.debugger = debugger;
         }
 
         private static DkmProcess GetDebuggedProcess(Debugger debugger)
@@ -479,7 +482,5 @@ namespace GraphicalDebugging
 
         Language language;
         DkmProcess process;
-
-        Debugger debugger; // TEMP
     }
 }

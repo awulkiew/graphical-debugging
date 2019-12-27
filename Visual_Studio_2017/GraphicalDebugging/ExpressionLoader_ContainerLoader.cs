@@ -97,7 +97,7 @@ namespace GraphicalDebugging
                 int size = LoadSize(debugger, name);
                 var blockConverter = new MemoryReader.ArrayConverter<double>(elementConverter, size);
                 double[] values = new double[blockConverter.ValueCount()];
-                if (! mreader.Read(blockName, values, blockConverter))
+                if (! mreader.Read(debugger, blockName, values, blockConverter))
                     return false;
                 return memoryBlockPredicate(values);
             }
@@ -305,7 +305,7 @@ namespace GraphicalDebugging
                 {
                     var blockConverter = new MemoryReader.ArrayConverter<double>(elementConverter, size1);
                     double[] values = new double[blockConverter.ValueCount()];
-                    if (!mreader.Read("(*(" + name + ".m_first))", values, blockConverter))
+                    if (!mreader.Read(debugger, "(*(" + name + ".m_first))", values, blockConverter))
                         return false;
                     if (!memoryBlockPredicate(values))
                         return false;
@@ -315,7 +315,7 @@ namespace GraphicalDebugging
                 {
                     var blockConverter = new MemoryReader.ArrayConverter<double>(elementConverter, size2);
                     double[] values = new double[blockConverter.ValueCount()];
-                    if (!mreader.Read("(*(" + name + ".m_buff))", values, blockConverter))
+                    if (!mreader.Read(debugger, "(*(" + name + ".m_buff))", values, blockConverter))
                         return false;
                     if (!memoryBlockPredicate(values))
                         return false;
@@ -409,7 +409,7 @@ namespace GraphicalDebugging
 
                 // Map - array of pointers                
                 ulong[] pointers = new ulong[mapSize];
-                if (! mreader.ReadPointerArray(MapStr(name) + "[0]", pointers))
+                if (! mreader.ReadPointerArray(debugger, MapStr(name) + "[0]", pointers))
                     return false;
 
                 // Block size
@@ -544,7 +544,7 @@ namespace GraphicalDebugging
                 string nextNextName = HeadStr(name) + "->_Next->_Next";
                 string nextValName = HeadStr(name) + "->_Next->_Myval";
 
-                MemoryReader.ValueConverter<ulong> nextConverter = mreader.GetPointerConverter(nextName, null);
+                MemoryReader.ValueConverter<ulong> nextConverter = mreader.GetPointerConverter(debugger, nextName, null);
                 if (nextConverter == null)
                     return false;
 
@@ -561,7 +561,7 @@ namespace GraphicalDebugging
                 for (int i = 0; i < size; ++i)
                 {
                     bool ok = next == 0
-                            ? mreader.Read(nextName, nextTmp, nextConverter)
+                            ? mreader.Read(debugger, nextName, nextTmp, nextConverter)
                             : mreader.Read(next + (ulong)nextDiff, nextTmp, nextConverter);
                     if (!ok)
                         return false;
@@ -650,7 +650,7 @@ namespace GraphicalDebugging
                 string valName = headName + "->_Myval";
 
                 MemoryReader.ValueConverter<byte, byte> boolConverter = new MemoryReader.ValueConverter<byte, byte>();
-                MemoryReader.ValueConverter<ulong> ptrConverter = mreader.GetPointerConverter(headName, null);
+                MemoryReader.ValueConverter<ulong> ptrConverter = mreader.GetPointerConverter(debugger, headName, null);
                 if (ptrConverter == null)
                     return false;
 
@@ -666,7 +666,7 @@ namespace GraphicalDebugging
                     return false;
 
                 ulong[] headAddr = new ulong[1];
-                if (!mreader.Read(headName, headAddr, ptrConverter))
+                if (!mreader.Read(debugger, headName, headAddr, ptrConverter))
                     return false;
 
                 return ForEachMemoryBlockRecursive(mreader, elementConverter, memoryBlockPredicate,
