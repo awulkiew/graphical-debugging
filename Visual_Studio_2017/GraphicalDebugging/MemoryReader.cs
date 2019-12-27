@@ -251,8 +251,8 @@ namespace GraphicalDebugging
             where ValueType : struct
         {
             if (valType == null)
-                valType = GetValueType(valName);
-            int valSize = GetValueTypeSizeof(valType);
+                valType = ExpressionParser.GetValueType(debugger, valName);
+            int valSize = ExpressionParser.GetTypeSizeof(debugger, valType);
 
             if (valType == null || valSize == 0)
                 return null;
@@ -300,8 +300,8 @@ namespace GraphicalDebugging
         public ValueConverter<ulong> GetPointerConverter(string valName, string valType = null)
         {
             if (valType == null)
-                valType = GetValueType(valName);
-            int valSize = GetValueTypeSizeof(valType);
+                valType = ExpressionParser.GetValueType(debugger, valName);
+            int valSize = ExpressionParser.GetTypeSizeof(debugger, valType);
 
             if (valType == null || valSize == 0)
                 return null;
@@ -411,7 +411,7 @@ namespace GraphicalDebugging
         // TODO: redundant
         public bool ReadBytes(string valName, byte[] buffer)
         {
-            ulong address = GetValueAddress(valName);
+            ulong address = ExpressionParser.GetValueAddress(debugger, valName);
             if (address == 0)
                 return false;
 
@@ -428,84 +428,6 @@ namespace GraphicalDebugging
 
             int bytesRead = process.ReadMemory(address, DkmReadMemoryFlags.None, buffer);
             return bytesRead == buffer.Length;
-        }
-
-        public static bool IsInvalidAddressDifference(long diff)
-        {
-            return diff == long.MinValue;
-        }
-
-        public long GetAddressDifference(string valName1, string valName2)
-        {
-            ulong addr1 = GetValueAddress(valName1);
-            ulong addr2 = GetValueAddress(valName2);
-            if (addr1 == 0 || addr2 == 0)
-                return long.MinValue;
-            return (addr2 >= addr1)
-                 ? (long)(addr2 - addr1)
-                 : -(long)(addr1 - addr2);
-        }
-
-        public ulong GetValueAddress(string valName)
-        {
-            Expression ptrExpr = debugger.GetExpression("((void*)&(" + valName + "))");
-            if (!ptrExpr.IsValidValue)
-                return 0;
-            string addr = ptrExpr.Value;
-
-            // NOTE: Hexadecimal value is automatically detected, this is probably not needed.
-            // But automatically detect the format just in case of various versions
-            // of VS displayed it differently regardless of debugger mode.
-            return Util.ParseULong(addr/*, true*/);
-        }
-
-        // Valid size or 0
-        // NOTE: In C++ the actual byte size depends on CHAR_BIT
-        public int GetValueSizeof(string valName)
-        {
-            string sizeOfStr = "sizeof(" + valName + ")";
-            if (language == Language.CS)
-            {
-                Expression valExpr = debugger.GetExpression(valName);
-                if (!valExpr.IsValidValue)
-                    return 0;
-                sizeOfStr = "sizeof(" + valExpr.Type + ")";
-            }
-
-            Expression valSizeExpr = debugger.GetExpression(sizeOfStr);
-            return valSizeExpr.IsValidValue
-                 ? Util.ParseInt(valSizeExpr.Value, debugger.HexDisplayMode)
-                 : 0;
-        }
-
-        // Valid size or 0
-        public static int GetValueTypeSizeof(Debugger debugger, string valType)
-        {
-            Expression valSizeExpr = debugger.GetExpression("sizeof(" + valType + ")");
-            return valSizeExpr.IsValidValue
-                 ? Util.ParseInt(valSizeExpr.Value, debugger.HexDisplayMode)
-                 : 0;
-        }
-
-        // Valid size or 0
-        public int GetValueTypeSizeof(string valType)
-        {
-            return GetValueTypeSizeof(debugger, valType);
-        }
-
-        // Valid name or null
-        public static string GetValueType(Debugger debugger, string valName)
-        {
-            Expression valExpr = debugger.GetExpression(valName);
-            return valExpr.IsValidValue
-                 ? valExpr.Type
-                 : null;
-        }
-
-        // Valid name or null
-        public string GetValueType(string valName)
-        {
-            return GetValueType(debugger, valName);
         }
 
         /*
@@ -527,12 +449,12 @@ namespace GraphicalDebugging
 
         public MemoryReader(Debugger debugger)
         {
-            this.debugger = debugger;
-
             string language = debugger.CurrentStackFrame.Language;
             this.language = language == "C#" ? Language.CS : Language.Cpp;
 
             this.process = GetDebuggedProcess(debugger);
+
+            this.debugger = debugger;
         }
 
         private static DkmProcess GetDebuggedProcess(Debugger debugger)
@@ -553,12 +475,11 @@ namespace GraphicalDebugging
             return null;
         }
 
-        public Debugger Debugger { get { return debugger; } }
-
         enum Language { Cpp, CS };
 
-        Debugger debugger;
         Language language;
         DkmProcess process;
+
+        Debugger debugger; // TEMP
     }
 }
