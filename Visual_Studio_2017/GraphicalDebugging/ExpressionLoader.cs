@@ -2002,8 +2002,12 @@ namespace GraphicalDebugging
                     if (converter.ValueCount() != 2)
                         throw new ArgumentOutOfRangeException("converter.ValueCount()");
 
+                    ulong address = ExpressionParser.GetValueAddress(debugger, name);
+                    if (address == 0)
+                        return null;
+
                     double[] values = new double[2];
-                    if (mreader.Read(debugger, name, values, converter))
+                    if (mreader.Read(address, values, converter))
                     {
                         return new ExpressionDrawer.Point(values[0], values[1]);
                     }
@@ -2529,8 +2533,12 @@ namespace GraphicalDebugging
                     if (converter.ValueCount() != 2)
                         throw new ArgumentOutOfRangeException("converter.ValueCount()");
 
+                    ulong address = ExpressionParser.GetValueAddress(debugger, name);
+                    if (address == 0)
+                        return null;
+
                     double[] values = new double[2];
-                    if (mreader.Read(debugger, name, values, converter))
+                    if (mreader.Read(address, values, converter))
                     {
                         return new ExpressionDrawer.Point(values[0], values[1]);
                     }

@@ -96,7 +96,11 @@ namespace GraphicalDebugging
                 bool isLoaded = false;
                 if (mreader != null)
                 {
-                    isLoaded = mreader.ReadBytes(debugger, name + "._memory[0]", memory);
+                    ulong address = ExpressionParser.GetValueAddress(debugger, name + "._memory[0]");
+                    if (address == 0)
+                        return;
+
+                    isLoaded = mreader.ReadBytes(address, memory);
                 }
 
                 if (!isLoaded)

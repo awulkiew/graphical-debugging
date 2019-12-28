@@ -96,8 +96,13 @@ namespace GraphicalDebugging
                     return false;
                 int size = LoadSize(debugger, name);
                 var blockConverter = new MemoryReader.ArrayConverter<double>(elementConverter, size);
+
+                ulong address = ExpressionParser.GetValueAddress(debugger, blockName);
+                if (address == 0)
+                    return false;
+
                 double[] values = new double[blockConverter.ValueCount()];
-                if (! mreader.Read(debugger, blockName, values, blockConverter))
+                if (! mreader.Read(address, values, blockConverter))
                     return false;
                 return memoryBlockPredicate(values);
             }
@@ -303,9 +308,12 @@ namespace GraphicalDebugging
                     return false;
 
                 {
+                    ulong firstAddress = ExpressionParser.GetValueAddress(debugger, "(*(" + name + ".m_first))");
+                    if (firstAddress == 0)
+                        return false;
                     var blockConverter = new MemoryReader.ArrayConverter<double>(elementConverter, size1);
                     double[] values = new double[blockConverter.ValueCount()];
-                    if (!mreader.Read(debugger, "(*(" + name + ".m_first))", values, blockConverter))
+                    if (!mreader.Read(firstAddress, values, blockConverter))
                         return false;
                     if (!memoryBlockPredicate(values))
                         return false;
@@ -313,9 +321,12 @@ namespace GraphicalDebugging
 
                 if (size2 > 0)
                 {
+                    ulong buffAddress = ExpressionParser.GetValueAddress(debugger, "(*(" + name + ".m_buff))");
+                    if (buffAddress == 0)
+                        return false;
                     var blockConverter = new MemoryReader.ArrayConverter<double>(elementConverter, size2);
                     double[] values = new double[blockConverter.ValueCount()];
-                    if (!mreader.Read(debugger, "(*(" + name + ".m_buff))", values, blockConverter))
+                    if (!mreader.Read(buffAddress, values, blockConverter))
                         return false;
                     if (!memoryBlockPredicate(values))
                         return false;
@@ -560,10 +571,19 @@ namespace GraphicalDebugging
 
                 for (int i = 0; i < size; ++i)
                 {
-                    bool ok = next == 0
-                            ? mreader.Read(debugger, nextName, nextTmp, nextConverter)
-                            : mreader.Read(next + (ulong)nextDiff, nextTmp, nextConverter);
-                    if (!ok)
+                    ulong address = 0;
+                    if (next == 0)
+                    {
+                        address = ExpressionParser.GetValueAddress(debugger, nextName);
+                        if (address == 0)
+                            return false;
+                    }
+                    else
+                    {
+                        address = next + (ulong)nextDiff;
+                    }
+
+                    if (!mreader.Read(address, nextTmp, nextConverter))
                         return false;
                     next = nextTmp[0];
 
@@ -665,8 +685,12 @@ namespace GraphicalDebugging
                  || leftDiff < 0 || rightDiff < 0 || isNilDiff < 0 || valDiff < 0)
                     return false;
 
+                ulong address = ExpressionParser.GetValueAddress(debugger, headName);
+                if (address == 0)
+                    return false;
+
                 ulong[] headAddr = new ulong[1];
-                if (!mreader.Read(debugger, headName, headAddr, ptrConverter))
+                if (!mreader.Read(address, headAddr, ptrConverter))
                     return false;
 
                 return ForEachMemoryBlockRecursive(mreader, elementConverter, memoryBlockPredicate,

@@ -339,29 +339,40 @@ namespace GraphicalDebugging
                  : new ArrayConverter<ulong>(pointerConverter, size);
         }
 
-        // valName - name of the variable starting the block
-        public bool Read<ValueType>(Debugger debugger,
-                                    string valName,
-                                    ValueType[] values,
-                                    Converter<ValueType> converter)
-            where ValueType : struct
+        // valName - first value in range
+        public bool ReadNumericArray(Debugger debugger, string valName, double[] values)
         {
-            // TODO: redundant
-
-            if (converter.ValueCount() != values.Length)
-                throw new ArgumentOutOfRangeException("values.Length");
-
-            int byteSize = converter.ByteSize();
-            if (byteSize < 1)
+            int count = values.Length;
+            if (count < 1)
                 return true;
-            byte[] bytes = new byte[byteSize];
-            bool ok = ReadBytes(debugger, valName, bytes);
-            if (!ok)
+
+            ArrayConverter<double> converter = GetNumericArrayConverter(debugger, valName, null, count);
+            if (converter == null)
                 return false;
 
-            converter.Copy(bytes, values);
+            ulong address = ExpressionParser.GetValueAddress(debugger, valName);
+            if (address == 0)
+                return false;
 
-            return true;
+            return Read(address, values, converter);
+        }
+
+        // valName - first pointer in range
+        public bool ReadPointerArray(Debugger debugger, string valName, ulong[] values)
+        {
+            int count = values.Length;
+            if (count < 1)
+                return true;
+
+            ArrayConverter<ulong> converter = GetPointerArrayConverter(debugger, valName, null, count);
+            if (converter == null)
+                return false;
+
+            ulong address = ExpressionParser.GetValueAddress(debugger, valName);
+            if (address == 0)
+                return false;
+
+            return Read(address, values, converter);
         }
 
         public bool Read<ValueType>(ulong address,
@@ -383,44 +394,6 @@ namespace GraphicalDebugging
             converter.Copy(bytes, values);
 
             return true;
-        }
-
-        // valName - first value in range
-        public bool ReadNumericArray(Debugger debugger, string valName, double[] values)
-        {
-            int count = values.Length;
-            if (count < 1)
-                return true;
-
-            ArrayConverter<double> converter = GetNumericArrayConverter(debugger, valName, null, count);
-            if (converter == null)
-                return false;
-
-            return Read(debugger, valName, values, converter);
-        }
-
-        // valName - first pointer in range
-        public bool ReadPointerArray(Debugger debugger, string valName, ulong[] values)
-        {
-            int count = values.Length;
-            if (count < 1)
-                return true;
-
-            ArrayConverter<ulong> converter = GetPointerArrayConverter(debugger, valName, null, count);
-            if (converter == null)
-                return false;
-
-            return Read(debugger, valName, values, converter);
-        }
-
-        // TODO: redundant
-        public bool ReadBytes(Debugger debugger, string valName, byte[] buffer)
-        {
-            ulong address = ExpressionParser.GetValueAddress(debugger, valName);
-            if (address == 0)
-                return false;
-
-            return ReadBytes(address, buffer);
         }
 
         public bool ReadBytes(ulong address, byte[] buffer)
