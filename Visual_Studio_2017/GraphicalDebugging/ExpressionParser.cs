@@ -16,14 +16,12 @@ namespace GraphicalDebugging
 {
     class ExpressionParser
     {
-        // TODO: change names - remove "Parsed"
-
-        public int LoadSizeParsed(string name)
+        public int LoadSize(string name)
         {
-            return LoadSizeParsed(debugger, name);
+            return LoadSize(debugger, name);
         }
 
-        public static int LoadSizeParsed(Debugger debugger, string name)
+        public static int LoadSize(Debugger debugger, string name)
         {
             Expression expr = debugger.GetExpression(name);
             return expr.IsValidValue
@@ -31,12 +29,12 @@ namespace GraphicalDebugging
                  : 0;
         }
 
-        public bool TryLoadIntParsed(string name, out int result)
+        public bool TryLoadInt(string name, out int result)
         {
-            return TryLoadIntParsed(debugger, name, out result);
+            return TryLoadInt(debugger, name, out result);
         }
 
-        public static bool TryLoadIntParsed(Debugger debugger, string name, out int result)
+        public static bool TryLoadInt(Debugger debugger, string name, out int result)
         {
             result = 0;
             Expression expr = debugger.GetExpression(name);
@@ -46,12 +44,12 @@ namespace GraphicalDebugging
             return true;
         }
 
-        public bool TryLoadAsDoubleParsed(string name, out double result)
+        public bool TryLoadDouble(string name, out double result)
         {
-            return TryLoadAsDoubleParsed(debugger, name, out result);
+            return TryLoadDouble(debugger, name, out result);
         }
 
-        public static bool TryLoadAsDoubleParsed(Debugger debugger, string name, out double result)
+        public static bool TryLoadDouble(Debugger debugger, string name, out double result)
         {
             result = 0.0;
             Expression expr = debugger.GetExpression("(double)" + name);

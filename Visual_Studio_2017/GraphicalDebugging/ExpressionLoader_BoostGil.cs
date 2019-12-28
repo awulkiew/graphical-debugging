@@ -39,8 +39,8 @@ namespace GraphicalDebugging
                 // memory random size could be loaded here. Then also the memory probably points
                 // to some random place in memory (maybe protected?) so the result will probably
                 // be another exception which is fine or an image containing noise from memory.
-                int width = ExpressionParser.LoadSizeParsed(debugger, name + "._view._dimensions.x");
-                int height = ExpressionParser.LoadSizeParsed(debugger, name + "._view._dimensions.y");
+                int width = ExpressionParser.LoadSize(debugger, name + "._view._dimensions.x");
+                int height = ExpressionParser.LoadSize(debugger, name + "._view._dimensions.y");
                 if (width < 1 || height < 1)
                     return;
 

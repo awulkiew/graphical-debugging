@@ -579,9 +579,9 @@ namespace GraphicalDebugging
                 bool okx = true, oky = true;
                 double x = 0, y = 0;
                 if (count > 0)
-                    okx = ExpressionParser.TryLoadAsDoubleParsed(debugger, ptrName + "[0]", out x);
+                    okx = ExpressionParser.TryLoadDouble(debugger, ptrName + "[0]", out x);
                 if (count > 1)
-                    oky = ExpressionParser.TryLoadAsDoubleParsed(debugger, ptrName + "[1]", out y);
+                    oky = ExpressionParser.TryLoadDouble(debugger, ptrName + "[1]", out y);
                 return Util.IsOk(okx, oky)
                      ? new ExpressionDrawer.Point(x, y)
                      : null;
@@ -918,7 +918,7 @@ namespace GraphicalDebugging
                 Geometry.Point center = pointLoader.LoadPoint(mreader, debugger,
                                                               m_center, pointType);
                 double radius = 0;
-                bool ok = ExpressionParser.TryLoadAsDoubleParsed(debugger, m_radius, out radius);
+                bool ok = ExpressionParser.TryLoadDouble(debugger, m_radius, out radius);
 
                 result = Util.IsOk(center, ok)
                        ? new ExpressionDrawer.NSphere(center, radius)
@@ -1706,7 +1706,7 @@ namespace GraphicalDebugging
 
             int LoadSize(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSizeParsed(debugger, name + ".m_members.values_count");
+                return ExpressionParser.LoadSize(debugger, name + ".m_members.values_count");
             }
 
             string RootNodePtr(string name)
@@ -1724,7 +1724,7 @@ namespace GraphicalDebugging
                 result = false;
 
                 int which = 0;
-                if (!ExpressionParser.TryLoadIntParsed(debugger, nodePtrName + "->which_", out which))
+                if (!ExpressionParser.TryLoadInt(debugger, nodePtrName + "->which_", out which))
                     return false;
 
                 result = (which == 0);
@@ -1778,10 +1778,10 @@ namespace GraphicalDebugging
                 result = null;
 
                 double x0 = 0, y0 = 0, x1 = 0, y1 = 0;
-                bool okx0 = ExpressionParser.TryLoadAsDoubleParsed(debugger, name + ".points_[0].coords_[0]", out x0);
-                bool oky0 = ExpressionParser.TryLoadAsDoubleParsed(debugger, name + ".points_[0].coords_[1]", out y0);
-                bool okx1 = ExpressionParser.TryLoadAsDoubleParsed(debugger, name + ".points_[1].coords_[0]", out x1);
-                bool oky1 = ExpressionParser.TryLoadAsDoubleParsed(debugger, name + ".points_[1].coords_[1]", out y1);
+                bool okx0 = ExpressionParser.TryLoadDouble(debugger, name + ".points_[0].coords_[0]", out x0);
+                bool oky0 = ExpressionParser.TryLoadDouble(debugger, name + ".points_[0].coords_[1]", out y0);
+                bool okx1 = ExpressionParser.TryLoadDouble(debugger, name + ".points_[1].coords_[0]", out x1);
+                bool oky1 = ExpressionParser.TryLoadDouble(debugger, name + ".points_[1].coords_[1]", out y1);
 
                 if (! Util.IsOk(okx0, oky0, okx1, oky1))
                     return;
@@ -1806,10 +1806,10 @@ namespace GraphicalDebugging
                 result = null;
 
                 double xl = 0, xh = 0, yl = 0, yh = 0;
-                bool okxl = ExpressionParser.TryLoadAsDoubleParsed(debugger, name + ".ranges_[0].coords_[0]", out xl);
-                bool okxh = ExpressionParser.TryLoadAsDoubleParsed(debugger, name + ".ranges_[0].coords_[1]", out xh);
-                bool okyl = ExpressionParser.TryLoadAsDoubleParsed(debugger, name + ".ranges_[1].coords_[0]", out yl);
-                bool okyh = ExpressionParser.TryLoadAsDoubleParsed(debugger, name + ".ranges_[1].coords_[1]", out yh);
+                bool okxl = ExpressionParser.TryLoadDouble(debugger, name + ".ranges_[0].coords_[0]", out xl);
+                bool okxh = ExpressionParser.TryLoadDouble(debugger, name + ".ranges_[0].coords_[1]", out xh);
+                bool okyl = ExpressionParser.TryLoadDouble(debugger, name + ".ranges_[1].coords_[0]", out yl);
+                bool okyh = ExpressionParser.TryLoadDouble(debugger, name + ".ranges_[1].coords_[1]", out yh);
 
                 if (! Util.IsOk(okxl, okxh, okyl, okyh))
                     return;
@@ -1955,7 +1955,7 @@ namespace GraphicalDebugging
                 result = null;
 
                 int which = 0;
-                if (!ExpressionParser.TryLoadIntParsed(debugger, name + ".which_", out which))
+                if (!ExpressionParser.TryLoadInt(debugger, name + ".which_", out which))
                     return;
 
                 List<string> tparams = Util.Tparams(type);
@@ -1986,8 +1986,8 @@ namespace GraphicalDebugging
             protected override ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type)
             {
                 double x = 0, y = 0;
-                bool okx = ExpressionParser.TryLoadAsDoubleParsed(debugger, name + ".first", out x);
-                bool oky = ExpressionParser.TryLoadAsDoubleParsed(debugger, name + ".second", out y);
+                bool okx = ExpressionParser.TryLoadDouble(debugger, name + ".first", out x);
+                bool oky = ExpressionParser.TryLoadDouble(debugger, name + ".second", out y);
                 return Util.IsOk(okx, oky)
                      ? new ExpressionDrawer.Point(x, y)
                      : null;
@@ -2384,7 +2384,7 @@ namespace GraphicalDebugging
                 bool ok = loader.ForEachElement(debugger, name, delegate (string elName)
                 {
                     double value = 0;
-                    bool okV = ExpressionParser.TryLoadAsDoubleParsed(debugger, elName, out value);
+                    bool okV = ExpressionParser.TryLoadDouble(debugger, elName, out value);
                     if (okV)
                         values.Add(value);
                     return okV;
@@ -2517,8 +2517,8 @@ namespace GraphicalDebugging
             protected override ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type)
             {
                 double x = 0, y = 0;
-                bool okx = ExpressionParser.TryLoadAsDoubleParsed(debugger, name + "." + member_x, out x);
-                bool oky = ExpressionParser.TryLoadAsDoubleParsed(debugger, name + "." + member_y, out y);
+                bool okx = ExpressionParser.TryLoadDouble(debugger, name + "." + member_x, out x);
+                bool oky = ExpressionParser.TryLoadDouble(debugger, name + "." + member_y, out y);
                 return Util.IsOk(okx, oky)
                      ? new ExpressionDrawer.Point(x, y)
                      : null;

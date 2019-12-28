@@ -222,7 +222,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSizeParsed(debugger, name + ".m_holder.m_size");
+                return ExpressionParser.LoadSize(debugger, name + ".m_holder.m_size");
             }
         }
 
@@ -254,7 +254,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSizeParsed(debugger, name + ".m_size");
+                return ExpressionParser.LoadSize(debugger, name + ".m_size");
             }
         }
 
@@ -264,7 +264,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSizeParsed(debugger, name + ".m_size");
+                return ExpressionParser.LoadSize(debugger, name + ".m_size");
             }
 
             public override string ElementName(string name, string elType)
@@ -338,7 +338,7 @@ namespace GraphicalDebugging
             private void LoadSizes(Debugger debugger, string name, out int size1, out int size2)
             {
                 int size = LoadSize(debugger, name);
-                int size_fe = ExpressionParser.LoadSizeParsed(debugger, "(" + name + ".m_end - " + name + ".m_first)");
+                int size_fe = ExpressionParser.LoadSize(debugger, "(" + name + ".m_end - " + name + ".m_first)");
 
                 size1 = size;
                 size2 = 0;
@@ -366,7 +366,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSizeParsed(debugger, SizeStr(name));
+                return ExpressionParser.LoadSize(debugger, SizeStr(name));
             }
 
             private string FirstStr(string name)
@@ -415,7 +415,7 @@ namespace GraphicalDebugging
 
                 // Map size
                 int mapSize = 0;
-                if (! ExpressionParser.TryLoadIntParsed(debugger, MapSizeStr(name), out mapSize))
+                if (! ExpressionParser.TryLoadInt(debugger, MapSizeStr(name), out mapSize))
                     return false;
 
                 // Map - array of pointers                
@@ -425,12 +425,12 @@ namespace GraphicalDebugging
 
                 // Block size
                 int dequeSize = 0;
-                if (! ExpressionParser.TryLoadIntParsed(debugger, "((int)" + name + "._EEN_DS)", out dequeSize))
+                if (! ExpressionParser.TryLoadInt(debugger, "((int)" + name + "._EEN_DS)", out dequeSize))
                     return false;
 
                 // Offset
                 int offset = 0;
-                if (! ExpressionParser.TryLoadIntParsed(debugger, OffsetStr(name), out offset))
+                if (! ExpressionParser.TryLoadInt(debugger, OffsetStr(name), out offset))
                     return false;
                     
                 // Initial indexes
@@ -483,7 +483,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSizeParsed(debugger, SizeStr(name));
+                return ExpressionParser.LoadSize(debugger, SizeStr(name));
             }
 
             private string MapSizeStr(string name)
@@ -600,7 +600,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSizeParsed(debugger, SizeStr(name));
+                return ExpressionParser.LoadSize(debugger, SizeStr(name));
             }
 
             public override bool ForEachElement(Debugger debugger, string name, ElementPredicate elementPredicate)
@@ -733,7 +733,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSizeParsed(debugger, SizeStr(name));
+                return ExpressionParser.LoadSize(debugger, SizeStr(name));
             }
 
             public override bool ForEachElement(Debugger debugger, string name, ElementPredicate elementPredicate)
@@ -800,7 +800,7 @@ namespace GraphicalDebugging
             
             public override int LoadSize(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSizeParsed(debugger, name + ".Length");
+                return ExpressionParser.LoadSize(debugger, name + ".Length");
             }
 
             public override string ElementName(string name, string elType)
@@ -825,7 +825,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSizeParsed(debugger, name + ".Count");
+                return ExpressionParser.LoadSize(debugger, name + ".Count");
             }
 
             public override string RandomAccessElementName(string rawName, int i)
