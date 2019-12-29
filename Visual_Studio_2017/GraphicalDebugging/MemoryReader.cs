@@ -241,17 +241,7 @@ namespace GraphicalDebugging
             }
         }
 
-        public ValueConverter<ValueType> GetNumericConverter<ValueType>(Debugger debugger, string valName, string valType = null)
-            where ValueType : struct
-        {
-            if (valType == null)
-                valType = ExpressionParser.GetValueType(debugger, valName);
-            int valSize = ExpressionParser.GetTypeSizeof(debugger, valType);
-
-            return GetNumericConverter<ValueType>(valType, valSize);
-        }
-
-        public ValueConverter<ValueType> GetNumericConverter<ValueType>(string valType, int valSize)
+        public ValueConverter<ValueType> GetValueConverter<ValueType>(string valType, int valSize)
             where ValueType : struct
         {
             if (valType == null || valSize <= 0)
@@ -299,77 +289,70 @@ namespace GraphicalDebugging
             return null;
         }
 
-        // valName - pointer name
-        // valType - pointer type, must end with *
-        public ValueConverter<ulong> GetPointerConverter(Debugger debugger, string valName, string valType = null)
+        public ValueConverter<double> GetNumericConverter(string valType, int valSize)
         {
-            if (valType == null)
-                valType = ExpressionParser.GetValueType(debugger, valName);
-            int valSize = ExpressionParser.GetTypeSizeof(debugger, valType);
-
-            if (valType == null || valSize == 0)
-                return null;
-
-            if (! valType.EndsWith("*"))
-                return null;
-
-            if (valSize == 4)
-                return new ValueConverter<ulong, uint>();
-            else if (valSize == 8)
-                return new ValueConverter<ulong, ulong>();
-
-            return null;
+            return GetValueConverter<double>(valType, valSize);
         }
 
-        // valName - name of the first element in array
-        public ArrayConverter<double> GetNumericArrayConverter(Debugger debugger, string valName, string valType, int size)
+        public ArrayConverter<double> GetNumericArrayConverter(string valType, int valSize, int size)
         {
-            ValueConverter<double> valueConverter = GetNumericConverter<double>(debugger, valName, valType);
+            ValueConverter<double> valueConverter = GetNumericConverter(valType, valSize);
             return valueConverter == null
                  ? null
                  : new ArrayConverter<double>(valueConverter, size);
         }
 
-        // valName - name of the first pointer in array
-        public ArrayConverter<ulong> GetPointerArrayConverter(Debugger debugger, string valName, string valType, int size)
+        // ptrType - pointer type, must end with *
+        // ptrSize - pointer size (4 or 8)
+        public ValueConverter<ulong> GetPointerConverter(string ptrType, int ptrSize)
         {
-            ValueConverter<ulong> pointerConverter = GetPointerConverter(debugger, valName, valType);
+            if (ptrType == null || ptrSize <= 0)
+                return null;
+
+            if (! ptrType.EndsWith("*"))
+                return null;
+
+            if (ptrSize == 4)
+                return new ValueConverter<ulong, uint>();
+            else if (ptrSize == 8)
+                return new ValueConverter<ulong, ulong>();
+
+            return null;
+        }
+
+        // ptrType - pointer type, must end with *
+        // ptrSize - pointer size (4 or 8)
+        public ArrayConverter<ulong> GetPointerArrayConverter(string ptrType, int ptrSize, int size)
+        {
+            ValueConverter<ulong> pointerConverter = GetPointerConverter(ptrType, ptrSize);
             return pointerConverter == null
                  ? null
                  : new ArrayConverter<ulong>(pointerConverter, size);
         }
 
-        // valName - first value in range
-        public bool ReadNumericArray(Debugger debugger, string valName, double[] values)
+        public bool ReadNumericArray(ulong address, string valType, int valSize, double[] values)
         {
             int count = values.Length;
             if (count < 1)
                 return true;
 
-            ArrayConverter<double> converter = GetNumericArrayConverter(debugger, valName, null, count);
+            ArrayConverter<double> converter = GetNumericArrayConverter(valType, valSize, count);
             if (converter == null)
-                return false;
-
-            ulong address = ExpressionParser.GetValueAddress(debugger, valName);
-            if (address == 0)
                 return false;
 
             return Read(address, values, converter);
         }
 
-        // valName - first pointer in range
-        public bool ReadPointerArray(Debugger debugger, string valName, ulong[] values)
+        // ptrType - pointer type, must end with *
+        // ptrSize - pointer size (4 or 8)
+        public bool ReadPointerArray(ulong address, string ptrType, int ptrSize, ulong[] values)
         {
             int count = values.Length;
             if (count < 1)
                 return true;
 
-            ArrayConverter<ulong> converter = GetPointerArrayConverter(debugger, valName, null, count);
+            ArrayConverter<ulong> converter = GetPointerArrayConverter(ptrType, ptrSize, count);
             if (converter == null)
-                return false;
-
-            ulong address = ExpressionParser.GetValueAddress(debugger, valName);
-            if (address == 0)
                 return false;
 
             return Read(address, values, converter);

@@ -590,8 +590,12 @@ namespace GraphicalDebugging
             protected ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, Debugger debugger,
                                                              string name, string type, string ptrName, int count)
             {
+                VariableInfo info = new VariableInfo(debugger, ptrName + "[0]");
+                if (! info.IsValid)
+                    return null;
+
                 double[] values = new double[count];
-                if (mreader.ReadNumericArray(debugger, ptrName + "[0]", values))
+                if (mreader.ReadNumericArray(info.Address, info.Type, info.Size, values))
                 {
                     if (count > 1)
                         return new ExpressionDrawer.Point(values[0], values[1]);
@@ -609,8 +613,9 @@ namespace GraphicalDebugging
                                                                         string name, string memberArray, string elemType, int count)
             {
                 string elemName = memberArray + "[0]";
+                int elemSize = ExpressionParser.GetTypeSizeof(debugger, elemType);
                 MemoryReader.Converter<double> arrayConverter
-                    = mreader.GetNumericArrayConverter(debugger, elemName, elemType, count);
+                    = mreader.GetNumericArrayConverter(elemType, elemSize, count);
                 int byteSize = (new ExpressionParser(debugger)).GetValueSizeof(name);
                 if (byteSize == 0)
                     return null;
@@ -2038,8 +2043,12 @@ namespace GraphicalDebugging
                 if (ExpressionParser.IsInvalidAddressDifference(firstOffset)
                  || ExpressionParser.IsInvalidAddressDifference(secondOffset))
                     return null;
-                MemoryReader.Converter<double> firstConverter = mreader.GetNumericArrayConverter(debugger, first, firstType, 1);
-                MemoryReader.Converter<double> secondConverter = mreader.GetNumericArrayConverter(debugger, second, secondType, 1);
+                int firstSize = ExpressionParser.GetTypeSizeof(debugger, firstType);
+                int secondSize = ExpressionParser.GetTypeSizeof(debugger, secondType);
+                if (firstSize == 0 || secondSize == 0)
+                    return null;
+                MemoryReader.ValueConverter<double> firstConverter = mreader.GetNumericConverter(firstType, firstSize);
+                MemoryReader.ValueConverter<double> secondConverter = mreader.GetNumericConverter(secondType, secondSize);
                 if (firstConverter == null || secondConverter == null)
                     return null;
                 int sizeOfPair = ExpressionParser.GetTypeSizeof(debugger, type);
@@ -2354,10 +2363,13 @@ namespace GraphicalDebugging
             {
                 result = null;
 
-                string elemName = loader.ElementName(name, loader.ElementType(type));
+                string elemType = loader.ElementType(type);
+                string elemName = loader.ElementName(name, elemType);
+
+                int valSize = ExpressionParser.GetTypeSizeof(debugger, elemType);
 
                 MemoryReader.ValueConverter<double>
-                    valueConverter = mreader.GetNumericConverter<double>(debugger, elemName, null);
+                    valueConverter = mreader.GetNumericConverter(elemType, valSize);
                 if (valueConverter == null)
                     return;
 
@@ -2575,8 +2587,13 @@ namespace GraphicalDebugging
                  || secondOffset > sizeOf)
                     return null;
 
-                MemoryReader.Converter<double> firstConverter = mreader.GetNumericArrayConverter(debugger, first, firstType, 1);
-                MemoryReader.Converter<double> secondConverter = mreader.GetNumericArrayConverter(debugger, second, secondType, 1);
+                int firstSize = ExpressionParser.GetTypeSizeof(debugger, firstType);
+                int secondSize = ExpressionParser.GetTypeSizeof(debugger, secondType);
+                if (firstSize == 0 || secondSize == 0)
+                    return null;
+
+                MemoryReader.ValueConverter<double> firstConverter = mreader.GetNumericConverter(firstType, firstSize);
+                MemoryReader.ValueConverter<double> secondConverter = mreader.GetNumericConverter(secondType, secondSize);
                 if (firstConverter == null || secondConverter == null)
                     return null;
 

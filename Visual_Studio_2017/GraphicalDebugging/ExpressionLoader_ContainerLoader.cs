@@ -1,5 +1,5 @@
 ﻿//------------------------------------------------------------------------------
-// <copyright file="ExpressionLoader.cs">
+// <copyright file="ExpressionLoader_ContainerLoader.cs">
 //     Copyright (c) Adam Wulkiewicz.
 // </copyright>
 //------------------------------------------------------------------------------
@@ -418,9 +418,13 @@ namespace GraphicalDebugging
                 if (! ExpressionParser.TryLoadInt(debugger, MapSizeStr(name), out mapSize))
                     return false;
 
+                VariableInfo mapInfo = new VariableInfo(debugger, MapStr(name) + "[0]");
+                if (! mapInfo.IsValid)
+                    return false;
+
                 // Map - array of pointers                
                 ulong[] pointers = new ulong[mapSize];
-                if (! mreader.ReadPointerArray(debugger, MapStr(name) + "[0]", pointers))
+                if (! mreader.ReadPointerArray(mapInfo.Address, mapInfo.Type, mapInfo.Size, pointers))
                     return false;
 
                 // Block size
@@ -555,7 +559,11 @@ namespace GraphicalDebugging
                 string nextNextName = HeadStr(name) + "->_Next->_Next";
                 string nextValName = HeadStr(name) + "->_Next->_Myval";
 
-                MemoryReader.ValueConverter<ulong> nextConverter = mreader.GetPointerConverter(debugger, nextName, null);
+                TypeInfo nextInfo = new TypeInfo(debugger, nextName);
+                if (! nextInfo.IsValid)
+                    return false;
+
+                MemoryReader.ValueConverter<ulong> nextConverter = mreader.GetPointerConverter(nextInfo.Type, nextInfo.Size);
                 if (nextConverter == null)
                     return false;
 
@@ -669,8 +677,12 @@ namespace GraphicalDebugging
                 string isNilName = headName + "->_Isnil";
                 string valName = headName + "->_Myval";
 
+                TypeInfo headInfo = new TypeInfo(debugger, headName);
+                if (! headInfo.IsValid)
+                    return false;
+
                 MemoryReader.ValueConverter<byte, byte> boolConverter = new MemoryReader.ValueConverter<byte, byte>();
-                MemoryReader.ValueConverter<ulong> ptrConverter = mreader.GetPointerConverter(debugger, headName, null);
+                MemoryReader.ValueConverter<ulong> ptrConverter = mreader.GetPointerConverter(headInfo.Type, headInfo.Size);
                 if (ptrConverter == null)
                     return false;
 

@@ -1,5 +1,5 @@
 ﻿//------------------------------------------------------------------------------
-// <copyright file="ExpressionLoader.cs">
+// <copyright file="ExpressionLoader_BoostGil.cs">
 //     Copyright (c) Adam Wulkiewicz.
 // </copyright>
 //------------------------------------------------------------------------------
