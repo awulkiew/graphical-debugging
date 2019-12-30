@@ -1,3 +1,15 @@
+version 0.27
+
+additions:
+- support for std::set
+- support for boost::circular_buffer
+- support for boost::gil::image
+- support for boost::geometry::index::rtree (no direct memory access for now, so it may take long time to load)
+- variable loading time check and possibility to stop if it takes too long
+
+bugfixes:
+- updated debugger visualizers for boost::variant
+
 version 0.26
 
 additions:

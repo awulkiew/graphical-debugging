@@ -7,10 +7,10 @@ This extension allows to display graphical representation of C++ and C# variable
 
 It supports Boost.Geometry and Boost.Polygon models, Boost.Variant, STL/Boost containers of values and points as well as C-style arrays, C# arrays and List. The extension has the following components:
 
-* **Debugger visualizers** for Boost.Array, Boost.Container, Boost.Geometry, Boost.MPL, Boost.Polygon, Boost.Tuple and Boost.Variant
-* **Geometry Watch** tool window displaying geometries in a common coordinate system, e.g. Boost.Geometry or Boost.Polygon polygons
-* **Graphical Watch** tool window displaying graphical representation of variables, e.g. Boost.Geometry models or vectors of values
-* **Plot Watch** tool window displaying plot representation of variables, e.g. vector of doubles
+* **Debugger visualizers** for Boost.Array, Boost.CircularBuffer, Boost.Container, Boost.Geometry, Boost.MPL, Boost.Polygon, Boost.Tuple and Boost.Variant
+* **Geometry Watch** tool window displaying geometries in a common coordinate system, e.g. Boost.Geometry, Boost.Polygon polygons, etc.
+* **Graphical Watch** tool window displaying graphical representation of variables, e.g. Boost.Geometry models, Boost.Gil images, vectors of values, etc.
+* **Plot Watch** tool window displaying plot representation of variables, e.g. vector of doubles, array of pairs, etc.
 
 Feel free to report bugs, propose features and create pull requests. Any help is appreciated.
 
@@ -45,6 +45,7 @@ To install after building double-click the *.vsix file from bin/Debug or bin/Rel
 Supported:
 
 * Boost.Array: array
+* Boost.CircularBuffer: circular_buffer
 * Boost.Container: vector, static_vector
 * Boost.Geometry:
   * de9im: mask, matrix, static_mask
@@ -68,8 +69,9 @@ Supported:
   * C-style array
   * Pointer to elements with size specifier e.g.: `ptr,5`
   * Sequence of containers of point coordinates e.g.: `vec_x;vec_y`
-  * STL: array, vector, deque, list
+  * STL: array, vector, deque, list, set
   * Boost.Array: array
+  * Boost.CircularBuffer: circular_buffer
   * Boost.Container: vector, static_vector
   * C#: array, List
 * 2D cartesian geometries
@@ -79,6 +81,8 @@ Supported:
   * user-defined point type
 * Non-cartesian geometries (spherical_equatorial and geographic)
   * Boost.Geometry: point, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
+* Containers of geometries
+  * Boost.Geometry: rtree (no direct memory access for now, so it may take long time to load)
 * Complex numbers
   * STL: complex
 * Variants of geometries
@@ -110,8 +114,9 @@ Supported:
   * C-style array
   * Pointer to elements with size specifier e.g.: `ptr,5`
   * Sequence of containers of point coordinates e.g.: `vec_x;vec_y`
-  * STL: array, vector, deque, list
+  * STL: array, vector, deque, list, set
   * Boost.Array: array
+  * Boost.CircularBuffer: circular_buffer
   * Boost.Container: vector, static_vector
   * C#: array, List
 * 2D cartesian geometries
@@ -121,8 +126,12 @@ Supported:
   * user-defined point type
 * Non-cartesian geometries (spherical_equatorial and geographic)
   * Boost.Geometry: point, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
+* Containers of geometries
+  * Boost.Geometry: rtree (no direct memory access for now, so it may take long time to load)
 * Complex numbers
   * STL: complex
+* Images
+  * Boost.Gil: image (incl. typedefs, e.g. rgb8_image_t, abgr16_image_t, cmyk32_image_t, rgb64f_planar_image_t, etc.)
 * Variants of geometries
   * Boost.Variant: variant
 
@@ -151,8 +160,9 @@ Supported containers of values convertible to double and containers of points:
   * C-style array
   * Pointer to elements with size specifier e.g.: `ptr,5`
   * Sequence of containers of point coordinates e.g.: `vec_x;vec_y`
-  * STL: array, vector, deque, list
+  * STL: array, vector, deque, list, set
   * Boost.Array: array
+  * Boost.CircularBuffer: circular_buffer
   * Boost.Container: vector, static_vector
   * C#: array, List
 
