@@ -28,7 +28,8 @@ namespace GraphicalDebugging
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
                                       string name, string type,
                                       out Geometry.Traits traits,
-                                      out ExpressionDrawer.Image result)
+                                      out ExpressionDrawer.Image result,
+                                      LoadCallback callback)
             {
                 traits = null;
                 result = null;
@@ -141,6 +142,11 @@ namespace GraphicalDebugging
 
                         System.Drawing.Color c = layoutMapper.GetColor(channels);
                         bmp.SetPixel(i, j, c);
+
+                        // TODO: Checked per pixel. Too often?
+                        //   But it's the same for geometries (ForEachMemoryBlock).
+                        if (! callback())
+                            return;
                     }
                 }
 
