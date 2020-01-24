@@ -174,6 +174,32 @@ namespace GraphicalDebugging
             return true;
         }
 
+        public static void ShowWindow<WatchWindow>(Package package, string name)
+            where WatchWindow : ToolWindowPane
+        {
+            for (int i = 0; i < 10; ++i)
+            {
+                ToolWindowPane window = package.FindToolWindow(typeof(WatchWindow), i, false);
+                if (window == null)
+                {
+                    window = package.FindToolWindow(typeof(WatchWindow), i, true);
+                    if ((null == window) || (null == window.Frame))
+                    {
+                        throw new NotSupportedException("Cannot create " + name + " window");
+                    }
+
+                    /*if (i > 0)
+                    {
+                        window.Caption = window.Caption + ' ' + (i + 1);
+                    }*/
+
+                    IVsWindowFrame windowFrame = (IVsWindowFrame)window.Frame;
+                    Microsoft.VisualStudio.ErrorHandler.ThrowOnFailure(windowFrame.Show());
+                    break;
+                }
+            }
+        }
+
         public static T GetDialogPage<T>()
             where T : DialogPage
         {
