@@ -1,7 +1,8 @@
 version 0.28
 
 additions:
-- multiple instances of *Watch windows can be opened (up to 10).
+- multiple instances of *Watch windows can be opened (up to 10)
+- try to load as many variables as possible even if exceptions are thrown during loading of some of them
 
 version 0.27
 
