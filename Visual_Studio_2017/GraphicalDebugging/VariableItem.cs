@@ -23,6 +23,7 @@ namespace GraphicalDebugging
         {
             Name = name;
             Type = type;
+            Error = null;
         }
 
         protected string name;
@@ -44,6 +45,23 @@ namespace GraphicalDebugging
         {
             get { return this.type; }
             set { this.type = value; }
+        }
+
+        protected string error;
+        public string Error
+        {
+            get { return this.error; }
+            set { this.error = value; }
+        }
+
+        public bool IsError
+        {
+            get { return Error != null && Error != ""; }
+        }
+
+        public string TypeOrError
+        {
+            get { return IsError ? Error : Type; }
         }
     }
 
@@ -83,9 +101,10 @@ namespace GraphicalDebugging
 
         public GraphicalItem(ExpressionDrawer.IDrawable drawable,
                              Geometry.Traits traits,
-                             string name, System.Drawing.Bitmap bmp, string type)
+                             string name, System.Drawing.Bitmap bmp, string type, string error)
             : base(drawable, traits, name, type)
         {
+            Error = error;
             Bmp = bmp;
         }
 

@@ -319,19 +319,27 @@ namespace GraphicalDebugging
                             {
                                 if (Plots[i].Drawable == null && names[i] != null && names[i] != "")
                                 {
-                                    ExpressionDrawer.IDrawable d = null;
-                                    Geometry.Traits t = null;
-                                    ExpressionLoader.Load(names[i], ExpressionLoader.OnlyMultiPoints, out t, out d);
-                                    if (d != null)
+                                    try
                                     {
-                                        if (t != null)
-                                            t = new Geometry.Traits(t.Dimension); // force cartesian
-                                        d = new ExpressionDrawer.PointsContainer(d as ExpressionDrawer.MultiPoint);
+                                        ExpressionDrawer.IDrawable d = null;
+                                        Geometry.Traits t = null;
+                                        ExpressionLoader.Load(names[i], ExpressionLoader.OnlyMultiPoints, out t, out d);
+                                        if (d != null)
+                                        {
+                                            if (t != null)
+                                                t = new Geometry.Traits(t.Dimension); // force cartesian
+                                            d = new ExpressionDrawer.PointsContainer(d as ExpressionDrawer.MultiPoint);
+                                        }
+                                        else
+                                            ExpressionLoader.Load(names[i], ExpressionLoader.OnlyValuesContainers, out t, out d);
+                                        Plots[i].Drawable = d;
+                                        Plots[i].Traits = t;
+                                        Plots[i].Error = null;
                                     }
-                                    else
-                                        ExpressionLoader.Load(names[i], ExpressionLoader.OnlyValuesContainers, out t, out d);
-                                    Plots[i].Drawable = d;
-                                    Plots[i].Traits = t;
+                                    catch (Exception e)
+                                    {
+                                        Plots[i].Error = e.Message;
+                                    }
                                 }
                                 drawables[i] = Plots[i].Drawable;
                                 traits[i] = Plots[i].Traits;

@@ -250,10 +250,14 @@ namespace GraphicalDebugging
 
                             if (!ExpressionDrawer.Draw(graphics, variable.Drawable, variable.Traits, settings, m_colors))
                                 bmp = null;
+
+                            variable.Error = null;
                         }
-                        catch (Exception)
+                        catch (Exception e)
                         {
                             bmp = null;
+
+                            variable.Error = e.Message;
                         }
 
                         type = ExpressionLoader.TypeFromExpressions(expressions);
@@ -262,7 +266,9 @@ namespace GraphicalDebugging
             }
 
             // set new row
-            ResetAt(new GraphicalItem(variable.Drawable, variable.Traits, variable.Name, bmp, type), index);
+            ResetAt(new GraphicalItem(variable.Drawable, variable.Traits,
+                                      variable.Name, bmp, type, variable.Error),
+                    index);
         }
 
         private void imageItem_Copy(object sender, RoutedEventArgs e)

@@ -113,11 +113,24 @@
                             <DataTemplate>
                                 <TextBlock Text="{Binding Type}">
                                     <TextBlock.ToolTip>
-                                        <TextBlock Text="{Binding Type}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding TypeOrError}" TextWrapping="Wrap">
+                                            <TextBlock.Style>
+                                                <Style TargetType="{x:Type TextBlock}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsError}" Value="true">
+                                                            <Setter Property="Foreground" Value="{x:Static Brushes.Red}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
                                     </TextBlock.ToolTip>
                                     <TextBlock.Style>
                                         <Style TargetType="{x:Type TextBlock}">
                                             <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsError}" Value="true">
+                                                    <Setter Property="Foreground" Value="{x:Static Brushes.Red}" />
+                                                </DataTrigger>
                                                 <Trigger Property="Text" Value="{x:Static sys:String.Empty}">
                                                     <Setter Property="ToolTip.Visibility" Value="Collapsed" />
                                                 </Trigger>

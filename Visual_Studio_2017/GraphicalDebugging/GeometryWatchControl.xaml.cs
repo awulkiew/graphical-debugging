@@ -311,13 +311,21 @@ namespace GraphicalDebugging
                             {
                                 if (Geometries[i].Drawable == null && names[i] != null && names[i] != "")
                                 {
-                                    ExpressionDrawer.IDrawable d = null;
-                                    Geometry.Traits t = null;
-                                    ExpressionLoader.Load(names[i], ExpressionLoader.OnlyGeometries, out t, out d);
-                                    if (t == null) // Traits has to be defined for Geometry
-                                        d = null;
-                                    Geometries[i].Drawable = d;
-                                    Geometries[i].Traits = t;
+                                    try
+                                    {
+                                        ExpressionDrawer.IDrawable d = null;
+                                        Geometry.Traits t = null;
+                                        ExpressionLoader.Load(names[i], ExpressionLoader.OnlyGeometries, out t, out d);
+                                        if (t == null) // Traits has to be defined for Geometry
+                                            d = null;
+                                        Geometries[i].Drawable = d;
+                                        Geometries[i].Traits = t;
+                                        Geometries[i].Error = null;
+                                    }
+                                    catch (Exception e)
+                                    {
+                                        Geometries[i].Error = e.Message;
+                                    }
                                 }
                                 drawables[i] = Geometries[i].Drawable;
                                 traits[i] = Geometries[i].Traits;
