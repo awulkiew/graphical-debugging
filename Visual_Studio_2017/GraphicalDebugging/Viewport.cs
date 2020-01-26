@@ -667,7 +667,11 @@ namespace GraphicalDebugging
                 return false;
 
             LocalCS cs = new LocalCS(box, graphics, fill);
-            //Geometry.Box viewBox = cs.ViewBox();
+
+            // NOTE: the coordinates limit of MS GDI+ is 1073741951 so below
+            //   avoid passing such coordinates. But instead of checking this
+            //   value or similar one check whether or not an axis is range
+            //   of an image.
 
             // Axes
             float h = graphics.VisibleClipBounds.Height;
@@ -676,17 +680,14 @@ namespace GraphicalDebugging
             if (unit == Geometry.Unit.None)
             {
                 // Y axis
-                //if (Geometry.IntersectsX(viewBox, 0.0))
-                {
-                    float x0 = cs.ConvertX(0.0);
+                float x0 = cs.ConvertX(0.0);
+                if (0 <= x0 && x0 <= w)
                     graphics.DrawLine(prime_pen, x0, 0, x0, h);
-                }
+
                 // X axis
-                //if (Geometry.IntersectsY(viewBox, 0.0))
-                {
-                    float y0 = cs.ConvertY(0.0);
+                float y0 = cs.ConvertY(0.0);
+                if (0 <= y0 && y0 <= h)
                     graphics.DrawLine(prime_pen, 0, y0, w, y0);
-                }
             }
             else
             {
@@ -781,15 +782,6 @@ namespace GraphicalDebugging
                 // Find closest power of 10 lesser than the width and height
                 double pd_x = AbsOuterPow10(mima_x / wStrNumX);
                 double pd_y = AbsOuterPow10(mima_y / wStrNumH);
-                // Find starting x and y values being the first lesser whole
-                // values of the same magnitude, per axis
-                double x = ScaleStart(mi_x, pd_x);
-                double y = ScaleStart(mi_y, pd_y);
-                // Make sure the scale starts outside the view
-                if (x > mi_x)
-                    x -= pd_x;
-                if (y > mi_y)
-                    y -= pd_y;
                 // Create the string output pattern, e.g. 0.00 for previously calculated step
                 string xStrFormat = StringFormat(pd_x);
                 string yStrFormat = StringFormat(pd_y);
@@ -801,10 +793,13 @@ namespace GraphicalDebugging
                 int smallScaleY = SmallScaleSegments(wd_y, 10);
                 float wd_y_step = wd_y / smallScaleY;
                 float wd_y_limit = wd_y - wd_y_step / 2;
+                // Find axes intervals
+                IntervalI xInterval = ScaleStepsInterval(mi_x, ma_x, pd_x);
+                IntervalI yInterval = ScaleStepsInterval(mi_y, ma_y, pd_y);
                 // Draw horizontal scale
-                double limit_x = ma_x + pd_x * 1.001;
-                for (; x < limit_x; x += pd_x)
+                for (int i = xInterval.Min; i <= xInterval.Max; ++i)
                 {
+                    double x = i * pd_x;
                     float wx = cs.ConvertX(x);
                     // scale
                     graphics.DrawLine(penAabb, wx, wHeight, wx, wHeight - 5);
@@ -819,9 +814,9 @@ namespace GraphicalDebugging
                         graphics.DrawLine(penAabb, wsx, wHeight, wsx, wHeight - 3);
                 }
                 // Draw vertical scale
-                double limit_y = ma_y + pd_y * 1.001;
-                for (; y < limit_y; y += pd_y)
+                for (int j = yInterval.Min; j <= yInterval.Max; ++j)
                 {
+                    double y = j * pd_y;
                     float wy = cs.ConvertY(y);
                     // scale
                     graphics.DrawLine(penAabb, wWidth, wy, wWidth - 5, wy);
@@ -913,9 +908,13 @@ namespace GraphicalDebugging
         {
             double n = Math.Floor(Math.Log10(p));
             string result = "0";
-            if (n < 0.0)
+            if (n >= 16 || n <= -16)
             {
-                int ni = (int)Math.Max(n, -16.0);
+                result = "G16";
+            }
+            else if (n < 0.0)
+            {
+                int ni = (int)n;
                 result += '.';
                 for (int i = -1; i >= ni; --i)
                     result += '0';
@@ -933,11 +932,28 @@ namespace GraphicalDebugging
             return Math.Pow(10, Math.Floor(Math.Log10(Math.Abs(x))));
         }
 
-        private static double ScaleStart(double val, double step)
+        private struct IntervalI
         {
-            double r = val / step;
-            double i = val >= 0 ? Math.Ceiling(r) : Math.Floor(r);
-            return i * step;
+            public IntervalI(int min, int max)
+            {
+                Min = min;
+                Max = max;
+            }
+            public int Min;
+            public int Max;
+        }
+
+        private static IntervalI ScaleStepsInterval(double mi, double ma, double step)
+        {
+            double r = mi / step;
+            int min = (int)(mi >= 0 ? Math.Ceiling(r) : Math.Floor(r));
+            if (min * step > mi)
+                --min;
+            r = ma / step;
+            int max = (int)(ma >= 0 ? Math.Floor(r) : Math.Ceiling(r));
+            if (max * step < ma)
+                ++max;
+            return new IntervalI(min, max);
         }
 
         private static int SmallScaleSegments(float wStep, float wMinSize)
