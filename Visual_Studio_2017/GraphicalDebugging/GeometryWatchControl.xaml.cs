@@ -313,6 +313,13 @@ namespace GraphicalDebugging
                                 {
                                     try
                                     {
+                                        // TODO: Unify the loading of empty geometries.
+                                        //   For empty linestring the coordinate system name is drawn
+                                        //   however for empty multilinestring it is not. The reason
+                                        //   is that in the latter case null drawable and traits are
+                                        //   returned becasue traits are loaded from an element
+                                        //   (linestring) but there are no elements since the
+                                        //   multi-geometry is empty.
                                         ExpressionDrawer.IDrawable d = null;
                                         Geometry.Traits t = null;
                                         ExpressionLoader.Load(names[i], ExpressionLoader.OnlyGeometries, out t, out d);

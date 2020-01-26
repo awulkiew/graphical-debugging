@@ -73,13 +73,12 @@ namespace GraphicalDebugging
 
             if (points.Count < 1)
             {
-                result = new Geometry.Interval();
-                Geometry.AssignInverse(result);
+                result = Geometry.InversedInterval();
                 return result;
             }
 
             double x0 = points[0][0];
-            result = new Geometry.Interval(x0);
+            result = new Geometry.Interval(x0, x0);
 
             int count = points.Count + (closed ? 1 : 0);
             for (int ii = 1; ii < count; ++ii)
@@ -582,7 +581,7 @@ namespace GraphicalDebugging
                 }
 
                 if (box == null)
-                    Geometry.AssignInverse(box);
+                    box = Geometry.InversedBox();
 
                 return box;
             }
@@ -623,7 +622,7 @@ namespace GraphicalDebugging
                 }
 
                 if (box == null)
-                    Geometry.AssignInverse(box);
+                    box = Geometry.InversedBox();
 
                 return box;
             }
@@ -664,7 +663,7 @@ namespace GraphicalDebugging
                 }
 
                 if (box == null)
-                    Geometry.AssignInverse(box);
+                    box = Geometry.InversedBox();
 
                 return box;
             }
@@ -706,7 +705,7 @@ namespace GraphicalDebugging
                 }
 
                 if (result == null)
-                    Geometry.AssignInverse(result);
+                    result = Geometry.InversedBox();
 
                 return result;
             }
@@ -854,8 +853,7 @@ namespace GraphicalDebugging
             {
                 // NOTE: traits == null
 
-                Geometry.Box box = new Geometry.Box();
-                Geometry.AssignInverse(box);
+                Geometry.Box box = Geometry.InversedBox();
 
                 if (values.Count > 0)
                     Geometry.Expand(box, new Point(0.0, 0.0));
@@ -955,8 +953,7 @@ namespace GraphicalDebugging
                 // NOTE: traits == null
                 // so don't return points.Aabb(traits, calculateEnvelope)
 
-                Geometry.Box box = new Geometry.Box();
-                Geometry.AssignInverse(box);
+                Geometry.Box box = Geometry.InversedBox();
 
                 for (int i = 0; i < points.Count; ++i)
                     Geometry.Expand(box, points[i]);
@@ -1075,8 +1072,7 @@ namespace GraphicalDebugging
 
             public Geometry.Box Aabb(Geometry.Traits traits, bool calculateEnvelope)
             {
-                Geometry.Box box = new Geometry.Box();
-                Geometry.AssignInverse(box);
+                Geometry.Box box = Geometry.InversedBox();
 
                 for (int i = 0; i < turns.Count; ++i)
                 {
@@ -1210,8 +1206,7 @@ namespace GraphicalDebugging
             if (drawables.Length != traits.Length || drawables.Length != settings.Length)
                 throw new ArgumentOutOfRangeException("drawables.Length, traits.Length, settings.Length");
 
-            Geometry.Box box = new Geometry.Box();
-            Geometry.AssignInverse(box);
+            Geometry.Box box = Geometry.InversedBox();
 
             int drawnCount = 0;
             int count = drawables.Length;

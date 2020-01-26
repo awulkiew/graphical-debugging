@@ -112,12 +112,6 @@ namespace GraphicalDebugging
             public Interval()
             { }
 
-            public Interval(double v)
-            {
-                Min = v;
-                Max = v;
-            }
-
             public Interval(double mi, double ma)
             {
                 Min = mi;
@@ -302,6 +296,20 @@ namespace GraphicalDebugging
             i.Max = double.MinValue;
         }
 
+        public static Box InversedBox()
+        {
+            Box result = new Box();
+            AssignInverse(result);
+            return result;
+        }
+
+        public static Interval InversedInterval()
+        {
+            Interval result = new Interval();
+            AssignInverse(result);
+            return result;
+        }
+
         public static Box Aabb(Point p1, Point p2, Unit unit)
         {
             if (unit == Unit.None)
@@ -327,24 +335,20 @@ namespace GraphicalDebugging
 
         public static Box Aabb(IRandomAccessRange<Point> points, bool closed, Unit unit)
         {
-            Box result = new Box();
-
             if (points.Count < 1)
             {
-                AssignInverse(result);
-                return result;
+                return InversedBox();
             }
 
             Point p1 = points[0];
             if (points.Count < 2)
             {
                 // NOTE: unsafe, if this Box is modified then the original points will be modified as well
-                result = new Box(p1, p1);
-                return result;
+                return new Box(p1, p1);
             }
             Point p2 = points[1];
 
-            result = Aabb(p1, p2, unit);
+            Box result = Aabb(p1, p2, unit);
             int count = points.Count + (closed ? 1 : 0);
             for (int i = 2; i < count; ++i)
             {
@@ -535,9 +539,7 @@ namespace GraphicalDebugging
         {
             if (range.Count <= 0)
             {
-                Box result = new Box();
-                AssignInverse(result);
-                return result;
+                return InversedBox();
             }
             else if (range.Count <= 1)
             {
