@@ -6,6 +6,7 @@
 
 using EnvDTE;
 using Microsoft.VisualStudio.Debugger;
+using Microsoft.VisualStudio.Debugger.CallStack;
 
 using System;
 using System.Collections.Generic;
@@ -416,8 +417,18 @@ namespace GraphicalDebugging
             this.process = GetDebuggedProcess(debugger);
         }
 
+        // https://stackoverflow.com/questions/45570027/retrieving-data-from-arbitrary-memory-addresses-using-vsix
+        // https://social.msdn.microsoft.com/Forums/en-US/030cef1c-ee79-46e9-8e40-bfc59f14cc34/how-can-i-send-a-custom-debug-event-to-my-idebugeventcallback2-handler?forum=vsdebug
+        // https://macropolygon.wordpress.com/2012/12/16/evaluating-debugged-process-memory-in-a-visual-studio-extension/
         private static DkmProcess GetDebuggedProcess(Debugger debugger)
         {
+            /*
+            DkmStackFrame frame = DkmStackFrame.ExtractFromDTEObject(debugger.CurrentStackFrame);
+            if (frame == null)
+                return null;
+            return frame.Process;
+            */
+
             DkmProcess[] procs = DkmProcess.GetProcesses();
             if (procs.Length == 1)
             {
