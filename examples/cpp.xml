@@ -22,4 +22,22 @@
     </Coordinates>
   </Point>
 
+  <Linestring Id="MyLinestring">
+    <PointContainer>
+      <Name>(std::vector&lt;MyPoint,std::allocator&lt;MyPoint&gt; &gt;&amp;)(*this)</Name>
+    </PointContainer>
+  </Linestring>
+
+  <Ring Id="MyRing">
+    <PointContainer>
+      <Name>(std::vector&lt;MyPoint,std::allocator&lt;MyPoint&gt; &gt;&amp;)(*this)</Name>
+    </PointContainer>
+  </Ring>
+
+  <MultiPoint Id="MyMultiPoint">
+    <PointContainer>
+      <Name>(std::vector&lt;MyPoint,std::allocator&lt;MyPoint&gt; &gt;&amp;)(*this)</Name>
+    </PointContainer>
+  </MultiPoint>
+
 </GraphicalDebugging>

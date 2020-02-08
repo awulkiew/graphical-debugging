@@ -138,6 +138,97 @@ namespace GraphicalDebugging
             int sizeOf;
         }
 
+        class UserRange<ResultType> : PointRange<ResultType>
+            where ResultType : class
+                             , ExpressionDrawer.IDrawable
+                             , Geometry.IContainer<Geometry.Point>
+                             , new()
+        {
+            protected UserRange(ExpressionLoader.Kind kind, string id,
+                                ClassScopeExpression classExpression)
+                : base(kind)
+            {
+                this.id = id;
+                this.classExpression = classExpression;
+            }
+
+            public override string Id() { return id; }
+
+            public override void Initialize(Debugger debugger, string name)
+            {
+                string type = ExpressionParser.GetValueType(debugger, name);
+                classExpression.Initialize(debugger, name, type);
+            }
+
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
+                                      out Geometry.Traits traits,
+                                      out ResultType result,
+                                      LoadCallback callback)
+            {
+                traits = null;
+                result = null;
+
+                string containerName = classExpression.GetString(name);
+                string containerType = ExpressionParser.GetValueType(debugger, containerName);
+                if (containerType == null)
+                    return;
+
+                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container, containerName, containerType) as ContainerLoader;
+                if (containerLoader == null)
+                    return;
+
+                string pointType = containerLoader.ElementType(containerType);
+                PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
+                                                             containerLoader.ElementName(name, pointType),
+                                                             pointType) as PointLoader;
+                if (pointLoader == null)
+                    return;
+
+                traits = pointLoader.LoadTraits(pointType);
+                if (traits == null)
+                    return;
+
+                if (mreader != null)
+                {
+                    result = LoadMemory(loaders, mreader, debugger, name, type,
+                                        pointType, pointLoader, containerLoader,
+                                        callback);
+                }
+
+                if (result == null)
+                {
+                    result = LoadParsed(mreader, debugger, name, type,
+                                        pointType, pointLoader, containerLoader,
+                                        callback);
+                }
+            }
+
+            string id;
+            ClassScopeExpression classExpression;
+        }
+
+        class UserLinestring : UserRange<ExpressionDrawer.Linestring>
+        {
+            public UserLinestring(string id, ClassScopeExpression classExpression)
+                : base(ExpressionLoader.Kind.Linestring, id, classExpression)
+            { }
+        }
+
+        class UserRing : UserRange<ExpressionDrawer.Ring>
+        {
+            public UserRing(string id, ClassScopeExpression classExpression)
+                : base(ExpressionLoader.Kind.Ring, id, classExpression)
+            { }
+        }
+
+        class UserMultiPoint : UserRange<ExpressionDrawer.MultiPoint>
+        {
+            public UserMultiPoint(string id, ClassScopeExpression classExpression)
+                : base(ExpressionLoader.Kind.MultiPoint, id, classExpression)
+            { }
+        }
+
         private static bool ReloadUserTypes(Loaders loaders,
                                             string userTypesPath,
                                             bool isChanged,
@@ -164,20 +255,47 @@ namespace GraphicalDebugging
                 doc.Load(userTypesPath);
                 foreach (System.Xml.XmlElement elRoot in doc.GetElementsByTagName("GraphicalDebugging"))
                 {
-                    foreach (System.Xml.XmlElement elPoint in elRoot.GetElementsByTagName("Point"))
+                    foreach (System.Xml.XmlElement elDrawable in elRoot.ChildNodes)
                     {
-                        var elCoords = Util.GetXmlElementByTagName(elPoint, "Coordinates");
-                        if (elCoords != null)
+                        if (elDrawable.Name == "Point")
                         {
-                            var elX = Util.GetXmlElementByTagName(elCoords, "X");
-                            var elY = Util.GetXmlElementByTagName(elCoords, "Y");
-                            if (elX != null && elY != null)
+                            var elCoords = Util.GetXmlElementByTagName(elDrawable, "Coordinates");
+                            if (elCoords != null)
                             {
-                                string x = elX.InnerText;
-                                string y = elY.InnerText;
-                                string id = elPoint.GetAttribute("Id");
-                                //string name = elPoint.GetAttribute("Type");
-                                loaders.Add(new UserPoint(id, x, y));
+                                var elX = Util.GetXmlElementByTagName(elCoords, "X");
+                                var elY = Util.GetXmlElementByTagName(elCoords, "Y");
+                                if (elX != null && elY != null)
+                                {
+                                    string x = elX.InnerText;
+                                    string y = elY.InnerText;
+                                    string id = elDrawable.GetAttribute("Id");
+                                    //string name = node.GetAttribute("Type");
+                                    loaders.Add(new UserPoint(id, x, y));
+                                }
+                            }
+                        }
+                        else if (elDrawable.Name == "Linestring"
+                              || elDrawable.Name == "Ring"
+                              || elDrawable.Name == "MultiPoint")
+                        {
+                            var elCont = Util.GetXmlElementByTagName(elDrawable, "PointContainer");
+                            if (elCont != null)
+                            {
+                                var elName = Util.GetXmlElementByTagName(elCont, "Name");
+                                if (elName != null)
+                                {
+                                    string id = elDrawable.GetAttribute("Id");
+                                    string name = elName.InnerText;
+                                    ClassScopeExpression classExpr = new ClassScopeExpression(name);
+                                    loaders.Add(
+                                        elDrawable.Name == "Linestring" ?
+                                            (Loader)new UserLinestring(id, classExpr) :
+                                        elDrawable.Name == "Ring" ?
+                                            (Loader)new UserRing(id, classExpr) :
+                                            // elDrawable.Name == "MultiPoint"
+                                            (Loader)new UserMultiPoint(id, classExpr)
+                                        );
+                                }
                             }
                         }
                     }

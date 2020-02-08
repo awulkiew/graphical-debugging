@@ -257,6 +257,8 @@ namespace GraphicalDebugging
             traits = null;
             result = null;
 
+            //name = "(" + name + ")";
+
             Expression[] exprs = GetExpressions(name);
             if (exprs.Length < 1 || ! AllValidValues(exprs))
                 return;

@@ -423,6 +423,22 @@ namespace GraphicalDebugging
         private static DkmProcess GetDebuggedProcess(Debugger debugger)
         {
             /*
+            // EnvDTE90a
+            StackFrame2 currentFrame2 = debugger.CurrentStackFrame as StackFrame2;
+            if (currentFrame2 != null)
+            {
+                uint currentFrameDepth = currentFrame2.Depth - 1;
+            }
+            */
+            /*
+            DkmStackFrame dkmFrame = DkmStackFrame.ExtractFromDTEObject(debugger.CurrentStackFrame);
+            if (dkmFrame != null)
+            {
+                var dkmThread = dkmFrame.Thread;
+                var dkmProcess = dkmFrame.Process;
+            }
+            */
+            /*
             DkmStackFrame frame = DkmStackFrame.ExtractFromDTEObject(debugger.CurrentStackFrame);
             if (frame == null)
                 return null;

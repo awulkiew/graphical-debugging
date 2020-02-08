@@ -66,6 +66,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="ClassScopeExpression.cs" />
     <Compile Include="Colors.cs" />
     <Compile Include="ExpressionDrawer.cs" />
     <Compile Include="ExpressionLoader_UserDefined.cs" />
