@@ -1,13 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <GraphicalDebugging>
 
-  <Point Id="MyPoint">
-    <Coordinates>
-      <X>x</X>
-      <Y>y</Y>
-    </Coordinates>
-  </Point>
-
   <Point Id="tagPOINT">
     <Coordinates>
       <X>x</X>
@@ -22,22 +15,63 @@
     </Coordinates>
   </Point>
 
+  <Point Id="MyPoint">
+    <Coordinates>
+      <X>x</X>
+      <Y>y</Y>
+    </Coordinates>
+  </Point>
+
   <Linestring Id="MyLinestring">
-    <PointContainer>
-      <Name>(std::vector&lt;MyPoint,std::allocator&lt;MyPoint&gt; &gt;&amp;)(*this)</Name>
-    </PointContainer>
+    <Points>
+      <Container>
+        <Name>(std::vector&lt;MyPoint,std::allocator&lt;MyPoint&gt; &gt;&amp;)(*this)</Name>
+      </Container>
+    </Points>
   </Linestring>
 
   <Ring Id="MyRing">
-    <PointContainer>
-      <Name>(std::vector&lt;MyPoint,std::allocator&lt;MyPoint&gt; &gt;&amp;)(*this)</Name>
-    </PointContainer>
+    <Points>
+      <Container>
+        <Name>(std::vector&lt;MyPoint,std::allocator&lt;MyPoint&gt; &gt;&amp;)(*this)</Name>
+      </Container>
+    </Points>
   </Ring>
 
+  <Polygon Id="MyPolygon">
+    <ExteriorRing>
+      <Name>(*_Mypair._Myval2._Myfirst)</Name>
+    </ExteriorRing>
+    <InteriorRings>
+      <Container>
+        <Name>(std::vector&lt;MyRing,std::allocator&lt;MyRing&gt; &gt;&amp;)(*this)</Name>
+        <Offset>1</Offset>
+      </Container>
+    </InteriorRings>
+  </Polygon>
+
   <MultiPoint Id="MyMultiPoint">
-    <PointContainer>
-      <Name>(std::vector&lt;MyPoint,std::allocator&lt;MyPoint&gt; &gt;&amp;)(*this)</Name>
-    </PointContainer>
+    <Points>
+      <Container>
+        <Name>(std::vector&lt;MyPoint,std::allocator&lt;MyPoint&gt; &gt;&amp;)(*this)</Name>
+      </Container>
+    </Points>
   </MultiPoint>
+
+  <MultiLinestring Id="MyMultiLinestring">
+    <Linestrings>
+      <Container>
+        <Name>(std::vector&lt;MyLinestring,std::allocator&lt;MyLinestring&gt; &gt;&amp;)(*this)</Name>
+      </Container>
+    </Linestrings>
+  </MultiLinestring>
+
+  <MultiPolygon Id="MyMultiPolygon">
+    <Polygons>
+      <Container>
+        <Name>(std::vector&lt;MyPolygon,std::allocator&lt;MyPolygon&gt; &gt;&amp;)(*this)</Name>
+      </Container>
+    </Polygons>
+  </MultiPolygon>
 
 </GraphicalDebugging>

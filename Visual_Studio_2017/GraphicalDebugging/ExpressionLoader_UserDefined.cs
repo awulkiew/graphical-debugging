@@ -145,19 +145,21 @@ namespace GraphicalDebugging
                              , new()
         {
             protected UserRange(ExpressionLoader.Kind kind, string id,
-                                ClassScopeExpression classExpression)
+                                ClassScopeExpression exprContainer)
                 : base(kind)
             {
                 this.id = id;
-                this.classExpression = classExpression;
+                this.exprContainer = exprContainer;
             }
+
+            public override bool IsUserDefined() { return true; }
 
             public override string Id() { return id; }
 
             public override void Initialize(Debugger debugger, string name)
             {
                 string type = ExpressionParser.GetValueType(debugger, name);
-                classExpression.Initialize(debugger, name, type);
+                exprContainer.Initialize(debugger, name, type);
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -169,7 +171,7 @@ namespace GraphicalDebugging
                 traits = null;
                 result = null;
 
-                string containerName = classExpression.GetString(name);
+                string containerName = exprContainer.GetString(name);
                 string containerType = ExpressionParser.GetValueType(debugger, containerName);
                 if (containerType == null)
                     return;
@@ -205,28 +207,266 @@ namespace GraphicalDebugging
             }
 
             string id;
-            ClassScopeExpression classExpression;
+            ClassScopeExpression exprContainer;
         }
 
         class UserLinestring : UserRange<ExpressionDrawer.Linestring>
         {
-            public UserLinestring(string id, ClassScopeExpression classExpression)
-                : base(ExpressionLoader.Kind.Linestring, id, classExpression)
+            public UserLinestring(string id, ClassScopeExpression exprContainer)
+                : base(ExpressionLoader.Kind.Linestring, id, exprContainer)
             { }
         }
 
         class UserRing : UserRange<ExpressionDrawer.Ring>
         {
-            public UserRing(string id, ClassScopeExpression classExpression)
-                : base(ExpressionLoader.Kind.Ring, id, classExpression)
+            public UserRing(string id, ClassScopeExpression exprContainer)
+                : base(ExpressionLoader.Kind.Ring, id, exprContainer)
             { }
         }
 
         class UserMultiPoint : UserRange<ExpressionDrawer.MultiPoint>
         {
-            public UserMultiPoint(string id, ClassScopeExpression classExpression)
-                : base(ExpressionLoader.Kind.MultiPoint, id, classExpression)
+            public UserMultiPoint(string id, ClassScopeExpression exprContainer)
+                : base(ExpressionLoader.Kind.MultiPoint, id, exprContainer)
             { }
+        }
+
+        class UserMultiLinestring : RangeLoader<ExpressionDrawer.MultiLinestring>
+        {
+            public UserMultiLinestring(string id, ClassScopeExpression exprContainer)
+                : base(ExpressionLoader.Kind.MultiLinestring)
+            {
+                this.id = id;
+                this.exprContainer = exprContainer;
+            }
+
+            public override bool IsUserDefined() { return true; }
+
+            public override string Id() { return id; }
+
+            public override void Initialize(Debugger debugger, string name)
+            {
+                string type = ExpressionParser.GetValueType(debugger, name);
+                exprContainer.Initialize(debugger, name, type);
+            }
+
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
+                                      out Geometry.Traits traits,
+                                      out ExpressionDrawer.MultiLinestring result,
+                                      LoadCallback callback)
+            {
+                traits = null;
+                result = null;
+
+                string containerName = exprContainer.GetString(name);
+                string containerType = ExpressionParser.GetValueType(debugger, containerName);
+                if (containerType == null)
+                    return;
+
+                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
+                                                                     name,
+                                                                     containerType) as ContainerLoader;
+                if (containerLoader == null)
+                    return;
+
+                string lsType = containerLoader.ElementType(containerType);
+                RangeLoader<ExpressionDrawer.Linestring>
+                    lsLoader = loaders.FindByType(ExpressionLoader.Kind.Linestring,
+                                                  containerLoader.ElementName(name, lsType),
+                                                  lsType) as RangeLoader<ExpressionDrawer.Linestring>;
+                if (lsLoader == null)
+                    return;
+
+                Geometry.Traits t = null;
+                ExpressionDrawer.MultiLinestring mls = new ExpressionDrawer.MultiLinestring();
+                bool ok = containerLoader.ForEachElement(debugger, name, delegate (string elName)
+                {
+                    ExpressionDrawer.Linestring ls = null;
+                    lsLoader.Load(loaders, mreader, debugger, elName, lsType, out t, out ls, callback);
+                    if (ls == null)
+                        return false;
+                    mls.Add(ls);
+                    //return callback();
+                    return true;
+                });
+                if (ok)
+                {
+                    traits = t;
+                    result = mls;
+                }
+            }
+
+            string id;
+            ClassScopeExpression exprContainer;
+        }
+
+        class UserPolygon : PolygonLoader
+        {
+            public UserPolygon(string id,
+                               ClassScopeExpression exprOuter,
+                               ClassScopeExpression exprInnerContainer,
+                               int innersOffset)
+            {
+                this.id = id;
+                this.exprOuter = exprOuter;
+                this.exprInnerContainer = exprInnerContainer;
+                this.innersOffset = innersOffset;
+            }
+
+            public override bool IsUserDefined() { return true; }
+
+            public override string Id() { return id; }
+
+            public override void Initialize(Debugger debugger, string name)
+            {
+                string type = ExpressionParser.GetValueType(debugger, name);
+                exprOuter.Initialize(debugger, name, type);
+                exprInnerContainer.Initialize(debugger, name, type);
+            }
+
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
+                                      out Geometry.Traits traits,
+                                      out ExpressionDrawer.Polygon result,
+                                      LoadCallback callback)
+            {
+                traits = null;
+                result = null;
+
+                string outerName = exprOuter.GetString(name);
+                string outerType = ExpressionParser.GetValueType(debugger, outerName);
+                LoaderR<ExpressionDrawer.Ring> outerLoader = loaders.FindByType(ExpressionLoader.Kind.Ring,
+                                                                                outerName, outerType) as LoaderR<ExpressionDrawer.Ring>;
+                if (outerLoader == null)
+                    return;
+
+                string innersName = exprInnerContainer.GetString(name);
+                string innersType = ExpressionParser.GetValueType(debugger, innersName);
+                ContainerLoader innersLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
+                                                                  innersName, innersType) as ContainerLoader;
+                if (innersLoader == null)
+                    return;
+
+                string innerType = innersLoader.ElementType(innersType);
+                LoaderR<ExpressionDrawer.Ring> innerLoader = outerLoader;
+                if (innerType != outerType)
+                {
+                    string innerName = innersLoader.ElementName(innersName, innerType);
+                    innerLoader = loaders.FindByType(ExpressionLoader.Kind.Ring,
+                                                     innerName, innerType) as LoaderR<ExpressionDrawer.Ring>;
+                    if (innerLoader == null)
+                        return;
+                }
+
+                ExpressionDrawer.Ring outer = null;
+                outerLoader.Load(loaders, mreader, debugger, outerName, outerType,
+                                 out traits, out outer,
+                                 callback);
+                if (outer == null)
+                    return;
+
+                int i = 0;
+                Geometry.Traits t = null;
+                List<Geometry.Ring> inners = new List<Geometry.Ring>();
+                bool ok = innersLoader.ForEachElement(debugger, innersName, delegate (string elName)
+                {
+                    if (i++ < innersOffset)
+                        return true;
+
+                    ExpressionDrawer.Ring inner = null;
+                    innerLoader.Load(loaders, mreader, debugger, elName, innerType,
+                                     out t, out inner,
+                                     callback);
+                    if (inner == null)
+                        return false;
+                    inners.Add(inner);
+                    //return callback();
+                    return true;
+                });
+                if (ok)
+                {
+                    result = new ExpressionDrawer.Polygon(outer, inners);
+                    if (traits == null) // assign only if it was not set for outer ring
+                        traits = t;
+                }
+            }
+
+            string id;
+            ClassScopeExpression exprOuter;
+            ClassScopeExpression exprInnerContainer;
+            int innersOffset;
+        }
+
+        class UserMultiPolygon : RangeLoader<ExpressionDrawer.MultiPolygon>
+        {
+            public UserMultiPolygon(string id, ClassScopeExpression exprContainer)
+                : base(ExpressionLoader.Kind.MultiPolygon)
+            {
+                this.id = id;
+                this.exprContainer = exprContainer;
+            }
+
+            public override bool IsUserDefined() { return true; }
+
+            public override string Id() { return id; }
+
+            public override void Initialize(Debugger debugger, string name)
+            {
+                string type = ExpressionParser.GetValueType(debugger, name);
+                exprContainer.Initialize(debugger, name, type);
+            }
+
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
+                                      out Geometry.Traits traits,
+                                      out ExpressionDrawer.MultiPolygon result,
+                                      LoadCallback callback)
+            {
+                traits = null;
+                result = null;
+
+                string containerName = exprContainer.GetString(name);
+                string containerType = ExpressionParser.GetValueType(debugger, containerName);
+                if (containerType == null)
+                    return;
+
+                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
+                                                                     containerName,
+                                                                     containerType) as ContainerLoader;
+                if (containerLoader == null)
+                    return;
+
+                string polyType = containerLoader.ElementType(containerType);
+                PolygonLoader polyLoader = loaders.FindByType(ExpressionLoader.Kind.Polygon,
+                                                              containerLoader.ElementName(name, polyType),
+                                                              polyType) as PolygonLoader;
+                if (polyLoader == null)
+                    return;
+
+                Geometry.Traits t = null;
+                ExpressionDrawer.MultiPolygon mpoly = new ExpressionDrawer.MultiPolygon();
+                bool ok = containerLoader.ForEachElement(debugger, name, delegate (string elName)
+                {
+                    ExpressionDrawer.Polygon poly = null;
+                    polyLoader.Load(loaders, mreader, debugger, elName, polyType,
+                                    out t, out poly,
+                                    callback);
+                    if (poly == null)
+                        return false;
+                    mpoly.Add(poly);
+                    //return callback();
+                    return true;
+                });
+                if (ok)
+                {
+                    traits = t;
+                    result = mpoly;
+                }
+            }
+
+            string id;
+            ClassScopeExpression exprContainer;
         }
 
         private static bool ReloadUserTypes(Loaders loaders,
@@ -257,6 +497,8 @@ namespace GraphicalDebugging
                 {
                     foreach (System.Xml.XmlElement elDrawable in elRoot.ChildNodes)
                     {
+                        string id = elDrawable.GetAttribute("Id");
+
                         if (elDrawable.Name == "Point")
                         {
                             var elCoords = Util.GetXmlElementByTagName(elDrawable, "Coordinates");
@@ -268,7 +510,6 @@ namespace GraphicalDebugging
                                 {
                                     string x = elX.InnerText;
                                     string y = elY.InnerText;
-                                    string id = elDrawable.GetAttribute("Id");
                                     //string name = node.GetAttribute("Type");
                                     loaders.Add(new UserPoint(id, x, y));
                                 }
@@ -278,23 +519,83 @@ namespace GraphicalDebugging
                               || elDrawable.Name == "Ring"
                               || elDrawable.Name == "MultiPoint")
                         {
-                            var elCont = Util.GetXmlElementByTagName(elDrawable, "PointContainer");
-                            if (elCont != null)
+                            var elPoints = Util.GetXmlElementByTagName(elDrawable, "Points");
+                            if (elPoints != null)
                             {
-                                var elName = Util.GetXmlElementByTagName(elCont, "Name");
-                                if (elName != null)
+                                var elCont = Util.GetXmlElementByTagName(elPoints, "Container");
+                                if (elCont != null)
                                 {
-                                    string id = elDrawable.GetAttribute("Id");
-                                    string name = elName.InnerText;
-                                    ClassScopeExpression classExpr = new ClassScopeExpression(name);
-                                    loaders.Add(
-                                        elDrawable.Name == "Linestring" ?
-                                            (Loader)new UserLinestring(id, classExpr) :
-                                        elDrawable.Name == "Ring" ?
-                                            (Loader)new UserRing(id, classExpr) :
-                                            // elDrawable.Name == "MultiPoint"
-                                            (Loader)new UserMultiPoint(id, classExpr)
-                                        );
+                                    var elName = Util.GetXmlElementByTagName(elCont, "Name");
+                                    if (elName != null)
+                                    {
+                                        ClassScopeExpression classExpr = new ClassScopeExpression(elName.InnerText);
+                                        loaders.Add(
+                                            elDrawable.Name == "Linestring" ?
+                                                (Loader)new UserLinestring(id, classExpr) :
+                                            elDrawable.Name == "Ring" ?
+                                                (Loader)new UserRing(id, classExpr) :
+                                                // elDrawable.Name == "MultiPoint"
+                                                (Loader)new UserMultiPoint(id, classExpr)
+                                            );
+                                    }
+                                }
+                            }
+                        }
+                        else if (elDrawable.Name == "MultiLinestring")
+                        {
+                            var elPoints = Util.GetXmlElementByTagName(elDrawable, "Linestrings");
+                            if (elPoints != null)
+                            {
+                                var elCont = Util.GetXmlElementByTagName(elPoints, "Container");
+                                if (elCont != null)
+                                {
+                                    var elName = Util.GetXmlElementByTagName(elCont, "Name");
+                                    if (elName != null)
+                                    {
+                                        ClassScopeExpression classExpr = new ClassScopeExpression(elName.InnerText);
+                                        loaders.Add(new UserMultiLinestring(id, classExpr));
+                                    }
+                                }
+                            }
+                        }
+                        else if (elDrawable.Name == "Polygon")
+                        {
+                            var elOuter = Util.GetXmlElementByTagName(elDrawable, "ExteriorRing");
+                            var elInners = Util.GetXmlElementByTagName(elDrawable, "InteriorRings");
+                            if (elOuter != null && elInners != null)
+                            {
+                                var elOuterName = Util.GetXmlElementByTagName(elOuter, "Name");
+                                var elCont = Util.GetXmlElementByTagName(elInners, "Container");
+                                if (elOuterName != null && elCont != null)
+                                {
+                                    var elInnersName = Util.GetXmlElementByTagName(elCont, "Name");
+                                    if (elInnersName != null)
+                                    {
+                                        var elInnersOffset = Util.GetXmlElementByTagName(elCont, "Offset");
+                                        int innersOffset = 0;
+                                        if (elInnersOffset != null)
+                                            Util.TryParseInt(elInnersOffset.InnerText, out innersOffset);
+                                        ClassScopeExpression classExprOuter = new ClassScopeExpression(elOuterName.InnerText);
+                                        ClassScopeExpression classExprInners = new ClassScopeExpression(elInnersName.InnerText);
+                                        loaders.Add(new UserPolygon(id, classExprOuter, classExprInners, innersOffset));
+                                    }
+                                }
+                            }
+                        }
+                        else if (elDrawable.Name == "MultiPolygon")
+                        {
+                            var elPolygons = Util.GetXmlElementByTagName(elDrawable, "Polygons");
+                            if (elPolygons != null)
+                            {
+                                var elCont = Util.GetXmlElementByTagName(elPolygons, "Container");
+                                if (elCont != null)
+                                {
+                                    var elName = Util.GetXmlElementByTagName(elCont, "Name");
+                                    if (elName != null)
+                                    {
+                                        ClassScopeExpression classExpr = new ClassScopeExpression(elName.InnerText);
+                                        loaders.Add(new UserMultiPolygon(id, classExpr));
+                                    }
                                 }
                             }
                         }

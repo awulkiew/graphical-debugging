@@ -30,10 +30,10 @@ namespace GraphicalDebugging
 
         public string GetString(string name)
         {
-            string result = "";
+            string result = "(";
             foreach (IPart part in mParts)
                 result += part.GetString(name);
-            return result;
+            return result + ")";
         }
 
         interface IPart
