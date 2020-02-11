@@ -283,9 +283,16 @@ namespace GraphicalDebugging
 
         public static System.Xml.XmlElement GetXmlElementByTagName(System.Xml.XmlElement parent, string name)
         {
+            if (parent == null)
+                return null;
             foreach (System.Xml.XmlElement el in parent.GetElementsByTagName(name))
                 return el;
             return null;
+        }
+
+        public static System.Xml.XmlElement GetXmlElementByTagNames(System.Xml.XmlElement parent, string name1, string name2)
+        {
+            return GetXmlElementByTagName(GetXmlElementByTagName(parent, name1), name2);
         }
 
         public static bool IsHex(string val)

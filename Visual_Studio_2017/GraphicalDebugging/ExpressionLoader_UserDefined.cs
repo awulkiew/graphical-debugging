@@ -155,6 +155,17 @@ namespace GraphicalDebugging
                 where ElementLoader : Loader;
         }
 
+        class UserEmptyEntry : IUserContainerEntry
+        {
+            public void Initialize(Debugger debugger, string name) { }
+            public UserContainerLoaders<ElementLoader> GetLoaders<ElementLoader>(Loaders loaders, Kind elementKind,
+                                                                                 Debugger debugger, string name)
+                where ElementLoader : Loader
+            {
+                return null;
+            }
+        }
+
         class UserContainerEntry : IUserContainerEntry
         {
             public UserContainerEntry(string strContainerName)
@@ -415,12 +426,12 @@ namespace GraphicalDebugging
         {
             public UserPolygon(string id,
                                ClassScopeExpression exprOuter,
-                               ClassScopeExpression exprInnerContainer,
+                               IUserContainerEntry innersContEntry,
                                int innersOffset)
             {
                 this.id = id;
                 this.exprOuter = exprOuter;
-                this.exprInnerContainer = exprInnerContainer;
+                this.innersContEntry = innersContEntry;
                 this.innersOffset = innersOffset;
             }
 
@@ -432,7 +443,8 @@ namespace GraphicalDebugging
             {
                 string type = ExpressionParser.GetValueType(debugger, name);
                 exprOuter.Initialize(debugger, name, type);
-                exprInnerContainer.Initialize(debugger, name, type);
+                // TODO: GetValueType() called internally second time
+                innersContEntry.Initialize(debugger, name);
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -451,24 +463,6 @@ namespace GraphicalDebugging
                 if (outerLoader == null)
                     return;
 
-                string innersName = exprInnerContainer.GetString(name);
-                string innersType = ExpressionParser.GetValueType(debugger, innersName);
-                ContainerLoader innersLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
-                                                                  innersName, innersType) as ContainerLoader;
-                if (innersLoader == null)
-                    return;
-
-                string innerType = innersLoader.ElementType(innersType);
-                LoaderR<ExpressionDrawer.Ring> innerLoader = outerLoader;
-                if (innerType != outerType)
-                {
-                    string innerName = innersLoader.ElementName(innersName, innerType);
-                    innerLoader = loaders.FindByType(ExpressionLoader.Kind.Ring,
-                                                     innerName, innerType) as LoaderR<ExpressionDrawer.Ring>;
-                    if (innerLoader == null)
-                        return;
-                }
-
                 ExpressionDrawer.Ring outer = null;
                 outerLoader.Load(loaders, mreader, debugger, outerName, outerType,
                                  out traits, out outer,
@@ -476,20 +470,33 @@ namespace GraphicalDebugging
                 if (outer == null)
                     return;
 
+                UserContainerLoaders<LoaderR<ExpressionDrawer.Ring>> innersLoaders
+                    = innersContEntry.GetLoaders<LoaderR<ExpressionDrawer.Ring>>(loaders, ExpressionLoader.Kind.Ring,
+                                                                                 debugger, name);
+                // If there is no definition of inner rings, return
+                if (innersLoaders == null)
+                {
+                    result = new ExpressionDrawer.Polygon(outer, new List<Geometry.Ring>());
+                    return;
+                }
+
+                // However if inner rings are defined then load them and return
+                // them only if they are properly loaded.
                 int i = 0;
                 Geometry.Traits t = null;
                 List<Geometry.Ring> inners = new List<Geometry.Ring>();
-                bool ok = innersLoader.ForEachElement(
-                    debugger, innersName,
+                bool ok = innersLoaders.ContainerLoader.ForEachElement(
+                    debugger, innersLoaders.ContainerName,
                     delegate (string elName)
                     {
                         if (i++ < innersOffset)
                             return true;
 
                         ExpressionDrawer.Ring inner = null;
-                        innerLoader.Load(loaders, mreader, debugger, elName, innerType,
-                                         out t, out inner,
-                                         callback);
+                        innersLoaders.ElementLoader.Load(loaders, mreader, debugger,
+                                                            elName, innersLoaders.ElementType,
+                                                            out t, out inner,
+                                                            callback);
                         if (inner == null)
                             return false;
                         inners.Add(inner);
@@ -506,7 +513,7 @@ namespace GraphicalDebugging
 
             string id;
             ClassScopeExpression exprOuter;
-            ClassScopeExpression exprInnerContainer;
+            IUserContainerEntry innersContEntry;
             int innersOffset;
         }
 
@@ -650,29 +657,24 @@ namespace GraphicalDebugging
                         }
                         else if (elDrawable.Name == "Polygon")
                         {
-                            // TODO: optional interior rings
-                            // arrays as container
+                            // TODO: Allow container of Points as outer ring
 
-                            var elOuter = Util.GetXmlElementByTagName(elDrawable, "ExteriorRing");
-                            var elInners = Util.GetXmlElementByTagName(elDrawable, "InteriorRings");
-                            if (elOuter != null && elInners != null)
+                            var elOuterName = Util.GetXmlElementByTagNames(elDrawable, "ExteriorRing", "Name");
+                            if (elOuterName != null)
                             {
-                                var elOuterName = Util.GetXmlElementByTagName(elOuter, "Name");
-                                var elCont = Util.GetXmlElementByTagName(elInners, "Container");
-                                if (elOuterName != null && elCont != null)
-                                {
-                                    var elInnersName = Util.GetXmlElementByTagName(elCont, "Name");
-                                    if (elInnersName != null)
-                                    {
-                                        var elInnersOffset = Util.GetXmlElementByTagName(elCont, "Offset");
-                                        int innersOffset = 0;
-                                        if (elInnersOffset != null)
-                                            Util.TryParseInt(elInnersOffset.InnerText, out innersOffset);
-                                        ClassScopeExpression classExprOuter = new ClassScopeExpression(elOuterName.InnerText);
-                                        ClassScopeExpression classExprInners = new ClassScopeExpression(elInnersName.InnerText);
-                                        loaders.Add(new UserPolygon(id, classExprOuter, classExprInners, innersOffset));
-                                    }
-                                }
+                                ClassScopeExpression classExprOuter = new ClassScopeExpression(elOuterName.InnerText);
+                                IUserContainerEntry innersContEntry = GetContainerEntry(elDrawable, "InteriorRings");
+                                if (innersContEntry == null)
+                                    innersContEntry = new UserEmptyEntry();
+                                // TODO: InteriorRings searched the second time
+                                var elInners = Util.GetXmlElementByTagName(elDrawable, "InteriorRings");
+                                var elInnersOffset = Util.GetXmlElementByTagName(elInners, "Offset");
+
+                                int innersOffset = 0;
+                                if (elInnersOffset != null)
+                                    Util.TryParseInt(elInnersOffset.InnerText, out innersOffset);
+
+                                loaders.Add(new UserPolygon(id, classExprOuter, innersContEntry, innersOffset));
                             }
                         }
                         else if (elDrawable.Name == "MultiPolygon")
@@ -694,14 +696,10 @@ namespace GraphicalDebugging
             var elElements = Util.GetXmlElementByTagName(elDrawable, elementsKind);
             if (elElements != null)
             {
-                var elCont = Util.GetXmlElementByTagName(elElements, "Container");
-                if (elCont != null)
+                var elContName = Util.GetXmlElementByTagNames(elElements, "Container", "Name");
+                if (elContName != null)
                 {
-                    var elName = Util.GetXmlElementByTagName(elCont, "Name");
-                    if (elName != null)
-                    {
-                        return new UserContainerEntry(elName.InnerText);
-                    }
+                    return new UserContainerEntry(elContName.InnerText);
                 }
                 else
                 {

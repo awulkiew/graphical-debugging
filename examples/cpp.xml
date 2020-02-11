@@ -108,8 +108,8 @@
     <InteriorRings>
       <Container>
         <Name>(std::vector&lt;MyRing,std::allocator&lt;MyRing&gt; &gt;&amp;)(*this)</Name>
-        <Offset>1</Offset>
       </Container>
+      <Offset>1</Offset>
     </InteriorRings>
   </Polygon>
 
