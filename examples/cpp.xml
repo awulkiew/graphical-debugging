@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <GraphicalDebugging>
 
+  <!--
+  struct tagPOINT {
+    long x;
+    long y;
+  };
+  -->
   <Point Id="tagPOINT">
     <Coordinates>
       <X>x</X>
@@ -8,6 +14,15 @@
     </Coordinates>
   </Point>
 
+  <!--
+  namespace boost { namespace qvm {
+  template <class T,int Dim>
+  struct vec
+  {
+      T a[Dim];
+  };
+  }}
+  -->
   <Point Id="boost::qvm::vec">
     <Coordinates>
       <X>a[0]</X>
@@ -15,6 +30,12 @@
     </Coordinates>
   </Point>
 
+  <!--
+  struct MyPoint
+  {
+      double x, y;
+  };
+  -->
   <Point Id="MyPoint">
     <Coordinates>
       <X>x</X>
@@ -22,6 +43,10 @@
     </Coordinates>
   </Point>
 
+  <!--
+  struct MyLinestring : std::vector<MyPoint>
+  { };
+  -->
   <Linestring Id="MyLinestring">
     <Points>
       <Container>
@@ -30,6 +55,40 @@
     </Points>
   </Linestring>
 
+  <!--
+  struct MyLinestring2
+  {
+      std::vector<MyPoint> points;
+  };
+  -->
+  <Linestring Id="MyLinestring2">
+    <Points>
+      <Container>
+        <Name>points</Name>
+      </Container>
+    </Points>
+  </Linestring>
+
+  <!--
+  struct MyLinestring3
+  {
+      MyPoint * begin;
+      MyPoint * end;
+  };
+  -->
+  <Linestring Id="MyLinestring3">
+    <Points>
+      <Array>
+        <Pointer>begin</Pointer>
+        <Size>end - begin</Size>
+      </Array>
+    </Points>
+  </Linestring>
+
+  <!--
+  struct MyRing : std::vector<MyPoint>
+  { };
+  -->
   <Ring Id="MyRing">
     <Points>
       <Container>
@@ -38,6 +97,10 @@
     </Points>
   </Ring>
 
+  <!--
+  struct MyPolygon : std::vector<MyRing>
+  { };
+  -->
   <Polygon Id="MyPolygon">
     <ExteriorRing>
       <Name>(*_Mypair._Myval2._Myfirst)</Name>
@@ -50,6 +113,10 @@
     </InteriorRings>
   </Polygon>
 
+  <!--
+  struct MyMultiPoint : std::vector<MyPoint>
+  { };
+  -->
   <MultiPoint Id="MyMultiPoint">
     <Points>
       <Container>
@@ -58,6 +125,10 @@
     </Points>
   </MultiPoint>
 
+  <!--
+  struct MyMultiLinestring : std::vector<MyLinestring>
+  { };
+  -->
   <MultiLinestring Id="MyMultiLinestring">
     <Linestrings>
       <Container>
@@ -66,6 +137,10 @@
     </Linestrings>
   </MultiLinestring>
 
+  <!--
+  struct MyMultiPolygon : std::vector<MyPolygon>
+  { };
+  -->
   <MultiPolygon Id="MyMultiPolygon">
     <Polygons>
       <Container>
