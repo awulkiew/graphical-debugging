@@ -1,12 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
 <GraphicalDebugging>
 
-  <Point Id="WpfApplication1.MainWindow.MyPoint">
+  <!--
+  namespace WpfApp1
+  {
+    struct MyPoint
+    {
+      double x, y;
+    }
+  }
+  -->
+  <Point Id="WpfApp1.MyPoint">
     <Coordinates>
       <X>x</X>
       <Y>y</Y>
     </Coordinates>
   </Point>
+
+  <!--
+  namespace WpfApp1
+  {
+    class MyLinestring
+    {
+      MyPoint[] points;
+    }
+  }
+  -->
+  <Linestring Id="WpfApp1.MyLinestring">
+    <Points>
+      <Container>
+        <Name>points</Name>
+      </Container>
+    </Points>
+  </Linestring>
+  
+  <!--
+  namespace WpfApp1
+  {
+    class MyLinestring2 : List<MyPoint>
+    { }
+  }
+  -->
+  <Linestring Id="WpfApp1.MyLinestring2">
+    <Points>
+      <Container>
+        <Name>(System.Collections.Generic.List&lt;WpfApp1.MyPoint&gt;)this</Name>
+      </Container>
+    </Points>
+  </Linestring>
+  
 
   <Point Id="System.Windows.Point">
     <Coordinates>

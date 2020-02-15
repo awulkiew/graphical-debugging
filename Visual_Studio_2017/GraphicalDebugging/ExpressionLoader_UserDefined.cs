@@ -20,13 +20,15 @@ namespace GraphicalDebugging
     {
         class UserPoint : PointLoader
         {
-            public UserPoint(string id, string x, string y)
+            public UserPoint(string id,
+                             ClassScopeExpression exprX,
+                             ClassScopeExpression exprY)
             {
                 this.id = id;
-                this.member_x = x;
-                this.member_y = y;
-                this.member_type_x = null;
-                this.member_type_y = null;
+                this.exprX = exprX;
+                this.exprY = exprY;
+                this.typeX = null;
+                this.typeY = null;
                 this.sizeOf = 0;
             }
 
@@ -36,14 +38,45 @@ namespace GraphicalDebugging
 
             public override void Initialize(Debugger debugger, string name)
             {
-                Expression e = debugger.GetExpression(name);
-                Expression ex = debugger.GetExpression(name + "." + member_x);
-                Expression ey = debugger.GetExpression(name + "." + member_y);
-                if (e.IsValidValue && ex.IsValidValue && ey.IsValidValue)
+                string type = ExpressionParser.GetValueType(debugger, name);
+                exprX.Initialize(debugger, name, type);
+                exprY.Initialize(debugger, name, type);
+
+                sizeOf = ExpressionParser.GetTypeSizeof(debugger, type);
+                if (sizeOf <= 0)
+                    return;
+
+                string nameX = exprX.GetString(name);
+                string nameY = exprY.GetString(name);
+                typeX = ExpressionParser.GetValueType(debugger, nameX);
+                typeY = ExpressionParser.GetValueType(debugger, nameY);
+                if (typeX == null || typeY == null)
                 {
-                    sizeOf = ExpressionParser.GetTypeSizeof(debugger, e.Type);
-                    member_type_x = ex.Type;
-                    member_type_y = ey.Type;
+                    sizeOf = 0;
+                    return;
+                }
+
+                sizeX = ExpressionParser.GetTypeSizeof(debugger, typeX);
+                sizeY = ExpressionParser.GetTypeSizeof(debugger, typeY);
+                if (sizeX <= 0 || sizeY <= 0)
+                {
+                    sizeOf = 0;
+                    return;
+                }
+
+                offsetX = ExpressionParser.GetAddressDifference(debugger, name, nameX);
+                offsetY = ExpressionParser.GetAddressDifference(debugger, name, nameY);
+                if (ExpressionParser.IsInvalidAddressDifference(offsetX)
+                    || ExpressionParser.IsInvalidAddressDifference(offsetY)
+                    || offsetX < 0
+                    || offsetY < 0
+                    || offsetX > sizeOf
+                    || offsetY > sizeOf)
+                    // offsetX + sizeX > sizeOf
+                    // offsetY + sizeY > sizeOf
+                {
+                    sizeOf = 0;
+                    return;
                 }
             }
 
@@ -56,8 +89,8 @@ namespace GraphicalDebugging
             protected override ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type)
             {
                 double x = 0, y = 0;
-                bool okx = ExpressionParser.TryLoadDouble(debugger, name + "." + member_x, out x);
-                bool oky = ExpressionParser.TryLoadDouble(debugger, name + "." + member_y, out y);
+                bool okx = ExpressionParser.TryLoadDouble(debugger, exprX.GetString(name), out x);
+                bool oky = ExpressionParser.TryLoadDouble(debugger, exprY.GetString(name), out y);
                 return Util.IsOk(okx, oky)
                      ? new ExpressionDrawer.Point(x, y)
                      : null;
@@ -67,22 +100,21 @@ namespace GraphicalDebugging
                                                                       string name, string type)
             {
                 MemoryReader.Converter<double> converter = GetMemoryConverter(mreader, debugger, name, type);
-                if (converter != null)
-                {
-                    if (converter.ValueCount() != 2)
-                        throw new ArgumentOutOfRangeException("converter.ValueCount()");
+                if (converter == null)
+                    return null;
 
-                    ulong address = ExpressionParser.GetValueAddress(debugger, name);
-                    if (address == 0)
-                        return null;
+                if (converter.ValueCount() != 2)
+                    throw new ArgumentOutOfRangeException("converter.ValueCount()");
 
-                    double[] values = new double[2];
-                    if (mreader.Read(address, values, converter))
-                    {
-                        return new ExpressionDrawer.Point(values[0], values[1]);
-                    }
-                }
-                return null;
+                ulong address = ExpressionParser.GetValueAddress(debugger, name);
+                if (address == 0)
+                    return null;
+
+                double[] values = new double[2];
+                if (!mreader.Read(address, values, converter))
+                    return null;
+
+                return new ExpressionDrawer.Point(values[0], values[1]);
             }
 
             public override MemoryReader.Converter<double> GetMemoryConverter(Loaders loaders,
@@ -96,46 +128,30 @@ namespace GraphicalDebugging
             protected MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader, Debugger debugger,
                                                                         string name, string type)
             {
-                if (sizeOf == 0 /*|| member_type_x == null || member_type_y == null*/)
+                if (sizeOf == 0)
                     return null;
 
-                string firstType = member_type_x;
-                string secondType = member_type_y;
-                string first = name + "." + member_x;
-                string second = name + "." + member_y;
-                // TODO: This could be done once, in Initialize
-                long firstOffset = ExpressionParser.GetAddressDifference(debugger, name, first);
-                long secondOffset = ExpressionParser.GetAddressDifference(debugger, name, second);
-                if (ExpressionParser.IsInvalidAddressDifference(firstOffset)
-                 || ExpressionParser.IsInvalidAddressDifference(secondOffset)
-                 || firstOffset < 0
-                 || secondOffset < 0
-                 || firstOffset > sizeOf
-                 || secondOffset > sizeOf)
-                    return null;
-
-                int firstSize = ExpressionParser.GetTypeSizeof(debugger, firstType);
-                int secondSize = ExpressionParser.GetTypeSizeof(debugger, secondType);
-                if (firstSize == 0 || secondSize == 0)
-                    return null;
-
-                MemoryReader.ValueConverter<double> firstConverter = mreader.GetNumericConverter(firstType, firstSize);
-                MemoryReader.ValueConverter<double> secondConverter = mreader.GetNumericConverter(secondType, secondSize);
-                if (firstConverter == null || secondConverter == null)
+                MemoryReader.ValueConverter<double> converterX = mreader.GetNumericConverter(typeX, sizeX);
+                MemoryReader.ValueConverter<double> converterY = mreader.GetNumericConverter(typeY, sizeY);
+                if (converterX == null || converterY == null)
                     return null;
 
                 return new MemoryReader.StructConverter<double>(
                             sizeOf,
-                            new MemoryReader.Member<double>(firstConverter, (int)firstOffset),
-                            new MemoryReader.Member<double>(secondConverter, (int)secondOffset));
+                            new MemoryReader.Member<double>(converterX, (int)offsetX),
+                            new MemoryReader.Member<double>(converterY, (int)offsetY));
             }
 
             string id;
-            string member_x;
-            string member_y;
-            string member_type_x;
-            string member_type_y;
+            ClassScopeExpression exprX;
+            ClassScopeExpression exprY;
+            string typeX;
+            string typeY;
+            long offsetX;
+            long offsetY;
             int sizeOf;
+            int sizeX;
+            int sizeY;
         }
 
         class UserContainerLoaders<ElementLoaderT>
@@ -193,7 +209,7 @@ namespace GraphicalDebugging
 
                 string elementType = containerLoader.ElementType(containerType);
                 ElementLoader elementLoader = loaders.FindByType(elementKind,
-                                                                 containerLoader.ElementName(name, elementType),
+                                                                 containerLoader.ElementName(containerName, elementType),
                                                                  elementType) as ElementLoader;
                 if (elementLoader == null)
                     return null;
@@ -624,10 +640,9 @@ namespace GraphicalDebugging
                                 var elY = Util.GetXmlElementByTagName(elCoords, "Y");
                                 if (elX != null && elY != null)
                                 {
-                                    string x = elX.InnerText;
-                                    string y = elY.InnerText;
-                                    //string name = node.GetAttribute("Type");
-                                    loaders.Add(new UserPoint(id, x, y));
+                                    ClassScopeExpression exprX = new ClassScopeExpression(elX.InnerText);
+                                    ClassScopeExpression exprY = new ClassScopeExpression(elY.InnerText);
+                                    loaders.Add(new UserPoint(id, exprX, exprY));
                                 }
                             }
                         }
@@ -657,8 +672,6 @@ namespace GraphicalDebugging
                         }
                         else if (elDrawable.Name == "Polygon")
                         {
-                            // TODO: Allow container of Points as outer ring
-
                             var elOuterName = Util.GetXmlElementByTagNames(elDrawable, "ExteriorRing", "Name");
                             if (elOuterName != null)
                             {
