@@ -1,6 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <GraphicalDebugging>
 
+  <Point Id="System.Windows.Point">
+    <Coordinates>
+      <X>_x</X>
+      <Y>_y</Y>
+    </Coordinates>
+  </Point>
+
+  <Point Id="System.Drawing.Point">
+    <Coordinates>
+      <X>x</X>
+      <Y>y</Y>
+    </Coordinates>
+  </Point>
+
+  <Point Id="System.Drawing.PointF">
+    <Coordinates>
+      <X>x</X>
+      <Y>y</Y>
+    </Coordinates>
+  </Point>
+
   <!--
   namespace WpfApp1
   {
@@ -48,20 +69,41 @@
       </Container>
     </Points>
   </Linestring>
-  
 
-  <Point Id="System.Windows.Point">
-    <Coordinates>
-      <X>_x</X>
-      <Y>_y</Y>
-    </Coordinates>
-  </Point>
+  <!--
+  namespace WpfApp1
+  {
+    class MyRing
+    {
+      List<MyPoint> points;
+    }
+  }
+  -->
+  <Ring Id="WpfApp1.MyRing">
+    <Points>
+      <Container>
+        <Name>points</Name>
+      </Container>
+    </Points>
+  </Ring>
 
-  <Point Id="System.Drawing.Point">
-    <Coordinates>
-      <X>x</X>
-      <Y>y</Y>
-    </Coordinates>
-  </Point>
+  <!--
+  struct MyPolygon
+  {
+    MyRing outer;
+    List<MyRing> inners;
+  };
+  -->
+  <Polygon Id="WpfApp1.MyPolygon">
+    <ExteriorRing>
+      <Name>outer</Name>
+    </ExteriorRing>
+    <InteriorRings>
+      <Container>
+        <Name>inners</Name>
+      </Container>
+      <!--Offset>0</Offset-->
+    </InteriorRings>
+  </Polygon>
 
 </GraphicalDebugging>
