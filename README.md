@@ -183,7 +183,17 @@ Options for each Watch can be found under **Tools**->**Options**->**Graphical De
 
 ##### User-defined types
 
-The extension offers basic support for user-defined point types. You can define points in XML file based on type identifier and X and Y members and set path to this file in options under **Tools**->**Options**->**Graphical Debugging**->**General**. An example XML file defining C++ type `MyPoint` in global namespace looks like this:
+The extension offers support for the following user-defined geometries for both C++ and C# types:
+
+  * Point
+  * MultiPoint
+  * Linestring
+  * MultiLinestring
+  * Ring (polygon without holes)
+  * Polygon (polygon with holes)
+  * MultiPolygon
+
+They can be defined in XML file similar to *.natvis file. Path to this file can be set in options under **Tools**->**Options**->**Graphical Debugging**->**General**. An example XML file defining C++ types `MyPoint`, `MyRing` and `MyPolygon` in global namespace might look like this:
 
 ```
 <?xml version="1.0" encoding="utf-8"?>
@@ -196,15 +206,35 @@ The extension offers basic support for user-defined point types. You can define 
     </Coordinates>
   </Point>
 
+  <Ring Id="MyRing">
+    <Points>
+      <Array>
+        <Pointer>points_ptr</Pointer>
+        <Size>points_size</Size>
+      </Array>
+    </Points>
+  </Ring>
+
+  <Polygon Id="MyPolygon">
+    <ExteriorRing>
+      <Name>outer</Name>
+    </ExteriorRing>
+    <InteriorRings>
+      <Container>
+        <Name>inners</Name>
+      </Container>
+    </InteriorRings>
+  </Polygon>
+
 </GraphicalDebugging>
 ```
 
-Basic support has limitations:
+Current limitations:
 
-  * based on identifier so no template parameters, no specializations
+  * only one entry per type
+  * based on identifier, no template specializations
   * no support for user-defined coordinate system, cartesian is used by default
-
-Let me know if you need something more advanced.
+  * non-contigeous containers can be used only if this extension natively supports them
 
 See more [examples at GitHub](https://github.com/awulkiew/graphical-debugging/tree/master/examples).
 

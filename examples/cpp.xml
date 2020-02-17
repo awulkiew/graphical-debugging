@@ -44,27 +44,28 @@
   </Point>
 
   <!--
-  struct MyLinestring : std::vector<MyPoint>
-  { };
+  struct MyLinestring
+  {
+      std::vector<MyPoint> points;
+  };
   -->
   <Linestring Id="MyLinestring">
     <Points>
       <Container>
-        <Name>(std::vector&lt;MyPoint,std::allocator&lt;MyPoint&gt; &gt;&amp;)(*this)</Name>
+        <Name>points</Name>
       </Container>
     </Points>
   </Linestring>
 
   <!--
-  struct MyLinestring2
-  {
-      std::vector<MyPoint> points;
-  };
+  template <typename Point>
+  struct MyLinestring2 : std::vector<Point>
+  { };
   -->
   <Linestring Id="MyLinestring2">
     <Points>
       <Container>
-        <Name>points</Name>
+        <Name>(std::vector&lt;$T0,std::allocator&lt;$T0&gt; &gt;&amp;)(*this)</Name>
       </Container>
     </Points>
   </Linestring>
@@ -98,10 +99,29 @@
   </Ring>
 
   <!--
-  struct MyPolygon : std::vector<MyRing>
-  { };
+  struct MyPolygon
+  {
+      MyRing outer;
+      std::vector<MyRing> inners;
+  };
   -->
   <Polygon Id="MyPolygon">
+    <ExteriorRing>
+      <Name>outer</Name>
+    </ExteriorRing>
+    <InteriorRings>
+      <Container>
+        <Name>inners</Name>
+      </Container>
+      <!--Offset>0</Offset-->
+    </InteriorRings>
+  </Polygon>
+
+  <!--
+  struct MyPolygon2 : std::vector<MyRing>
+  { };
+  -->
+  <Polygon Id="MyPolygon2">
     <ExteriorRing>
       <Name>(*_Mypair._Myval2._Myfirst)</Name>
     </ExteriorRing>
@@ -114,37 +134,43 @@
   </Polygon>
 
   <!--
-  struct MyMultiPoint : std::vector<MyPoint>
-  { };
+  struct MyMultiPoint
+  {
+      std::vector<MyPoint> points;
+  };
   -->
   <MultiPoint Id="MyMultiPoint">
     <Points>
       <Container>
-        <Name>(std::vector&lt;MyPoint,std::allocator&lt;MyPoint&gt; &gt;&amp;)(*this)</Name>
+        <Name>points</Name>
       </Container>
     </Points>
   </MultiPoint>
 
   <!--
-  struct MyMultiLinestring : std::vector<MyLinestring>
-  { };
+  struct MyMultiLinestring
+  {
+      std::vector<MyLinestring> linestrings;
+  };
   -->
   <MultiLinestring Id="MyMultiLinestring">
     <Linestrings>
       <Container>
-        <Name>(std::vector&lt;MyLinestring,std::allocator&lt;MyLinestring&gt; &gt;&amp;)(*this)</Name>
+        <Name>linestrings</Name>
       </Container>
     </Linestrings>
   </MultiLinestring>
 
   <!--
-  struct MyMultiPolygon : std::vector<MyPolygon>
-  { };
+  struct MyMultiPolygon
+  {
+      std::vector<MyPolygon> polygons;
+  };
   -->
   <MultiPolygon Id="MyMultiPolygon">
     <Polygons>
       <Container>
-        <Name>(std::vector&lt;MyPolygon,std::allocator&lt;MyPolygon&gt; &gt;&amp;)(*this)</Name>
+        <Name>polygons</Name>
       </Container>
     </Polygons>
   </MultiPolygon>
