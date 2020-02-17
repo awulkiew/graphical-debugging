@@ -366,5 +366,13 @@ namespace GraphicalDebugging
                 && !v3.Equals(default(T3))
                 && !v4.Equals(default(T4));
         }
+
+        public static bool Assign<T>(ref T v, T v2)
+            where T : struct
+        {
+            bool result = !v.Equals(v2);
+            v = v2;
+            return result;
+        }
     }
 }

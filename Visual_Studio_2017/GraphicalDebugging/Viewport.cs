@@ -197,23 +197,40 @@ namespace GraphicalDebugging
             PointF p = cs.Convert(point);
             DrawPoint(p);
 
-            double pi2 = 2 * Geometry.HalfAngle(unit);
+            double twoPi = Geometry.FullAngle(unit);
             Pen pen = drawDots ? this.penDot : this.pen;
-            // draw points on the west
-            double x_tmp = point[0] - pi2;
-            while (x_tmp >= box.Min[0])
+
+            // NOTE: Use AssignChanged becasue for big coordinates subtracting/adding
+            //   twoPi doesn't change the value of x_tmp which causes infinite loop
+
+            float x = Math.Min(Math.Max(p.X, 0.0f), cs.Width);
+            double nPeriodsWest = (point[0] - box.Min[0]) / twoPi;
+            float pixelsWest = x;
+            double nPeriodsEast = (box.Max[0] - point[0]) / twoPi;
+            float pixelsEast = cs.Width - x;
+
+            if (nPeriodsWest <= pixelsWest / 5)
             {
-                p.X = cs.ConvertX(x_tmp);
-                DrawPoint(p, pen);
-                x_tmp -= pi2;
+                // draw points on the west
+                double x_tmp = point[0];
+                while (Util.Assign(ref x_tmp, x_tmp - twoPi)
+                    && x_tmp >= box.Min[0])
+                {
+                    p.X = cs.ConvertX(x_tmp);
+                    DrawPoint(p, pen);
+                }
             }
-            // draw points on the east
-            x_tmp = point[0] + pi2;
-            while (x_tmp <= box.Max[0])
+
+            if (nPeriodsEast <= pixelsEast / 5)
             {
-                p.X = cs.ConvertX(x_tmp);
-                DrawPoint(p, pen);
-                x_tmp += pi2;
+                // draw points on the east
+                double x_tmp = point[0];
+                while (Util.Assign(ref x_tmp, x_tmp + twoPi)
+                    && x_tmp <= box.Max[0])
+                {
+                    p.X = cs.ConvertX(x_tmp);
+                    DrawPoint(p, pen);
+                }
             }
         }
 
@@ -359,7 +376,7 @@ namespace GraphicalDebugging
             {
                 double distNorm = Geometry.NormalizedAngleSigned(p1[0] - p0[0], unit);
                 bool intersPole = IsAntipodal(distNorm, unit);
-                double halfPi = Geometry.HalfAngle(unit) / 2;
+                double halfPi = Geometry.RightAngle(unit);
                 double poleLat = p1[1] - p0[1] >= 0 ? halfPi : -halfPi;
                 int intersPoleIndex = -1;
 
@@ -400,7 +417,7 @@ namespace GraphicalDebugging
 
             public static bool IsAntipodal(double distNorm, Geometry.Unit unit)
             {
-                double pi = Geometry.HalfAngle(unit);
+                double pi = Geometry.StraightAngle(unit);
                 return Math.Abs(Math.Abs(distNorm) - pi) < double.Epsilon * pi;
             }
 
@@ -609,8 +626,8 @@ namespace GraphicalDebugging
                                  IPeriodicDrawable drawer,
                                  bool fill, bool drawDirs, bool drawDots)
         {
-            double pi = Geometry.HalfAngle(unit);
-            float periodf = cs.ConvertDimensionX(2 * pi);
+            double twoPi = Geometry.FullAngle(unit);
+            float periodf = cs.ConvertDimensionX(twoPi);
             float box_minf = cs.ConvertX(box.Min[0]);
             float box_maxf = cs.ConvertX(box.Max[0]);
 
@@ -624,11 +641,12 @@ namespace GraphicalDebugging
             float minf_i = minf;
             float maxf_i = maxf;
             float translationf = 0;
-            while (maxf_i >= box_minf)
+            while (maxf_i >= box_minf
+                && Util.Assign(ref maxf_i, maxf_i - periodf))
             {
                 translationf -= periodf;
                 minf_i -= periodf;
-                maxf_i -= periodf;
+                //maxf_i -= periodf; // subtracted above
                 if (maxf_i >= box_minf && minf_i <= box_maxf)
                     drawer.DrawOne(this, translationf, fill, drawDirs, drawDots);
             }
@@ -636,10 +654,11 @@ namespace GraphicalDebugging
             minf_i = minf;
             maxf_i = maxf;
             translationf = 0;
-            while (minf_i <= box_maxf)
+            while (minf_i <= box_maxf
+                && Util.Assign(ref minf_i, minf_i + periodf))
             {
                 translationf += periodf;
-                minf_i += periodf;
+                //minf_i += periodf; // added above
                 maxf_i += periodf;
                 if (maxf_i >= box_minf && minf_i <= box_maxf)
                     drawer.DrawOne(this, translationf, fill, drawDirs, drawDots);
@@ -694,7 +713,7 @@ namespace GraphicalDebugging
                 Pen anti_pen = new Pen(colors.AxisColor, 1);
                 anti_pen.DashStyle = DashStyle.Custom;
                 anti_pen.DashPattern = new float[] { 5, 5 };
-                double pi = Geometry.HalfAngle(unit);
+                double pi = Geometry.StraightAngle(unit);
                 double anti_mer = Geometry.NearestAntimeridian(box.Min[0], -1, unit);
                 double prime_mer = anti_mer + pi;
                 double next_anti_mer = anti_mer + 2 * pi;
@@ -706,7 +725,9 @@ namespace GraphicalDebugging
                 float prime_mer_step = cs.ConvertX(next_prime_mer) - prime_mer_f;
 
                 // Antimeridians
-                for (; anti_mer_f <= w; anti_mer_f += anti_mer_step)
+                while (anti_mer_f <= w
+                    // NOTE: For bug coordinates anti_mer_step may be 0 which results in infinite loop
+                    && Util.Assign(ref anti_mer_f, anti_mer_f + anti_mer_step))
                 {
                     if (anti_mer_f >= 0)
                     {
@@ -714,12 +735,23 @@ namespace GraphicalDebugging
                     }
                 }
                 // Prime meridians
-                for (; prime_mer_f <= w; prime_mer_f += prime_mer_step)
+                bool primeMeridiansDrawn = false;
+                while (prime_mer_f <= w
+                    // NOTE: For bug coordinates anti_mer_step may be 0 which results in infinite loop
+                    && Util.Assign(ref prime_mer_f, prime_mer_f += prime_mer_step))
                 {
                     if (prime_mer_f >= 0)
                     {
                         graphics.DrawLine(prime_pen, prime_mer_f, 0, prime_mer_f, h);
+                        primeMeridiansDrawn = true;
                     }
+                }
+                // Prime meridian
+                float p = cs.ConvertX(0.0);
+                if (!primeMeridiansDrawn
+                    && 0 <= p && p <= w)
+                {
+                    graphics.DrawLine(prime_pen, p, 0, p, h);
                 }
                 // Equator
                 float e = cs.ConvertY(0.0);
@@ -1191,6 +1223,9 @@ namespace GraphicalDebugging
                         new Geometry.Point(InverseConvertX(0), InverseConvertY(dst_orig_h)),
                         new Geometry.Point(InverseConvertX(dst_orig_w), InverseConvertY(0)));
         }
+
+        public float Width { get { return dst_orig_w; } }
+        public float Height { get { return dst_orig_h; } }
 
         float dst_orig_w, dst_orig_h;
         float dst_x0, dst_y0;

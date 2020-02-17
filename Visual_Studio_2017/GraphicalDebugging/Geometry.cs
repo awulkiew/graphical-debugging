@@ -401,7 +401,7 @@ namespace GraphicalDebugging
                 double x1 = NormalizedAngleSigned(p1[0], unit);
                 double x2 = NormalizedAngleSigned(p2[0], unit);
                 double dist = x2 - x1;
-                double pi = HalfAngle(unit);
+                double pi = StraightAngle(unit);
                 return dist < -pi || pi < dist;
             }
         }
@@ -416,7 +416,7 @@ namespace GraphicalDebugging
             }
             else
             {
-                double pi = HalfAngle(unit);
+                double pi = StraightAngle(unit);
                 double ax = Math.Abs(x);
                 double periods = (ax - pi) / (2 * pi);
                 int calcDir = x < 0 ? -dir : dir;
@@ -487,7 +487,7 @@ namespace GraphicalDebugging
             Point p0 = Normalized(box.Min, unit);
             Point p1 = Normalized(box.Max, unit);
             if (p1[0] < p0[0])
-                p1[0] += 2 * HalfAngle(unit);
+                p1[0] += FullAngle(unit);
             return Envelope(p0, p1);
         }
 
@@ -578,12 +578,13 @@ namespace GraphicalDebugging
             double xmax1 = NormalizedAngleSigned(box.Max[0], unit);
             double xmin2 = NormalizedAngleSigned(b.Min[0], unit);
             double xmax2 = NormalizedAngleSigned(b.Max[0], unit);
-            if (xmax1 < xmin1)
-                xmax1 += 2 * HalfAngle(unit);
-            if (xmax2 < xmin2)
-                xmax2 += 2 * HalfAngle(unit);
 
-            double twoPi = 2 * HalfAngle(unit);
+            double twoPi = FullAngle(unit);
+            if (xmax1 < xmin1)
+                xmax1 += twoPi;
+            if (xmax2 < xmin2)
+                xmax2 += twoPi;
+
             double left_dist = NormalizedAngleSigned(xmin1 - xmin2, unit);
             double right_dist = NormalizedAngleSigned(xmax2 - xmax1, unit);
             if (left_dist >= 0 && right_dist >= 0)
@@ -650,7 +651,7 @@ namespace GraphicalDebugging
 
         public static double NormalizedAngleSigned(double x, Unit unit)
         {
-            double pi = HalfAngle(unit);
+            double pi = StraightAngle(unit);
             while (x < -pi) x += 2 * pi;
             while (x > pi) x -= 2 * pi;
             return x;
@@ -658,7 +659,7 @@ namespace GraphicalDebugging
 
         public static double NormalizedAngleUnsigned(double x, Unit unit)
         {
-            double pi = HalfAngle(unit);
+            double pi = StraightAngle(unit);
             while (x < 0) x += 2 * pi;
             while (x > 2 * pi) x -= 2 * pi;
             return x;
@@ -679,12 +680,22 @@ namespace GraphicalDebugging
             NormalizeAngle(b.Min, unit);
             NormalizeAngle(b.Max, unit);
             if (b.Min[0] > b.Max[0])
-                b.Max[0] += 2 * HalfAngle(unit);
+                b.Max[0] += FullAngle(unit);
         }*/
 
-        public static double HalfAngle(Unit unit)
+        public static double StraightAngle(Unit unit)
         {
             return unit == Unit.Degree ? 180 : Math.PI;
+        }
+
+        public static double FullAngle(Unit unit)
+        {
+            return unit == Unit.Degree ? 360 : (2.0 * Math.PI);
+        }
+
+        public static double RightAngle(Unit unit)
+        {
+            return unit == Unit.Degree ? 90 : (0.5 * Math.PI);
         }
 
         public static double ToRadian(double angle, Unit unit)
@@ -802,7 +813,7 @@ namespace GraphicalDebugging
             }
             else
             {
-                double halfPi = HalfAngle(unit) / 2;
+                double halfPi = RightAngle(unit);
                 if (Equals(p0[1], halfPi))
                     axis = new Point(0, 1, 0);
                 else if (Equals(p0[1], -halfPi))
