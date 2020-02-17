@@ -1,3 +1,11 @@
+version 0.29
+
+additions:
+- support for user-defined Linestring, Ring, Polygon, MultiPoint, MultiLinestring and MultiPolygon
+
+bugfixes:
+- fixed infinite loops for huge non-cartesian coordinates
+
 version 0.28
 
 additions:
