@@ -157,6 +157,39 @@ namespace GraphicalDebugging
                  : null;
         }
 
+        public static bool IsInvalidType(string type)
+        {
+            return type == null;
+        }
+
+        public static bool IsInvalidType(string type1, string type2)
+        {
+            return type1 == null || type2 == null;
+        }
+
+        public static bool IsInvalidSize(int size)
+        {
+            return size <= 0;
+        }
+
+        public static bool IsInvalidSize(int size1, int size2)
+        {
+            return size1 <= 0 || size2 <= 0;
+        }
+
+        public static bool IsInvalidOffset(long size, long offset)
+        {
+            return ExpressionParser.IsInvalidAddressDifference(offset)
+                || offset < 0
+                || offset >= size;
+        }
+
+        public static bool IsInvalidOffset(long size, long offset1, long offset2)
+        {
+            return IsInvalidOffset(size, offset1)
+                || IsInvalidOffset(size, offset2);
+        }
+
         public ExpressionParser(Debugger debugger)
         {
             string language = debugger.CurrentStackFrame.Language;

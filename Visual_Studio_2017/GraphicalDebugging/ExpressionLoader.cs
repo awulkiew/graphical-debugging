@@ -637,7 +637,7 @@ namespace GraphicalDebugging
                 if (byteSize == 0)
                     return null;
                 long byteOffset = ExpressionParser.GetAddressDifference(debugger, name, elemName);
-                if (ExpressionParser.IsInvalidAddressDifference(byteOffset))
+                if (ExpressionParser.IsInvalidOffset(byteSize, byteOffset))
                     return null;
                 return new MemoryReader.StructConverter<double>(byteSize,
                             new MemoryReader.Member<double>(arrayConverter, (int)byteOffset));
@@ -834,16 +834,12 @@ namespace GraphicalDebugging
                 MemoryReader.Converter<double> pointConverter = pointLoader.GetMemoryConverter(loaders, mreader, debugger, m_min_corner, pointType);
 
                 int size = (new ExpressionParser(debugger)).GetValueSizeof(name);
+                if (ExpressionParser.IsInvalidSize(size))
+                    return null;
+
                 long minDiff = ExpressionParser.GetAddressDifference(debugger, name, m_min_corner);
                 long maxDiff = ExpressionParser.GetAddressDifference(debugger, name, m_max_corner);
-
-                if (size <= 0
-                    || ExpressionParser.IsInvalidAddressDifference(minDiff)
-                    || ExpressionParser.IsInvalidAddressDifference(maxDiff)
-                    || minDiff < 0
-                    || maxDiff < 0
-                    || minDiff >= size
-                    || maxDiff >= size)
+                if (ExpressionParser.IsInvalidOffset(size, minDiff, maxDiff))
                     return null;
 
                 return new MemoryReader.StructConverter<double>(size,

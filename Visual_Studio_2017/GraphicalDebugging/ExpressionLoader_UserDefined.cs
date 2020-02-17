@@ -43,14 +43,17 @@ namespace GraphicalDebugging
                 exprY.Initialize(debugger, name, type);
 
                 sizeOf = ExpressionParser.GetTypeSizeof(debugger, type);
-                if (sizeOf <= 0)
+                if (ExpressionParser.IsInvalidSize(sizeOf))
+                {
+                    sizeOf = 0;
                     return;
+                }
 
                 string nameX = exprX.GetString(name);
                 string nameY = exprY.GetString(name);
                 typeX = ExpressionParser.GetValueType(debugger, nameX);
                 typeY = ExpressionParser.GetValueType(debugger, nameY);
-                if (typeX == null || typeY == null)
+                if (ExpressionParser.IsInvalidType(typeX, typeY))
                 {
                     sizeOf = 0;
                     return;
@@ -58,7 +61,7 @@ namespace GraphicalDebugging
 
                 sizeX = ExpressionParser.GetTypeSizeof(debugger, typeX);
                 sizeY = ExpressionParser.GetTypeSizeof(debugger, typeY);
-                if (sizeX <= 0 || sizeY <= 0)
+                if (ExpressionParser.IsInvalidSize(sizeX, sizeY))
                 {
                     sizeOf = 0;
                     return;
@@ -66,12 +69,7 @@ namespace GraphicalDebugging
 
                 offsetX = ExpressionParser.GetAddressDifference(debugger, name, nameX);
                 offsetY = ExpressionParser.GetAddressDifference(debugger, name, nameY);
-                if (ExpressionParser.IsInvalidAddressDifference(offsetX)
-                    || ExpressionParser.IsInvalidAddressDifference(offsetY)
-                    || offsetX < 0
-                    || offsetY < 0
-                    || offsetX > sizeOf
-                    || offsetY > sizeOf)
+                if (ExpressionParser.IsInvalidOffset(sizeOf, offsetX, offsetY))
                     // offsetX + sizeX > sizeOf
                     // offsetY + sizeY > sizeOf
                 {
@@ -145,6 +143,7 @@ namespace GraphicalDebugging
             string id;
             ClassScopeExpression exprX;
             ClassScopeExpression exprY;
+            // For memory loading:
             string typeX;
             string typeY;
             long offsetX;
