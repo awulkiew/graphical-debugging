@@ -175,4 +175,18 @@
     </Polygons>
   </MultiPolygon>
 
+  <!--
+  struct MyMultiRing
+  {
+      std::vector<MyRing> rings;
+  };
+  -->
+  <MultiGeometry Id="MyMultiRing">
+    <Geometries>
+      <Container>
+        <Name>rings</Name>
+      </Container>
+    </Geometries>
+  </MultiGeometry>
+
 </GraphicalDebugging>

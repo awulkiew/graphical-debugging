@@ -165,7 +165,8 @@ namespace GraphicalDebugging
         interface IUserContainerEntry
         {
             void Initialize(Debugger debugger, string name);
-            UserContainerLoaders<ElementLoader> GetLoaders<ElementLoader>(Loaders loaders, Kind elementKind,
+            UserContainerLoaders<ElementLoader> GetLoaders<ElementLoader>(Loaders loaders,
+                                                                          IKindConstraint elementKindConstraint,
                                                                           Debugger debugger, string name)
                 where ElementLoader : Loader;
         }
@@ -173,7 +174,8 @@ namespace GraphicalDebugging
         class UserEmptyEntry : IUserContainerEntry
         {
             public void Initialize(Debugger debugger, string name) { }
-            public UserContainerLoaders<ElementLoader> GetLoaders<ElementLoader>(Loaders loaders, Kind elementKind,
+            public UserContainerLoaders<ElementLoader> GetLoaders<ElementLoader>(Loaders loaders,
+                                                                                 IKindConstraint elementKindConstraint,
                                                                                  Debugger debugger, string name)
                 where ElementLoader : Loader
             {
@@ -194,7 +196,8 @@ namespace GraphicalDebugging
                 exprContainerName.Initialize(debugger, name, type);
             }
 
-            public UserContainerLoaders<ElementLoader> GetLoaders<ElementLoader>(Loaders loaders, Kind elementKind,
+            public UserContainerLoaders<ElementLoader> GetLoaders<ElementLoader>(Loaders loaders,
+                                                                                 IKindConstraint elementKindConstraint,
                                                                                  Debugger debugger, string name)
                 where ElementLoader : Loader
             {
@@ -207,7 +210,7 @@ namespace GraphicalDebugging
                     return null;
 
                 string elementType = containerLoader.ElementType(containerType);
-                ElementLoader elementLoader = loaders.FindByType(elementKind,
+                ElementLoader elementLoader = loaders.FindByType(elementKindConstraint,
                                                                  containerLoader.ElementName(containerName, elementType),
                                                                  elementType) as ElementLoader;
                 if (elementLoader == null)
@@ -240,7 +243,8 @@ namespace GraphicalDebugging
                 exprSize.Initialize(debugger, name, type);
             }
 
-            public UserContainerLoaders<ElementLoader> GetLoaders<ElementLoader>(Loaders loaders, Kind elementKind,
+            public UserContainerLoaders<ElementLoader> GetLoaders<ElementLoader>(Loaders loaders,
+                                                                                 IKindConstraint elementKindConstraint,
                                                                                  Debugger debugger, string name)
                 where ElementLoader : Loader
             {
@@ -267,7 +271,7 @@ namespace GraphicalDebugging
                 if (containerLoader == null)
                     return null;
 
-                ElementLoader elementLoader = loaders.FindByType(elementKind,
+                ElementLoader elementLoader = loaders.FindByType(elementKindConstraint,
                                                                  containerLoader.ElementName(arrName, elementType),
                                                                  elementType) as ElementLoader;
                 if (elementLoader == null)
@@ -319,8 +323,10 @@ namespace GraphicalDebugging
                 result = null;
 
                 UserContainerLoaders<PointLoader> containerLoaders
-                    = containerEntry.GetLoaders<PointLoader>(loaders, ExpressionLoader.Kind.Point,
-                                                             debugger, name);
+                    = containerEntry.GetLoaders<PointLoader>(
+                            loaders,
+                            new KindConstraint(ExpressionLoader.Kind.Point),
+                            debugger, name);
                 if (containerLoaders == null)
                     return;
 
@@ -405,7 +411,9 @@ namespace GraphicalDebugging
 
                 UserContainerLoaders<RangeLoader<ExpressionDrawer.Linestring>> containerLoaders
                     = containerEntry.GetLoaders<RangeLoader<ExpressionDrawer.Linestring>>(
-                        loaders, ExpressionLoader.Kind.Linestring, debugger, name);
+                            loaders,
+                            new KindConstraint(ExpressionLoader.Kind.Linestring),
+                            debugger, name);
                 if (containerLoaders == null)
                     return;
 
@@ -486,8 +494,10 @@ namespace GraphicalDebugging
                     return;
 
                 UserContainerLoaders<LoaderR<ExpressionDrawer.Ring>> innersLoaders
-                    = innersContEntry.GetLoaders<LoaderR<ExpressionDrawer.Ring>>(loaders, ExpressionLoader.Kind.Ring,
-                                                                                 debugger, name);
+                    = innersContEntry.GetLoaders<LoaderR<ExpressionDrawer.Ring>>(
+                            loaders,
+                            new KindConstraint(ExpressionLoader.Kind.Ring),
+                            debugger, name);
                 // If there is no definition of inner rings, return
                 if (innersLoaders == null)
                 {
@@ -560,8 +570,10 @@ namespace GraphicalDebugging
                 result = null;
 
                 UserContainerLoaders<PolygonLoader> containerLoaders
-                    = containerEntry.GetLoaders<PolygonLoader>(loaders, ExpressionLoader.Kind.Polygon,
-                                                               debugger, name);
+                    = containerEntry.GetLoaders<PolygonLoader>(
+                            loaders,
+                            new KindConstraint(ExpressionLoader.Kind.Polygon),
+                            debugger, name);
                 if (containerLoaders == null)
                     return;
 
@@ -587,6 +599,69 @@ namespace GraphicalDebugging
                 {
                     traits = t;
                     result = mpoly;
+                }
+            }
+
+            string id;
+            IUserContainerEntry containerEntry;
+        }
+
+        // TODO: If possible use one implementation for MultiLinestring, MultiPolygon and MultiGeometry
+        class UserMultiGeometry : RangeLoader<ExpressionDrawer.DrawablesContainer>
+        {
+            public UserMultiGeometry(string id, IUserContainerEntry containerEntry)
+                : base(ExpressionLoader.Kind.MultiGeometry)
+            {
+                this.id = id;
+                this.containerEntry = containerEntry;
+            }
+
+            public override bool IsUserDefined() { return true; }
+
+            public override string Id() { return id; }
+
+            public override void Initialize(Debugger debugger, string name)
+            {
+                containerEntry.Initialize(debugger, name);
+            }
+
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
+                                      out Geometry.Traits traits,
+                                      out ExpressionDrawer.DrawablesContainer result,
+                                      LoadCallback callback)
+            {
+                traits = null;
+                result = null;
+
+                UserContainerLoaders<DrawableLoader> containerLoaders
+                    = containerEntry.GetLoaders<DrawableLoader>(
+                            loaders, OnlyGeometries, debugger, name);
+                if (containerLoaders == null)
+                    return;
+
+                Geometry.Traits t = null;
+                ExpressionDrawer.DrawablesContainer drawables = new ExpressionDrawer.DrawablesContainer();
+                bool ok = containerLoaders.ContainerLoader.ForEachElement(
+                    debugger, containerLoaders.ContainerName,
+                    delegate (string elName)
+                    {
+                        ExpressionDrawer.IDrawable drawable = null;
+                        containerLoaders.ElementLoader.Load(loaders, mreader,
+                                                            debugger, elName,
+                                                            containerLoaders.ElementType,
+                                                            out t, out drawable,
+                                                            callback);
+                        if (drawable == null)
+                            return false;
+                        drawables.Add(drawable);
+                        //return callback();
+                        return true;
+                    });
+                if (ok)
+                {
+                    traits = t;
+                    result = drawables;
                 }
             }
 
@@ -694,6 +769,12 @@ namespace GraphicalDebugging
                             IUserContainerEntry contEntry = GetContainerEntry(elDrawable, "Polygons");
                             if (contEntry != null)
                                 loaders.Add(new UserMultiPolygon(id, contEntry));
+                        }
+                        else if (elDrawable.Name == "MultiGeometry")
+                        {
+                            IUserContainerEntry contEntry = GetContainerEntry(elDrawable, "Geometries");
+                            if (contEntry != null)
+                                loaders.Add(new UserMultiGeometry(id, contEntry));
                         }
                     }
                 }

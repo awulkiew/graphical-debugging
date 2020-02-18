@@ -31,7 +31,8 @@ namespace GraphicalDebugging
         public enum Kind
         {
             Container = 0, MultiPoint, TurnsContainer, ValuesContainer,
-            Point, Segment, Box, NSphere, Linestring, Ring, Polygon, MultiLinestring, MultiPolygon, Turn, OtherGeometry,
+            Point, Segment, Box, NSphere, Linestring, Ring, Polygon,
+            MultiLinestring, MultiPolygon, MultiGeometry, Turn, OtherGeometry,
             Variant, Image
         };
 
@@ -174,17 +175,34 @@ namespace GraphicalDebugging
 
         // Kind Constraints
 
-        public interface KindConstraint
+        public interface IKindConstraint
         {
             bool Check(Kind kind);
         }
 
-        public class DrawableKindConstraint : KindConstraint
+        public class KindConstraint : IKindConstraint
+        {
+            public KindConstraint(Kind kind)
+            {
+                mKind = kind;
+            }
+
+            public bool Check(Kind kind)
+            {
+                return mKind == kind;
+            }
+
+            public Kind Kind { get { return mKind; } }
+
+            Kind mKind;
+        }
+
+        public class DrawableKindConstraint : IKindConstraint
         {
             public bool Check(Kind kind) { return kind != Kind.Container; }
         }
 
-        public class GeometryKindConstraint : KindConstraint
+        public class GeometryKindConstraint : IKindConstraint
         {
             public bool Check(Kind kind)
             {
@@ -194,17 +212,7 @@ namespace GraphicalDebugging
             }
         }
 
-        public class ValuesContainerKindConstraint : KindConstraint
-        {
-            public bool Check(Kind kind) { return kind == Kind.ValuesContainer; }
-        }
-
-        public class MultiPointKindConstraint : KindConstraint
-        {
-            public bool Check(Kind kind) { return kind == Kind.MultiPoint; }
-        }
-
-        public class IndexableKindConstraint : KindConstraint
+        public class IndexableKindConstraint : IKindConstraint
         {
             public bool Check(Kind kind)
             {
@@ -216,11 +224,9 @@ namespace GraphicalDebugging
 
         public static DrawableKindConstraint AllDrawables { get; } = new DrawableKindConstraint();
         public static GeometryKindConstraint OnlyGeometries { get; } = new GeometryKindConstraint();
-        public static ValuesContainerKindConstraint OnlyValuesContainers { get; } = new ValuesContainerKindConstraint();
-        public static MultiPointKindConstraint OnlyMultiPoints { get; } = new MultiPointKindConstraint();
+        public static KindConstraint OnlyValuesContainers { get; } = new KindConstraint(Kind.ValuesContainer);
+        public static KindConstraint OnlyMultiPoints { get; } = new KindConstraint(Kind.MultiPoint);
         public static IndexableKindConstraint OnlyIndexables { get; } = new IndexableKindConstraint();
-
-        // Load
 
         /// <summary>
         /// Loads debugged variable into ExpressionDrawer.IDrawable and additional
@@ -250,7 +256,7 @@ namespace GraphicalDebugging
         /// <param name="traits">Geometrical traits</param>
         /// <param name="result">An object that can be drawn by ExpressionDrawer</param>
         public static void Load(string name,
-                                KindConstraint kindConstraint,
+                                IKindConstraint kindConstraint,
                                 out Geometry.Traits traits,
                                 out ExpressionDrawer.IDrawable result)
         {
@@ -358,16 +364,7 @@ namespace GraphicalDebugging
             /// <returns>Loader object or null if not found</returns>
             public Loader FindByType(Kind kind, string name, string type)
             {
-                string id = Util.BaseType(type);
-                foreach (Loader l in lists[(int)kind])
-                {
-                    if (l.MatchType(this, name, type, id))
-                    {
-                        l.Initialize(ExpressionLoader.Instance.debugger, name);
-                        return l;
-                    }
-                }
-                return null;
+                return FindByType(new KindConstraint(kind), name, type);
             }
 
             /// <summary>
@@ -377,19 +374,35 @@ namespace GraphicalDebugging
             /// <param name="name">Name of variable or actual expression added to watch</param>
             /// <param name="type">C++ or C# type of variable</param>
             /// <returns>Loader object or null if not found</returns>
-            public Loader FindByType(KindConstraint kindConstraint, string name, string type)
+            public Loader FindByType(IKindConstraint kindConstraint, string name, string type)
             {
                 string id = Util.BaseType(type);
-                for (int i = 0; i < lists.Length; ++i)
+
+                if (kindConstraint is KindConstraint)
                 {
-                    if (kindConstraint.Check((Kind)i))
+                    int kindIndex = (int)(kindConstraint as KindConstraint).Kind;
+                    foreach (Loader l in lists[kindIndex])
                     {
-                        foreach (Loader l in lists[i])
+                        if (l.MatchType(this, name, type, id))
                         {
-                            if (l.MatchType(this, name, type, id))
+                            l.Initialize(ExpressionLoader.Instance.debugger, name);
+                            return l;
+                        }
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < lists.Length; ++i)
+                    {
+                        if (kindConstraint.Check((Kind)i))
+                        {
+                            foreach (Loader l in lists[i])
                             {
-                                l.Initialize(ExpressionLoader.Instance.debugger, name);
-                                return l;
+                                if (l.MatchType(this, name, type, id))
+                                {
+                                    l.Initialize(ExpressionLoader.Instance.debugger, name);
+                                    return l;
+                                }
                             }
                         }
                     }
