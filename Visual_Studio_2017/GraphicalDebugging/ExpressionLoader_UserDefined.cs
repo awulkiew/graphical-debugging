@@ -18,6 +18,59 @@ namespace GraphicalDebugging
 {
     partial class ExpressionLoader
     {
+        /*
+        <LinkedList>
+            <Size>_Mypair._Myval2._Mysize</Size>
+            <HeadPointer>_Mypair._Myval2._Myhead-&gt;_Next</HeadPointer>
+            <NextPointer>_Next</NextPointer>
+            <Value>_Myval</Value>
+        </LinkedList>
+
+        <Array>
+            <Size>_Mylast - _Myfirst</Size>
+            <Pointer>_Myfirst</Pointer>
+        </Array>
+        */
+
+        // TODO: Use in UserArrayEntry
+        class UserArray : ContiguousContainer
+        {
+            public UserArray(string id, string strPointer, string strSize)
+            {
+                this.id = id;
+                this.exprPointer = new ClassScopeExpression(strPointer);
+                this.exprSize = new ClassScopeExpression(strSize);
+            }
+
+            public override void Initialize(Debugger debugger, string name)
+            {
+                string type = ExpressionParser.GetValueType(debugger, name);
+                exprPointer.Initialize(debugger, name, type);
+                exprSize.Initialize(debugger, name, type);
+            }
+
+            public override string Id() { return id; }
+
+            public override string RandomAccessElementName(string rawName, int i)
+            {
+                return exprPointer.GetString(rawName) + "[" + i + "]";
+            }
+
+            public override string ElementName(string name, string elType)
+            {
+                return exprPointer.GetString(name) + "[0]";
+            }
+
+            public override int LoadSize(Debugger debugger, string name)
+            {
+                return ExpressionParser.LoadSize(debugger, exprSize.GetString(name));
+            }
+
+            string id;
+            ClassScopeExpression exprPointer;
+            ClassScopeExpression exprSize;
+        }
+
         class UserPoint : PointLoader
         {
             public UserPoint(string id,
@@ -228,6 +281,7 @@ namespace GraphicalDebugging
             ClassScopeExpression exprContainerName;
         }
 
+        // TODO: This class could possibly be simplified if UserArray was used here
         class UserArrayEntry : IUserContainerEntry
         {
             public UserArrayEntry(string strPointer, string strSize)
@@ -699,15 +753,28 @@ namespace GraphicalDebugging
                     {
                         if (!(el is System.Xml.XmlElement))
                             continue;
-                        System.Xml.XmlElement elDrawable = el as System.Xml.XmlElement;
+                        System.Xml.XmlElement elEntry = el as System.Xml.XmlElement;
 
-                        string id = elDrawable.GetAttribute("Id");
+                        string id = elEntry.GetAttribute("Id");
                         if (id == null || id == "")
                             continue;
 
-                        if (elDrawable.Name == "Point")
+                        if (elEntry.Name == "Container")
                         {
-                            var elCoords = Util.GetXmlElementByTagName(elDrawable, "Coordinates");
+                            var elArray = Util.GetXmlElementByTagName(elEntry, "Array");
+                            if (elArray != null)
+                            {
+                                var elPointer = Util.GetXmlElementByTagName(elArray, "Pointer");
+                                var elSize = Util.GetXmlElementByTagName(elArray, "Size");
+                                if (elPointer != null && elSize != null)
+                                {
+                                    loaders.Add(new UserArray(id, elPointer.InnerText, elSize.InnerText));
+                                }
+                            }
+                        }
+                        else if (elEntry.Name == "Point")
+                        {
+                            var elCoords = Util.GetXmlElementByTagName(elEntry, "Coordinates");
                             if (elCoords != null)
                             {
                                 var elX = Util.GetXmlElementByTagName(elCoords, "X");
@@ -720,41 +787,41 @@ namespace GraphicalDebugging
                                 }
                             }
                         }
-                        else if (elDrawable.Name == "Linestring")
+                        else if (elEntry.Name == "Linestring")
                         {
-                            IUserContainerEntry contEntry = GetContainerEntry(elDrawable, "Points");
+                            IUserContainerEntry contEntry = GetContainerEntry(elEntry, "Points");
                             if (contEntry != null)
                                 loaders.Add(new UserLinestring(id, contEntry));
                         }
-                        else if (elDrawable.Name == "Ring")
+                        else if (elEntry.Name == "Ring")
                         {
-                            IUserContainerEntry contEntry = GetContainerEntry(elDrawable, "Points");
+                            IUserContainerEntry contEntry = GetContainerEntry(elEntry, "Points");
                             if (contEntry != null)
                                 loaders.Add(new UserRing(id, contEntry));
                         }
-                        else if (elDrawable.Name == "MultiPoint")
+                        else if (elEntry.Name == "MultiPoint")
                         {
-                            IUserContainerEntry contEntry = GetContainerEntry(elDrawable, "Points");
+                            IUserContainerEntry contEntry = GetContainerEntry(elEntry, "Points");
                             if (contEntry != null)
                                 loaders.Add(new UserMultiPoint(id, contEntry));
                         }
-                        else if (elDrawable.Name == "MultiLinestring")
+                        else if (elEntry.Name == "MultiLinestring")
                         {
-                            IUserContainerEntry contEntry = GetContainerEntry(elDrawable, "Linestrings");
+                            IUserContainerEntry contEntry = GetContainerEntry(elEntry, "Linestrings");
                             if (contEntry != null)
                                 loaders.Add(new UserMultiLinestring(id, contEntry));
                         }
-                        else if (elDrawable.Name == "Polygon")
+                        else if (elEntry.Name == "Polygon")
                         {
-                            var elOuterName = Util.GetXmlElementByTagNames(elDrawable, "ExteriorRing", "Name");
+                            var elOuterName = Util.GetXmlElementByTagNames(elEntry, "ExteriorRing", "Name");
                             if (elOuterName != null)
                             {
                                 ClassScopeExpression classExprOuter = new ClassScopeExpression(elOuterName.InnerText);
-                                IUserContainerEntry innersContEntry = GetContainerEntry(elDrawable, "InteriorRings");
+                                IUserContainerEntry innersContEntry = GetContainerEntry(elEntry, "InteriorRings");
                                 if (innersContEntry == null)
                                     innersContEntry = new UserEmptyEntry();
                                 // TODO: InteriorRings searched the second time
-                                var elInners = Util.GetXmlElementByTagName(elDrawable, "InteriorRings");
+                                var elInners = Util.GetXmlElementByTagName(elEntry, "InteriorRings");
                                 var elInnersOffset = Util.GetXmlElementByTagName(elInners, "Offset");
 
                                 int innersOffset = 0;
@@ -764,15 +831,15 @@ namespace GraphicalDebugging
                                 loaders.Add(new UserPolygon(id, classExprOuter, innersContEntry, innersOffset));
                             }
                         }
-                        else if (elDrawable.Name == "MultiPolygon")
+                        else if (elEntry.Name == "MultiPolygon")
                         {
-                            IUserContainerEntry contEntry = GetContainerEntry(elDrawable, "Polygons");
+                            IUserContainerEntry contEntry = GetContainerEntry(elEntry, "Polygons");
                             if (contEntry != null)
                                 loaders.Add(new UserMultiPolygon(id, contEntry));
                         }
-                        else if (elDrawable.Name == "MultiGeometry")
+                        else if (elEntry.Name == "MultiGeometry")
                         {
-                            IUserContainerEntry contEntry = GetContainerEntry(elDrawable, "Geometries");
+                            IUserContainerEntry contEntry = GetContainerEntry(elEntry, "Geometries");
                             if (contEntry != null)
                                 loaders.Add(new UserMultiGeometry(id, contEntry));
                         }

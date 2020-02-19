@@ -189,4 +189,16 @@
     </Geometries>
   </MultiGeometry>
 
+  <!--
+  template <typename T>
+  struct MyVector : std::vector<T>
+  { };
+  -->
+  <Container Id="MyVector">
+    <Array>
+      <Pointer>_Mypair._Myval2._Myfirst</Pointer>
+      <Size>_Mypair._Myval2._Mylast - _Mypair._Myval2._Myfirst</Size>
+    </Array>
+  </Container>
+
 </GraphicalDebugging>
