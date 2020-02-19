@@ -30,7 +30,7 @@ namespace GraphicalDebugging
 
         public enum Kind
         {
-            Container = 0, MultiPoint, TurnsContainer, ValuesContainer,
+            Container = 0, MultiPoint, TurnsContainer, ValuesContainer, GeometriesContainer,
             Point, Segment, Box, NSphere, Linestring, Ring, Polygon,
             MultiLinestring, MultiPolygon, MultiGeometry, Turn, OtherGeometry,
             Variant, Image
@@ -102,6 +102,7 @@ namespace GraphicalDebugging
             loadersCpp.Add(new BGTurnContainer());
             loadersCpp.Add(new PointContainer());
             loadersCpp.Add(new ValuesContainer());
+            loadersCpp.Add(new GeometryContainer());
 
             loadersCpp.Add(new BoostGilImage());
 
@@ -197,12 +198,34 @@ namespace GraphicalDebugging
             Kind mKind;
         }
 
+        public class NonValueKindConstraint : IKindConstraint
+        {
+            public bool Check(Kind kind)
+            {
+                return kind != Kind.Container
+                    && kind != Kind.ValuesContainer;
+            }
+        }
+
         public class DrawableKindConstraint : IKindConstraint
         {
             public bool Check(Kind kind) { return kind != Kind.Container; }
         }
 
+        // IMPORTANT: GeometriesContainer cannot be a Geometry,
+        //   otherwise infinite recursion may occur
         public class GeometryKindConstraint : IKindConstraint
+        {
+            public bool Check(Kind kind)
+            {
+                return kind != Kind.Container
+                    && kind != Kind.ValuesContainer
+                    && kind != Kind.GeometriesContainer
+                    && kind != Kind.Image;
+            }
+        }
+
+        public class GeometryOrGeometryContainerKindConstraint : IKindConstraint
         {
             public bool Check(Kind kind)
             {
@@ -224,9 +247,11 @@ namespace GraphicalDebugging
 
         public static DrawableKindConstraint AllDrawables { get; } = new DrawableKindConstraint();
         public static GeometryKindConstraint OnlyGeometries { get; } = new GeometryKindConstraint();
+        public static GeometryOrGeometryContainerKindConstraint OnlyGeometriesOrGeometryContainer { get; } = new GeometryOrGeometryContainerKindConstraint();
         public static KindConstraint OnlyValuesContainers { get; } = new KindConstraint(Kind.ValuesContainer);
         public static KindConstraint OnlyMultiPoints { get; } = new KindConstraint(Kind.MultiPoint);
         public static IndexableKindConstraint OnlyIndexables { get; } = new IndexableKindConstraint();
+        public static NonValueKindConstraint OnlyNonValues { get; } = new NonValueKindConstraint();
 
         /// <summary>
         /// Loads debugged variable into ExpressionDrawer.IDrawable and additional
@@ -2321,6 +2346,73 @@ namespace GraphicalDebugging
             }
         }
 
+        // TODO: This implementation is very similar to any MultiGeometry,
+        //   including User-Defined ones, so if possible unify all of them
+        class GeometryContainer : GeometryLoader<ExpressionDrawer.DrawablesContainer>
+        {
+            public GeometryContainer()
+                : base(ExpressionLoader.Kind.GeometriesContainer)
+            {}
+
+            public override string Id() { return null; }
+
+            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            {
+                // Is a Container
+                ContainerLoader loader = loaders.FindByType(ExpressionLoader.Kind.Container, name, type) as ContainerLoader;
+                if (loader == null)
+                    return false;
+
+                // Element is a Geometry
+                string elType = loader.ElementType(type);
+                string elName = loader.ElementName(name, elType);
+                // WARNING: Potentially recursive call, search for Geometries only,
+                //   GeometryContainer cannot be treated as a Geometry in GeometryKindConstraint
+                return loaders.FindByType(OnlyGeometries, elName, elType) != null;
+            }
+
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
+                                      out Geometry.Traits traits,
+                                      out ExpressionDrawer.DrawablesContainer result,
+                                      LoadCallback callback)
+            {
+                traits = null;
+                result = null;
+                
+                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container, name, type) as ContainerLoader;
+                if (containerLoader == null)
+                    return;
+
+                string geometryType = containerLoader.ElementType(type);
+                DrawableLoader geometryLoader = loaders.FindByType(OnlyGeometries,
+                                                                   containerLoader.ElementName(name, geometryType),
+                                                                   geometryType) as DrawableLoader;
+                if (geometryLoader == null)
+                    return;
+
+                Geometry.Traits t = null;
+                ExpressionDrawer.DrawablesContainer drawables = new ExpressionDrawer.DrawablesContainer();
+                bool ok = containerLoader.ForEachElement(debugger, name, delegate (string elName)
+                {
+                    ExpressionDrawer.IDrawable drawable = null;
+                    geometryLoader.Load(loaders, mreader, debugger, elName, geometryType,
+                                        out t, out drawable,
+                                        callback);
+                    if (drawable == null)
+                        return false;
+                    drawables.Add(drawable);
+                    //return callback();
+                    return true;
+                });
+                if (ok)
+                {
+                    traits = t;
+                    result = drawables;
+                }
+            }
+        }
+
         class PointContainer : PointRange<ExpressionDrawer.MultiPoint>
         {
             public PointContainer()
@@ -2402,7 +2494,7 @@ namespace GraphicalDebugging
                 string elType = loader.ElementType(type);
                 string elName = loader.ElementName(name, elType);
                 // WARNING: Potentially recursive call, avoid searching for ValuesContainers
-                return loaders.FindByType(OnlyGeometries, elName, elType) == null;
+                return loaders.FindByType(OnlyNonValues, elName, elType) == null;
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,

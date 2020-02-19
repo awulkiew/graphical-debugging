@@ -322,7 +322,9 @@ namespace GraphicalDebugging
                                         //   multi-geometry is empty.
                                         ExpressionDrawer.IDrawable d = null;
                                         Geometry.Traits t = null;
-                                        ExpressionLoader.Load(names[i], ExpressionLoader.OnlyGeometries, out t, out d);
+                                        ExpressionLoader.Load(names[i],
+                                                              ExpressionLoader.OnlyGeometriesOrGeometryContainer,
+                                                              out t, out d);
                                         if (t == null) // Traits has to be defined for Geometry
                                             d = null;
                                         Geometries[i].Drawable = d;
