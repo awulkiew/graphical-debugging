@@ -22,11 +22,13 @@ namespace GraphicalDebugging
         // TODO: The code is similar to std::vector loader, unify if possible
         class UserArray : ContiguousContainer
         {
-            public UserArray(string id, string strPointer, string strSize)
+            public UserArray(string id,
+                             ClassScopeExpression exprPointer,
+                             ClassScopeExpression exprSize)
             {
                 this.id = id;
-                this.exprPointer = new ClassScopeExpression(strPointer);
-                this.exprSize = new ClassScopeExpression(strSize);
+                this.exprPointer = exprPointer;
+                this.exprSize = exprSize;
             }
 
             public override void Initialize(Debugger debugger, string name)
@@ -62,16 +64,16 @@ namespace GraphicalDebugging
         class UserLinkedList : ContainerLoader
         {
             public UserLinkedList(string id,
-                                  string strHeadPointer,
-                                  string strNextPointer,
-                                  string strValue,
-                                  string strSize)
+                                  ClassScopeExpression exprHeadPointer,
+                                  ClassScopeExpression exprNextPointer,
+                                  ClassScopeExpression exprValue,
+                                  ClassScopeExpression exprSize)
             {
                 this.id = id;
-                this.exprHeadPointer = new ClassScopeExpression(strHeadPointer);
-                this.exprNextPointer = new ClassScopeExpression(strNextPointer);
-                this.exprValue = new ClassScopeExpression(strValue);
-                this.exprSize = new ClassScopeExpression(strSize);
+                this.exprHeadPointer = exprHeadPointer;
+                this.exprNextPointer = exprNextPointer;
+                this.exprValue = exprValue;
+                this.exprSize = exprSize;
             }
 
             public override void Initialize(Debugger debugger, string name)
@@ -440,6 +442,62 @@ namespace GraphicalDebugging
             }
 
             ClassScopeExpression exprPointer;
+            ClassScopeExpression exprSize;
+        }
+
+        class UserLinkedListEntry : IUserContainerEntry
+        {
+            public UserLinkedListEntry(string strHeadPointer,
+                                       string strNextPointer,
+                                       string strValue,
+                                       string strSize)
+            {
+                this.exprHeadPointer = new ClassScopeExpression(strHeadPointer);
+                this.exprNextPointer = new ClassScopeExpression(strNextPointer);
+                this.exprValue = new ClassScopeExpression(strValue);
+                this.exprSize = new ClassScopeExpression(strSize);
+            }
+
+            public void Initialize(Debugger debugger, string name)
+            {
+            }
+
+            public UserContainerLoaders<ElementLoader> GetLoaders<ElementLoader>(Loaders loaders,
+                                                                                 IKindConstraint elementKindConstraint,
+                                                                                 Debugger debugger, string name)
+                where ElementLoader : Loader
+            {
+                string type = ExpressionParser.GetValueType(debugger, name);
+                if (type == null)
+                    return null;
+
+                // NOTE: This could be done in Initialize(),however in all other places
+                //   container is created an initialized during Loading.
+                //   So do this in this case as well.
+                string id = Util.BaseType(type);
+                UserLinkedList containerLoader = new UserLinkedList(id, exprHeadPointer, exprNextPointer, exprValue, exprSize);
+                containerLoader.Initialize(debugger, name);
+
+                string elementType = containerLoader.ElementType(type);
+                string elementName = containerLoader.ElementName(name, elementType);
+                ElementLoader elementLoader = loaders.FindByType(elementKindConstraint,
+                                                                 elementName,
+                                                                 elementType) as ElementLoader;
+                if (elementLoader == null)
+                    return null;
+
+                UserContainerLoaders<ElementLoader> result = new UserContainerLoaders<ElementLoader>();
+                result.ContainerLoader = containerLoader;
+                result.ElementLoader = elementLoader;
+                result.ContainerName = name;
+                result.ContainerType = type;
+                result.ElementType = elementType;
+                return result;
+            }
+
+            ClassScopeExpression exprHeadPointer;
+            ClassScopeExpression exprNextPointer;
+            ClassScopeExpression exprValue;
             ClassScopeExpression exprSize;
         }
 
@@ -868,7 +926,9 @@ namespace GraphicalDebugging
                                 var elSize = Util.GetXmlElementByTagName(elArray, "Size");
                                 if (elPointer != null && elSize != null)
                                 {
-                                    loaders.Add(new UserArray(id, elPointer.InnerText, elSize.InnerText));
+                                    loaders.Add(new UserArray(id,
+                                                    new ClassScopeExpression(elPointer.InnerText),
+                                                    new ClassScopeExpression(elSize.InnerText)));
                                 }
                             }
                             else if (elLinkedList != null)
@@ -881,10 +941,10 @@ namespace GraphicalDebugging
                                         && elValue != null && elSize != null)
                                 {
                                     loaders.Add(new UserLinkedList(id,
-                                                                   elHeadPointer.InnerText,
-                                                                   elNextPointer.InnerText,
-                                                                   elValue.InnerText,
-                                                                   elSize.InnerText));
+                                                    new ClassScopeExpression(elHeadPointer.InnerText),
+                                                    new ClassScopeExpression(elNextPointer.InnerText),
+                                                    new ClassScopeExpression(elValue.InnerText),
+                                                    new ClassScopeExpression(elSize.InnerText)));
                                 }
                             }
                         }
@@ -972,10 +1032,14 @@ namespace GraphicalDebugging
             var elElements = Util.GetXmlElementByTagName(elDrawable, elementsKind);
             if (elElements != null)
             {
-                var elContName = Util.GetXmlElementByTagNames(elElements, "Container", "Name");
-                if (elContName != null)
+                var elContainer = Util.GetXmlElementByTagName(elElements, "Container");
+                if (elContainer != null)
                 {
-                    return new UserContainerEntry(elContName.InnerText);
+                    var elName = Util.GetXmlElementByTagName(elContainer, "Name");
+                    if (elName != null)
+                    {
+                        return new UserContainerEntry(elName.InnerText);
+                    }
                 }
                 else
                 {
@@ -987,6 +1051,25 @@ namespace GraphicalDebugging
                         if (elPointer != null && elSize != null)
                         {
                             return new UserArrayEntry(elPointer.InnerText, elSize.InnerText);
+                        }
+                    }
+                    else
+                    {
+                        var elLinkedList = Util.GetXmlElementByTagName(elElements, "LinkedList");
+                        if (elLinkedList != null)
+                        {
+                            var elHeadPointer = Util.GetXmlElementByTagName(elLinkedList, "HeadPointer");
+                            var elNextPointer = Util.GetXmlElementByTagName(elLinkedList, "NextPointer");
+                            var elValue = Util.GetXmlElementByTagName(elLinkedList, "Value");
+                            var elSize = Util.GetXmlElementByTagName(elLinkedList, "Size");
+                            if (elHeadPointer != null && elNextPointer != null
+                                    && elValue != null && elSize != null)
+                            {
+                                return new UserLinkedListEntry(elHeadPointer.InnerText,
+                                                               elNextPointer.InnerText,
+                                                               elValue.InnerText,
+                                                               elSize.InnerText);
+                            }
                         }
                     }
                 }

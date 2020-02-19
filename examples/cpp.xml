@@ -87,6 +87,36 @@
   </Linestring>
 
   <!--
+  template <typename Point>
+  struct MyLinestring4 : std::vector<Point>
+  { };
+  -->
+  <Linestring Id="MyLinestring4">
+    <Points>
+      <Array>
+        <Pointer>_Mypair._Myval2._Myfirst</Pointer>
+        <Size>_Mypair._Myval2._Mylast - _Mypair._Myval2._Myfirst</Size>
+      </Array>
+    </Points>
+  </Linestring>
+
+  <!--
+  template <typename Point>
+  struct MyLinestring5 : std::list<Point>
+  { };
+  -->
+  <Linestring Id="MyLinestring5">
+    <Points>
+      <LinkedList>
+        <Size>_Mypair._Myval2._Mysize</Size>
+        <HeadPointer>_Mypair._Myval2._Myhead-&gt;_Next</HeadPointer>
+        <NextPointer>_Next</NextPointer>
+        <Value>_Myval</Value>
+      </LinkedList>
+    </Points>
+  </Linestring>
+
+  <!--
   struct MyRing : std::vector<MyPoint>
   { };
   -->
@@ -188,7 +218,7 @@
       </Container>
     </Geometries>
   </MultiGeometry>
-
+  
   <!--
   template <typename T>
   struct MyVector : std::vector<T>
