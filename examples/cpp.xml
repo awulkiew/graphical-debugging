@@ -201,4 +201,18 @@
     </Array>
   </Container>
 
+  <!--
+  template <typename T>
+  struct MyList : std::list<T>
+  { };
+  -->
+  <Container Id="MyList">
+    <LinkedList>
+      <Size>_Mypair._Myval2._Mysize</Size>
+      <HeadPointer>_Mypair._Myval2._Myhead-&gt;_Next</HeadPointer>
+      <NextPointer>_Next</NextPointer>
+      <Value>_Myval</Value>
+    </LinkedList>
+  </Container>
+
 </GraphicalDebugging>

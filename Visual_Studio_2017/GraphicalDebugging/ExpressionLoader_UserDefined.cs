@@ -18,21 +18,8 @@ namespace GraphicalDebugging
 {
     partial class ExpressionLoader
     {
-        /*
-        <LinkedList>
-            <Size>_Mypair._Myval2._Mysize</Size>
-            <HeadPointer>_Mypair._Myval2._Myhead-&gt;_Next</HeadPointer>
-            <NextPointer>_Next</NextPointer>
-            <Value>_Myval</Value>
-        </LinkedList>
-
-        <Array>
-            <Size>_Mylast - _Myfirst</Size>
-            <Pointer>_Myfirst</Pointer>
-        </Array>
-        */
-
         // TODO: Use in UserArrayEntry
+        // TODO: The code is similar to std::vector loader, unify if possible
         class UserArray : ContiguousContainer
         {
             public UserArray(string id, string strPointer, string strSize)
@@ -68,6 +55,118 @@ namespace GraphicalDebugging
 
             string id;
             ClassScopeExpression exprPointer;
+            ClassScopeExpression exprSize;
+        }
+
+        // TODO: The code is similar to std::list loader, unify if possible
+        class UserLinkedList : ContainerLoader
+        {
+            public UserLinkedList(string id,
+                                  string strHeadPointer,
+                                  string strNextPointer,
+                                  string strValue,
+                                  string strSize)
+            {
+                this.id = id;
+                this.exprHeadPointer = new ClassScopeExpression(strHeadPointer);
+                this.exprNextPointer = new ClassScopeExpression(strNextPointer);
+                this.exprValue = new ClassScopeExpression(strValue);
+                this.exprSize = new ClassScopeExpression(strSize);
+            }
+
+            public override void Initialize(Debugger debugger, string name)
+            {
+                string type = ExpressionParser.GetValueType(debugger, name);
+                exprHeadPointer.Initialize(debugger, name, type);
+                exprSize.Initialize(debugger, name, type);
+                string headName = '*' + exprHeadPointer.GetString(name);
+                string headType = ExpressionParser.GetValueType(debugger, headName);
+                exprNextPointer.Initialize(debugger, headName, headType);
+                exprValue.Initialize(debugger, headName, headType);
+            }
+
+            public override string Id() { return id; }
+
+            public override string ElementName(string name, string elType)
+            {
+                // TODO: Only C++ ?
+                return exprValue.GetString('*' + exprHeadPointer.GetString(name));
+            }
+
+            public override int LoadSize(Debugger debugger, string name)
+            {
+                return ExpressionParser.LoadSize(debugger, exprSize.GetString(name));
+            }
+
+            public override bool ForEachMemoryBlock(MemoryReader mreader, Debugger debugger,
+                                                    string name, string type,
+                                                    MemoryReader.Converter<double> elementConverter,
+                                                    MemoryBlockPredicate memoryBlockPredicate)
+            {
+                int size = LoadSize(debugger, name);
+                if (size <= 0)
+                    return true;
+
+                string headPointerName = exprHeadPointer.GetString(name);
+                string headName = '*' + headPointerName;
+                string nextPointerName = exprNextPointer.GetString(headName);
+                string valName = exprValue.GetString(headName);
+
+                TypeInfo nextInfo = new TypeInfo(debugger, nextPointerName);
+                if (!nextInfo.IsValid)
+                    return false;
+
+                MemoryReader.ValueConverter<ulong> nextConverter = mreader.GetPointerConverter(nextInfo.Type, nextInfo.Size);
+                if (nextConverter == null)
+                    return false;
+
+                long nextDiff = ExpressionParser.GetAddressDifference(debugger, headName, nextPointerName);
+                long valDiff = ExpressionParser.GetAddressDifference(debugger, headName, valName);
+                if (ExpressionParser.IsInvalidAddressDifference(nextDiff)
+                 || ExpressionParser.IsInvalidAddressDifference(valDiff)
+                 || nextDiff < 0 || valDiff < 0)
+                    return false;
+
+                ulong address = ExpressionParser.GetValueAddress(debugger, headName);
+                if (address == 0)
+                    return false;
+
+                for (int i = 0; i < size; ++i)
+                {
+                    double[] values = new double[elementConverter.ValueCount()];
+                    if (!mreader.Read(address + (ulong)valDiff, values, elementConverter))
+                        return false;
+
+                    if (!memoryBlockPredicate(values))
+                        return false;
+
+                    ulong[] nextTmp = new ulong[1];
+                    if (!mreader.Read(address + (ulong)nextDiff, nextTmp, nextConverter))
+                        return false;
+                    address = nextTmp[0];
+                }
+                return true;
+            }
+
+            public override bool ForEachElement(Debugger debugger, string name, ElementPredicate elementPredicate)
+            {
+                int size = this.LoadSize(debugger, name);
+
+                string nodeName = '*' + exprHeadPointer.GetString(name);
+                for (int i = 0; i < size; ++i)
+                {
+                    string elName = exprValue.GetString(nodeName);
+                    if (!elementPredicate(elName))
+                        return false;
+                    nodeName = '*' + exprNextPointer.GetString(nodeName);
+                }
+                return true;
+            }
+
+            string id;
+            ClassScopeExpression exprHeadPointer;
+            ClassScopeExpression exprNextPointer;
+            ClassScopeExpression exprValue;
             ClassScopeExpression exprSize;
         }
 
@@ -762,6 +861,7 @@ namespace GraphicalDebugging
                         if (elEntry.Name == "Container")
                         {
                             var elArray = Util.GetXmlElementByTagName(elEntry, "Array");
+                            var elLinkedList = Util.GetXmlElementByTagName(elEntry, "LinkedList");
                             if (elArray != null)
                             {
                                 var elPointer = Util.GetXmlElementByTagName(elArray, "Pointer");
@@ -769,6 +869,22 @@ namespace GraphicalDebugging
                                 if (elPointer != null && elSize != null)
                                 {
                                     loaders.Add(new UserArray(id, elPointer.InnerText, elSize.InnerText));
+                                }
+                            }
+                            else if (elLinkedList != null)
+                            {
+                                var elHeadPointer = Util.GetXmlElementByTagName(elLinkedList, "HeadPointer");
+                                var elNextPointer = Util.GetXmlElementByTagName(elLinkedList, "NextPointer");
+                                var elValue = Util.GetXmlElementByTagName(elLinkedList, "Value");
+                                var elSize = Util.GetXmlElementByTagName(elLinkedList, "Size");
+                                if (elHeadPointer != null && elNextPointer != null
+                                        && elValue != null && elSize != null)
+                                {
+                                    loaders.Add(new UserLinkedList(id,
+                                                                   elHeadPointer.InnerText,
+                                                                   elNextPointer.InnerText,
+                                                                   elValue.InnerText,
+                                                                   elSize.InnerText));
                                 }
                             }
                         }
