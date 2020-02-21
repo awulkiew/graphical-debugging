@@ -5,7 +5,7 @@ This extension allows to display graphical representation of C++ and C# variable
 
 ![Graphical Debugging](images/graphical_debugging.png)
 
-It supports Boost.Geometry and Boost.Polygon models, Boost.Variant, STL/Boost containers of values and points as well as C-style arrays, C# arrays and List. The extension has the following components:
+It supports Boost.Geometry and Boost.Polygon models, Boost.Variant, STL/Boost containers of values and points, C-style arrays, C# arrays, List and LinkedList as well as user-defined geometry types. The extension has the following components:
 
 * **Debugger visualizers** for Boost.Array, Boost.CircularBuffer, Boost.Container, Boost.Geometry, Boost.MPL, Boost.Polygon, Boost.Tuple and Boost.Variant
 * **Geometry Watch** tool window displaying geometries in a common coordinate system, e.g. Boost.Geometry, Boost.Polygon polygons, etc.
@@ -65,7 +65,7 @@ Watch window displaying graphical representation of variables in a single image.
 
 Supported:
 
-* Containers of points
+* Containers of points and other geometries
   * C-style array
   * Pointer to elements with size specifier e.g.: `ptr,5`
   * Sequence of containers of point coordinates e.g.: `vec_x;vec_y`
@@ -73,15 +73,16 @@ Supported:
   * Boost.Array: array
   * Boost.CircularBuffer: circular_buffer
   * Boost.Container: vector, static_vector
-  * C#: array, List
+  * C#: array, List, LinkedList
+  * user-defined containers (see below)
 * 2D cartesian geometries
   * Boost.Geometry: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
   * Boost.Polygon: point_data, segment_data, rectangle_data, polygon_data, polygon_with_holes_data
   * STL: pair
-  * user-defined point type
+  * user-defined geometry types (see below)
 * Non-cartesian geometries (spherical_equatorial and geographic)
   * Boost.Geometry: point, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
-* Containers of geometries
+* Spatial indexes
   * Boost.Geometry: rtree (no direct memory access for now, so it may take long time to load)
 * Complex numbers
   * STL: complex
@@ -110,7 +111,7 @@ Watch window displaying graphical representations of variables in a list. Each v
 
 Supported:
 
-* Containers of values convertible to double and containers of points
+* Containers of values convertible to double, points and other geometries
   * C-style array
   * Pointer to elements with size specifier e.g.: `ptr,5`
   * Sequence of containers of point coordinates e.g.: `vec_x;vec_y`
@@ -118,15 +119,16 @@ Supported:
   * Boost.Array: array
   * Boost.CircularBuffer: circular_buffer
   * Boost.Container: vector, static_vector
-  * C#: array, List
+  * C#: array, List, LinkedList
+  * user-defined containers (see below)
 * 2D cartesian geometries
   * Boost.Geometry: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
   * Boost.Polygon: point_data, segment_data, rectangle_data, polygon_data, polygon_with_holes_data
   * STL: pair
-  * user-defined point type
+  * user-defined geometry types (see below)
 * Non-cartesian geometries (spherical_equatorial and geographic)
   * Boost.Geometry: point, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
-* Containers of geometries
+* Spatial indexes
   * Boost.Geometry: rtree (no direct memory access for now, so it may take long time to load)
 * Complex numbers
   * STL: complex
@@ -164,14 +166,15 @@ Supported containers of values convertible to double and containers of points:
   * Boost.Array: array
   * Boost.CircularBuffer: circular_buffer
   * Boost.Container: vector, static_vector
-  * C#: array, List
+  * C#: array, List, LinkedList
+  * user-defined containers (see below)
 
 where points can be of any supported point type (coordinate system is ignored):
 
   * STL: complex, pair
   * Boost.Geometry: point, point_xy
   * Boost.Polygon: point_data
-  * user-defined point type
+  * user-defined point type (see below)
 
 ![Plot Watch](images/plot_watch.png)
 
@@ -192,6 +195,11 @@ The extension offers support for the following user-defined geometries for both 
   * Ring (polygon without holes)
   * Polygon (polygon with holes)
   * MultiPolygon
+
+as well as user defined containers for C++ and C# based on:
+
+  * Array
+  * LinkedList (C++ only for now)
 
 They can be defined in XML file similar to *.natvis file. Path to this file can be set in options under **Tools**->**Options**->**Graphical Debugging**->**General**. An example XML file defining C++ types `MyPoint`, `MyRing` and `MyPolygon` in global namespace might look like this:
 
@@ -232,9 +240,9 @@ They can be defined in XML file similar to *.natvis file. Path to this file can 
 Current limitations:
 
   * only one entry per type
-  * based on identifier, no template specializations
+  * based on identifier, no separate entries for template specializations
   * no support for user-defined coordinate system, cartesian is used by default
-  * non-contigeous containers can be used only if this extension natively supports them
+  * in C# elements stored in containers has to be ValueTypes
 
 See more [examples at GitHub](https://github.com/awulkiew/graphical-debugging/tree/master/examples).
 
