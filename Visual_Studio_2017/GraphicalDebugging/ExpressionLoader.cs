@@ -108,6 +108,7 @@ namespace GraphicalDebugging
 
             loadersCS = new Loaders();
 
+            loadersCS.Add(new CSLinkedList());
             loadersCS.Add(new CSList());
             loadersCS.Add(new CSArray());
 

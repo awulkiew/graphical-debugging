@@ -864,5 +864,101 @@ namespace GraphicalDebugging
                                                elementConverter, memoryBlockPredicate);
             }
         }
+
+        class CSLinkedList : ContainerLoader
+        {
+            public override string Id() { return "System.Collections.Generic.LinkedList"; }
+
+            public override string ElementName(string name, string elType)
+            {
+                return name + ".head.item";
+            }
+
+            public override int LoadSize(Debugger debugger, string name)
+            {
+                return ExpressionParser.LoadSize(debugger, name + ".count");
+            }
+
+            public override bool ForEachMemoryBlock(MemoryReader mreader, Debugger debugger,
+                                                    string name, string type,
+                                                    MemoryReader.Converter<double> elementConverter,
+                                                    MemoryBlockPredicate memoryBlockPredicate)
+            {
+                int size = LoadSize(debugger, name);
+                if (size <= 0)
+                    return true;
+
+                // TODO: All of the debugger-related things should be done
+                //   in Initialize().
+
+                // TODO: Handle non-value types,
+                //   It is not clear for now where the distinction should be made
+                //   in the container or outside. When non-value types are stored
+                //   the container effectively stores pointers to objects.
+                //   So whether or not it's a pointer-container is defined by the
+                //   element type in C# and by the container in C++.
+                string elementType = debugger.GetExpression(name + ".head.item").Type;
+                Expression isValueTypeExpr = debugger.GetExpression("typeof(" + elementType + ").IsValueType");
+                if (!isValueTypeExpr.IsValidValue || isValueTypeExpr.Value != "true")
+                    return false;
+
+                //string headPointerPointerName = "(void*)&(" + name + ".head)"; //(void*)IntPtr*
+                string headPointerName = "(void*)*(&(" + name + ".head))"; // (void*)IntPtr
+                string nextPointerPointerName = "(void*)&(" + name + ".head.next)"; //(void*)IntPtr*
+                string nextPointerName = "(void*)*(&(" + name + ".head.next))"; // (void*)IntPtr
+                string valPointerName = "(void*)&(" + name + ".head.item)"; // (void*)IntPtr* or (void*)ValueType*
+
+                TypeInfo nextPointerInfo = new TypeInfo(debugger, nextPointerPointerName);
+                TypeInfo nextInfo = new TypeInfo(debugger, nextPointerName);
+                if (!nextPointerInfo.IsValid || !nextInfo.IsValid)
+                    return false;
+
+                MemoryReader.ValueConverter<ulong> pointerConverter = mreader.GetPointerConverter(nextPointerInfo.Type, nextPointerInfo.Size);
+                if (pointerConverter == null)
+                    return false;
+
+                long nextDiff = ExpressionParser.GetPointerDifference(debugger, headPointerName, nextPointerPointerName);
+                long valDiff = ExpressionParser.GetPointerDifference(debugger, headPointerName, valPointerName);
+                if (ExpressionParser.IsInvalidAddressDifference(nextDiff)
+                 || ExpressionParser.IsInvalidAddressDifference(valDiff)
+                 || nextDiff < 0 || valDiff < 0)
+                    return false;
+
+                ulong address = ExpressionParser.GetPointer(debugger, headPointerName);
+                if (address == 0)
+                    return false;
+
+                for (int i = 0; i < size; ++i)
+                {
+                    double[] values = new double[elementConverter.ValueCount()];
+                    if (!mreader.Read(address + (ulong)valDiff, values, elementConverter))
+                        return false;
+
+                    if (!memoryBlockPredicate(values))
+                        return false;
+
+                    ulong[] nextTmp = new ulong[1];
+                    if (!mreader.Read(address + (ulong)nextDiff, nextTmp, pointerConverter))
+                        return false;
+                    address = nextTmp[0];
+                }
+                return true;
+            }
+
+            public override bool ForEachElement(Debugger debugger, string name, ElementPredicate elementPredicate)
+            {
+                int size = this.LoadSize(debugger, name);
+
+                string nodeName = name + ".head";
+                for (int i = 0; i < size; ++i)
+                {
+                    string elName = nodeName + ".item";
+                    if (!elementPredicate(elName))
+                        return false;
+                    nodeName = nodeName + ".next";
+                }
+                return true;
+            }
+        }
     }
 }

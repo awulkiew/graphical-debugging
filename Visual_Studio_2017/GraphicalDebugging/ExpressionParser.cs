@@ -84,6 +84,17 @@ namespace GraphicalDebugging
                  : -(long)(addr1 - addr2);
         }
 
+        public static long GetPointerDifference(Debugger debugger, string pointerName1, string pointerName2)
+        {
+            ulong addr1 = GetPointer(debugger, pointerName1);
+            ulong addr2 = GetPointer(debugger, pointerName2);
+            if (addr1 == 0 || addr2 == 0)
+                return long.MinValue;
+            return (addr2 >= addr1)
+                 ? (long)(addr2 - addr1)
+                 : -(long)(addr1 - addr2);
+        }
+
         public static bool IsInvalidAddressDifference(long diff)
         {
             return diff == long.MinValue;
@@ -91,13 +102,7 @@ namespace GraphicalDebugging
 
         public ulong GetValueAddress(string valName)
         {
-            return GetValueAddress(debugger, valName);
-        }
-
-        // Valid address of variable valName or 0
-        public static ulong GetValueAddress(Debugger debugger, string valName)
-        {
-            Expression ptrExpr = debugger.GetExpression("((void*)&(" + valName + "))");
+            Expression ptrExpr = debugger.GetExpression("(void*)&(" + valName + ")");
             if (!ptrExpr.IsValidValue)
                 return 0;
             string addr = ptrExpr.Value;
@@ -106,6 +111,38 @@ namespace GraphicalDebugging
             // But automatically detect the format just in case of various versions
             // of VS displayed it differently regardless of debugger mode.
             return Util.ParseULong(addr/*, true*/);
+        }
+
+        // TODO: C# classes
+        // For value-types, structs, etc.
+        // "typeof(" + type + ").IsValueType" == "true"
+        // "&(" + name + ")" is of type SomeType*
+        // - address: "&(" + name + ")"
+        // - size: "sizeof(" + type + ")"
+        // For non-value-types, e.g. classes
+        // "typeof(" + type + ").IsValueType" == "false"
+        // "&(" + name + ")" is of type IntPtr*
+        // - address: "*(&(" + name + "))"
+        // - size: "System.Runtime.InteropServices.Marshal.ReadInt32(typeof(" + type + ").TypeHandle.Value, 4)"
+        // - size: "*(((int*)(void*)typeof(" + type + ").TypeHandle.Value) + 1)"
+
+        public static ulong GetPointer(Debugger debugger, string pointerName)
+        {
+            Expression ptrExpr = debugger.GetExpression("(void*)(" + pointerName + ")");
+            if (!ptrExpr.IsValidValue)
+                return 0;
+            string addr = ptrExpr.Value;
+
+            // NOTE: Hexadecimal value is automatically detected, this is probably not needed.
+            // But automatically detect the format just in case of various versions
+            // of VS displayed it differently regardless of debugger mode.
+            return Util.ParseULong(addr/*, true*/);
+        }
+
+        // Valid address of variable valName or 0
+        public static ulong GetValueAddress(Debugger debugger, string valName)
+        {
+            return GetPointer(debugger, "&(" + valName + ")");
         }
 
         // Valid size or 0
