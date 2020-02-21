@@ -1,3 +1,11 @@
+version 0.30
+
+additions:
+- support for user-defined Container based on Array or LinkedList
+- support for user-defined MultiGeometry
+- support for C# LinkedList<>
+- support for containers of geometries
+
 version 0.29
 
 additions:
