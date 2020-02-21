@@ -114,6 +114,7 @@ namespace GraphicalDebugging
 
             loadersCS.Add(new PointContainer());
             loadersCS.Add(new ValuesContainer());
+            loadersCS.Add(new GeometryContainer());
         }
 
         public static Debugger Debugger
