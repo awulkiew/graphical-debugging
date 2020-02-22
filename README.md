@@ -196,10 +196,10 @@ The extension offers support for the following user-defined geometries for both 
   * Polygon (polygon with holes)
   * MultiPolygon
 
-as well as user defined containers for C++ and C# based on:
+as well as user defined containers for C++:
 
   * Array
-  * LinkedList (C++ only for now)
+  * LinkedList
 
 They can be defined in XML file similar to *.natvis file. Path to this file can be set in options under **Tools**->**Options**->**Graphical Debugging**->**General**. An example XML file defining C++ types `MyPoint`, `MyRing` and `MyPolygon` in global namespace might look like this:
 
