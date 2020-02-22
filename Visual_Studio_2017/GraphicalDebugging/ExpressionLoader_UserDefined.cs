@@ -382,7 +382,6 @@ namespace GraphicalDebugging
             ClassScopeExpression exprContainerName;
         }
 
-        // TODO: This class could possibly be simplified if UserArray was used here
         class UserArrayEntry : IUserContainerEntry
         {
             public UserArrayEntry(string strPointer, string strSize)
@@ -407,27 +406,21 @@ namespace GraphicalDebugging
                 //       This may not be needed because below elementType is retrieved
                 //       by dereferencing the pointer/array.
 
-                string pointerName = exprPointer.GetString(name);
-                string elementType = ExpressionParser.GetValueType(debugger, '*' + pointerName);
-                if (elementType == null)
+                string type = ExpressionParser.GetValueType(debugger, name);
+                if (type == null)
                     return null;
 
-                string sizeName = exprSize.GetString(name);
-                int size = ExpressionParser.LoadSize(debugger, sizeName);
-                if (size <= 0)
-                    return null;
+                // NOTE: This could be done in Initialize(),however in all other places
+                //   container is created an initialized during Loading.
+                //   So do this in this case as well.
+                string id = Util.BaseType(type);
+                UserArray containerLoader = new UserArray(id, exprPointer, exprSize);
+                containerLoader.Initialize(debugger, name);
 
-                // TODO: This has sense only in C++
-
-                string arrName = pointerName + ',' + size;
-                string arrType = elementType + '[' + size + ']';
-
-                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container, arrName, arrType) as ContainerLoader;
-                if (containerLoader == null)
-                    return null;
-
+                string elementType = containerLoader.ElementType(type);
+                string elementName = containerLoader.ElementName(name, elementType);
                 ElementLoader elementLoader = loaders.FindByType(elementKindConstraint,
-                                                                 containerLoader.ElementName(arrName, elementType),
+                                                                 elementName,
                                                                  elementType) as ElementLoader;
                 if (elementLoader == null)
                     return null;
@@ -435,8 +428,8 @@ namespace GraphicalDebugging
                 UserContainerLoaders<ElementLoader> result = new UserContainerLoaders<ElementLoader>();
                 result.ContainerLoader = containerLoader;
                 result.ElementLoader = elementLoader;
-                result.ContainerName = arrName;
-                result.ContainerType = arrType;
+                result.ContainerName = name;
+                result.ContainerType = type;
                 result.ElementType = elementType;
                 return result;
             }
