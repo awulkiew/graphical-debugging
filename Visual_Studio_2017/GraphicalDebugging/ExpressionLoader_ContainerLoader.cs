@@ -33,13 +33,7 @@ namespace GraphicalDebugging
             // With ReadArray knowing which memory copying optimizations can be made based on ElementLoader's type
             // Or not
 
-            // TODO: Move from here into specific classes
-            virtual public string ElementType(string type)
-            {
-                List<string> tparams = Util.Tparams(type);
-                return tparams.Count > 0 ? tparams[0] : "";
-            }
-
+            abstract public string ElementType(string type);
             abstract public string ElementName(string name, string elemType);
             public delegate bool MemoryBlockPredicate(double[] values);
             abstract public bool ForEachMemoryBlock(MemoryReader mreader, Debugger debugger,
@@ -187,6 +181,12 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "std::array"; }
 
+            public override string ElementType(string type)
+            {
+                List<string> tparams = Util.Tparams(type);
+                return tparams.Count > 0 ? tparams[0] : "";
+            }
+
             public override string ElementName(string name, string elType)
             {
                 return name + "._Elems[0]";
@@ -214,6 +214,12 @@ namespace GraphicalDebugging
         class BoostContainerVector : ContiguousContainer
         {
             public override string Id() { return "boost::container::vector"; }
+
+            public override string ElementType(string type)
+            {
+                List<string> tparams = Util.Tparams(type);
+                return tparams.Count > 0 ? tparams[0] : "";
+            }
 
             public override string ElementName(string name, string elType)
             {
@@ -265,6 +271,12 @@ namespace GraphicalDebugging
             public override int LoadSize(Debugger debugger, string name)
             {
                 return ExpressionParser.LoadSize(debugger, name + ".m_size");
+            }
+
+            public override string ElementType(string type)
+            {
+                List<string> tparams = Util.Tparams(type);
+                return tparams.Count > 0 ? tparams[0] : "";
             }
 
             public override string ElementName(string name, string elType)
@@ -359,6 +371,12 @@ namespace GraphicalDebugging
                 return FirstStr(rawName) + "[" + i + "]";
             }
 
+            public override string ElementType(string type)
+            {
+                List<string> tparams = Util.Tparams(type);
+                return tparams.Count > 0 ? tparams[0] : "";
+            }
+
             public override string ElementName(string name, string elType)
             {
                 return FirstStr(name) + "[0]";
@@ -398,6 +416,12 @@ namespace GraphicalDebugging
         class StdDeque : RandomAccessContainer
         {
             public override string Id() { return "std::deque"; }
+
+            public override string ElementType(string type)
+            {
+                List<string> tparams = Util.Tparams(type);
+                return tparams.Count > 0 ? tparams[0] : "";
+            }
 
             public override string ElementName(string name, string elType)
             {
@@ -541,6 +565,12 @@ namespace GraphicalDebugging
         {
             public override string Id() { return "std::list"; }
 
+            public override string ElementType(string type)
+            {
+                List<string> tparams = Util.Tparams(type);
+                return tparams.Count > 0 ? tparams[0] : "";
+            }
+
             public override string ElementName(string name, string elType)
             {
                 return HeadStr(name) + "->_Next->_Myval";
@@ -656,6 +686,12 @@ namespace GraphicalDebugging
         class StdSet : ContainerLoader
         {
             public override string Id() { return "std::set"; }
+
+            public override string ElementType(string type)
+            {
+                List<string> tparams = Util.Tparams(type);
+                return tparams.Count > 0 ? tparams[0] : "";
+            }
 
             public override string ElementName(string name, string elType)
             {
@@ -845,6 +881,12 @@ namespace GraphicalDebugging
                 return rawName + "._items[" + i + "]";
             }
 
+            public override string ElementType(string type)
+            {
+                List<string> tparams = Util.Tparams(type);
+                return tparams.Count > 0 ? tparams[0] : "";
+            }
+
             public override string ElementName(string name, string elType)
             {
                 return name + "._items[0]";
@@ -868,6 +910,12 @@ namespace GraphicalDebugging
         class CSLinkedList : ContainerLoader
         {
             public override string Id() { return "System.Collections.Generic.LinkedList"; }
+
+            public override string ElementType(string type)
+            {
+                List<string> tparams = Util.Tparams(type);
+                return tparams.Count > 0 ? tparams[0] : "";
+            }
 
             public override string ElementName(string name, string elType)
             {

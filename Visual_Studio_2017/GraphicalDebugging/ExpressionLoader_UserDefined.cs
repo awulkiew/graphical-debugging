@@ -36,9 +36,17 @@ namespace GraphicalDebugging
                 string type = ExpressionParser.GetValueType(debugger, name);
                 exprPointer.Initialize(debugger, name, type);
                 exprSize.Initialize(debugger, name, type);
+
+                string elemName = exprPointer.GetString(name) + "[0]";
+                elemType = ExpressionParser.GetValueType(debugger, elemName);
             }
 
             public override string Id() { return id; }
+
+            public override string ElementType(string type)
+            {
+                return elemType == null ? "" : elemType;
+            }
 
             public override string RandomAccessElementName(string rawName, int i)
             {
@@ -58,6 +66,7 @@ namespace GraphicalDebugging
             string id;
             ClassScopeExpression exprPointer;
             ClassScopeExpression exprSize;
+            string elemType;
         }
 
         // TODO: The code is similar to std::list loader, unify if possible
@@ -85,9 +94,17 @@ namespace GraphicalDebugging
                 string headType = ExpressionParser.GetValueType(debugger, headName);
                 exprNextPointer.Initialize(debugger, headName, headType);
                 exprValue.Initialize(debugger, headName, headType);
+
+                string elemName = exprValue.GetString(headName);
+                elemType = ExpressionParser.GetValueType(debugger, elemName);
             }
 
             public override string Id() { return id; }
+
+            public override string ElementType(string type)
+            {
+                return elemType == null ? "" : elemType;
+            }
 
             public override string ElementName(string name, string elType)
             {
@@ -170,6 +187,7 @@ namespace GraphicalDebugging
             ClassScopeExpression exprNextPointer;
             ClassScopeExpression exprValue;
             ClassScopeExpression exprSize;
+            string elemType;
         }
 
         class UserPoint : PointLoader
