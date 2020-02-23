@@ -18,7 +18,14 @@ namespace GraphicalDebugging
 {
     partial class ExpressionLoader
     {
-        // TODO: Use in UserArrayEntry
+        // TODO: Storing elemType is not correct because the same loader
+        //   can potentially be used for two different container types storing
+        //   different elements.
+        //   This is not a problem now because before that happens Initialize()
+        //   is called each time the loader is retrieved from the list of loaders.
+        //   This however should probably be changed because it's not efficient to
+        //   initialize loaders and call the debugger multiple times for the same type.
+
         // TODO: The code is similar to std::vector loader, unify if possible
         class UserArray : ContiguousContainer
         {
@@ -68,6 +75,14 @@ namespace GraphicalDebugging
             ClassScopeExpression exprSize;
             string elemType;
         }
+
+        // TODO: Storing elemType is not correct because the same loader
+        //   can potentially be used for two different container types storing
+        //   different elements.
+        //   This is not a problem now because before that happens Initialize()
+        //   is called each time the loader is retrieved from the list of loaders.
+        //   This however should probably be changed because it's not efficient to
+        //   initialize loaders and call the debugger multiple times for the same type.
 
         // TODO: The code is similar to std::list loader, unify if possible
         class UserLinkedList : ContainerLoader
