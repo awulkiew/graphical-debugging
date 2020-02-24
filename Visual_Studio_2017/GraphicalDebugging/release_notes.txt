@@ -1,3 +1,9 @@
+version 0.31
+
+bugfixes:
+- fixed issue with user-defined containers element type expected to be the first template argument
+- fixed issue with user-defined containers not updated after change in XML file 
+
 version 0.30
 
 additions:
