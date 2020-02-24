@@ -48,6 +48,8 @@ namespace GraphicalDebugging
                 elemType = ExpressionParser.GetValueType(debugger, elemName);
             }
 
+            public override bool IsUserDefined() { return true; }
+
             public override string Id() { return id; }
 
             public override string ElementType(string type)
@@ -113,6 +115,8 @@ namespace GraphicalDebugging
                 string elemName = exprValue.GetString(headName);
                 elemType = ExpressionParser.GetValueType(debugger, elemName);
             }
+
+            public override bool IsUserDefined() { return true; }
 
             public override string Id() { return id; }
 
