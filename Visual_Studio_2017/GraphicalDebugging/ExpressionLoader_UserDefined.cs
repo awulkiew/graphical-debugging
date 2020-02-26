@@ -223,11 +223,16 @@ namespace GraphicalDebugging
         {
             public UserPoint(ITypeMatcher typeMatcher,
                              ClassScopeExpression exprX,
-                             ClassScopeExpression exprY)
+                             ClassScopeExpression exprY,
+                             Geometry.CoordinateSystem cs,
+                             Geometry.Unit unit)
             {
                 this.typeMatcher = typeMatcher;
                 this.exprX = exprX;
                 this.exprY = exprY;
+                this.cs = cs;
+                this.unit = unit;
+
                 this.typeX = null;
                 this.typeY = null;
                 this.sizeOf = 0;
@@ -286,8 +291,9 @@ namespace GraphicalDebugging
 
             public override Geometry.Traits LoadTraits(string type)
             {
-                // TODO: dimension, CS and Units defined by the user
-                return new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
+                // NOTE: in the future dimension should also be loaded
+                //   but for now set it to 2 since the extension ignores higher dimensions anyway
+                return new Geometry.Traits(2, cs, unit);
             }
 
             protected override ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type)
@@ -349,6 +355,8 @@ namespace GraphicalDebugging
             ITypeMatcher typeMatcher;
             ClassScopeExpression exprX;
             ClassScopeExpression exprY;
+            Geometry.CoordinateSystem cs;
+            Geometry.Unit unit;
             // For memory loading:
             string typeX;
             string typeY;
@@ -1043,9 +1051,13 @@ namespace GraphicalDebugging
                                 var elY = Util.GetXmlElementByTagName(elCoords, "Y");
                                 if (elX != null && elY != null)
                                 {
+                                    Geometry.CoordinateSystem cs = Geometry.CoordinateSystem.Cartesian;
+                                    Geometry.Unit unit = Geometry.Unit.None;
+                                    GetCSAndUnit(elEntry, out cs, out unit);
+
                                     ClassScopeExpression exprX = new ClassScopeExpression(elX.InnerText);
                                     ClassScopeExpression exprY = new ClassScopeExpression(elY.InnerText);
-                                    loaders.Add(new UserPoint(typeMatcher, exprX, exprY));
+                                    loaders.Add(new UserPoint(typeMatcher, exprX, exprY, cs, unit));
                                 }
                             }
                         }
@@ -1161,6 +1173,48 @@ namespace GraphicalDebugging
                 }
             }
             return null;
+        }
+
+        static void GetCSAndUnit(System.Xml.XmlElement el,
+                                 out Geometry.CoordinateSystem cs,
+                                 out Geometry.Unit unit)
+        {
+            cs = Geometry.CoordinateSystem.Cartesian;
+            unit = Geometry.Unit.None;
+
+            string csStr = el.GetAttribute("CoordinateSystem");
+            if (!Util.Empty(csStr))
+            {
+                if (csStr == "Spherical" || csStr == "SphericalEquatorial")
+                    cs = Geometry.CoordinateSystem.SphericalEquatorial;
+                else if (csStr == "SphericalPolar")
+                    cs = Geometry.CoordinateSystem.SphericalPolar;
+                else if (csStr == "Geographic")
+                    cs = Geometry.CoordinateSystem.Geographic;
+                else if (csStr == "Complex")
+                    cs = Geometry.CoordinateSystem.Complex;
+            }
+
+            string unitStr = el.GetAttribute("Unit");
+            if (!Util.Empty(unitStr))
+            {
+                if (unitStr == "Radian")
+                    unit = Geometry.Unit.Radian;
+                else if (unitStr == "Degree")
+                    unit = Geometry.Unit.Degree;
+            }
+
+            if (cs == Geometry.CoordinateSystem.SphericalEquatorial
+                || cs == Geometry.CoordinateSystem.SphericalPolar
+                || cs == Geometry.CoordinateSystem.Geographic)
+            {
+                if (unit == Geometry.Unit.None)
+                    unit = Geometry.Unit.Degree;
+            }
+            else
+            {
+                unit = Geometry.Unit.None;
+            }
         }
 
         public static void ReloadUserTypes(GeneralOptionPage options)

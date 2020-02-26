@@ -2,9 +2,40 @@
 <GraphicalDebugging>
 
   <!--
-  Type and Id is defined only as an example below.
-  Only one of these definitions is needed.
-  If both are defined the Type has the priority over Id.
+  Supported elements:
+    - Container
+    - Point
+    - Linestring
+    - Ring (polygon without holes)
+    - Polygon (polygon with holes)
+    - MultiPoint
+    - MultiLinestring
+    - MultiPolygon
+    - MultiGeometry
+  
+  Arguments of all elements:
+    - Type: type pattern, e.g.: "MyNamespace::MyId&lt;*&gt;"
+    - Id: qualified identifier of a type, e.g. "MyNamespace::MyId"
+  
+    Both Type and Id is defined only as an example below. Only one of these
+    definitions is needed. If both are defined the Type has the priority over
+    Id.
+  
+  Arguments of Point element:
+    - CoordinateSystem:
+      - "Cartesian"
+      - "Spherical"
+      - "Geographic"
+      - "Complex"
+    - Unit:
+      - "Radian"
+      - "Degree"
+  
+    The CoordinateSystem and Unit can be set in Point element and are
+    "inherited" by all other geometries using this Point type.
+  
+    By default the CoordinateSystem is Cartesian and Unit is None. The default
+    Unit for Spherical and Geographic coordinate systems is Degree.
   -->
 
   <!--
@@ -14,6 +45,8 @@
   };
   -->
   <Point Type="tagPOINT" Id="tagPOINT">
+  <!--Point Type="tagPOINT"-->
+  <!--Point Id="tagPOINT"-->
     <Coordinates>
       <X>x</X>
       <Y>y</Y>
@@ -42,7 +75,7 @@
       double x, y;
   };
   -->
-  <Point Type="MyPoint" Id="MyPoint">
+  <Point Type="MyPoint" Id="MyPoint" CoordinateSystem="Cartesian" Unit="None">
     <Coordinates>
       <X>x</X>
       <Y>y</Y>
