@@ -374,5 +374,10 @@ namespace GraphicalDebugging
             v = v2;
             return result;
         }
+
+        public static bool Empty(string s)
+        {
+            return s == null || s == "";
+        }
     }
 }

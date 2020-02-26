@@ -7,6 +7,7 @@
 using EnvDTE;
 
 using System;
+using System.Text.RegularExpressions;
 using System.Windows;
 
 namespace GraphicalDebugging
@@ -85,6 +86,78 @@ namespace GraphicalDebugging
             }
 
             public ulong Address;
+        }
+
+        interface ITypeMatcher
+        {
+            bool MatchType(string type, string id);
+        }
+
+        class IdMatcher : ITypeMatcher
+        {
+            public IdMatcher(string id) { this.id = id; }
+
+            public bool MatchType(string type, string id)
+            {
+                return id == this.id;
+            }
+
+            string id;
+        }
+
+        class TypeMatcher : ITypeMatcher
+        {
+            public TypeMatcher(string type) { this.type = type; }
+
+            public bool MatchType(string type, string id)
+            {
+                return type == this.type;
+            }
+
+            string type;
+        }
+
+        class TypePatternMatcher : ITypeMatcher
+        {
+            public TypePatternMatcher(string pattern)
+            {
+                string tmp = PreprocessPattern(pattern);
+                this.pattern = tmp.Replace("*", "(.+)");
+                if (this.pattern != tmp)
+                    this.regex = new Regex(this.pattern, RegexOptions.CultureInvariant);
+            }
+
+            public bool MatchType(string type, string id)
+            {
+                return regex != null
+                     ? regex.IsMatch(type)
+                     : type == pattern;
+            }
+
+            // From
+            // A::B < C::D < E< F>>>
+            // To
+            // A::B<C::D<E<F> > >
+            static string PreprocessPattern(string str)
+            {
+                string result = "";
+                char lastNonSpace = ' ';
+                for (int i = 0; i < str.Length; ++i)
+                {
+                    char c = str[i];
+                    if (c != ' ' && c != '\t')
+                    {
+                        if (lastNonSpace == '>' && c == '>')
+                            result += ' ';
+                        result += c;
+                        lastNonSpace = c;
+                    }
+                }
+                return result;
+            }
+
+            string pattern;
+            Regex regex;
         }
     }
 }

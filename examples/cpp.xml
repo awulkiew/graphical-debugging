@@ -2,12 +2,18 @@
 <GraphicalDebugging>
 
   <!--
+  Type and Id is defined only as an example below.
+  Only one of these definitions is needed.
+  If both are defined the Type has the priority over Id.
+  -->
+
+  <!--
   struct tagPOINT {
     long x;
     long y;
   };
   -->
-  <Point Id="tagPOINT">
+  <Point Type="tagPOINT" Id="tagPOINT">
     <Coordinates>
       <X>x</X>
       <Y>y</Y>
@@ -23,7 +29,7 @@
   };
   }}
   -->
-  <Point Id="boost::qvm::vec">
+  <Point Type="boost::qvm::vec&lt;*&gt;" Id="boost::qvm::vec">
     <Coordinates>
       <X>a[0]</X>
       <Y>a[1]</Y>
@@ -36,7 +42,7 @@
       double x, y;
   };
   -->
-  <Point Id="MyPoint">
+  <Point Type="MyPoint" Id="MyPoint">
     <Coordinates>
       <X>x</X>
       <Y>y</Y>
@@ -49,7 +55,7 @@
       std::vector<MyPoint> points;
   };
   -->
-  <Linestring Id="MyLinestring">
+  <Linestring Type="MyLinestring" Id="MyLinestring">
     <Points>
       <Container>
         <Name>points</Name>
@@ -62,7 +68,7 @@
   struct MyLinestring2 : std::vector<Point>
   { };
   -->
-  <Linestring Id="MyLinestring2">
+  <Linestring Type="MyLinestring2&lt;*&gt;" Id="MyLinestring2">
     <Points>
       <Container>
         <Name>(std::vector&lt;$T0,std::allocator&lt;$T0&gt; &gt;&amp;)(*this)</Name>
@@ -77,7 +83,7 @@
       MyPoint * end;
   };
   -->
-  <Linestring Id="MyLinestring3">
+  <Linestring Type="MyLinestring3" Id="MyLinestring3">
     <Points>
       <Array>
         <Pointer>begin</Pointer>
@@ -91,7 +97,7 @@
   struct MyLinestring4 : std::vector<Point>
   { };
   -->
-  <Linestring Id="MyLinestring4">
+  <Linestring Type="MyLinestring4&lt;*&gt;" Id="MyLinestring4">
     <Points>
       <Array>
         <Pointer>_Mypair._Myval2._Myfirst</Pointer>
@@ -105,7 +111,7 @@
   struct MyLinestring5 : std::list<Point>
   { };
   -->
-  <Linestring Id="MyLinestring5">
+  <Linestring Type="MyLinestring5&lt;*&gt;" Id="MyLinestring5">
     <Points>
       <LinkedList>
         <Size>_Mypair._Myval2._Mysize</Size>
@@ -120,7 +126,7 @@
   struct MyRing : std::vector<MyPoint>
   { };
   -->
-  <Ring Id="MyRing">
+  <Ring Type="MyRing" Id="MyRing">
     <Points>
       <Container>
         <Name>(std::vector&lt;MyPoint,std::allocator&lt;MyPoint&gt; &gt;&amp;)(*this)</Name>
@@ -135,7 +141,7 @@
       std::vector<MyRing> inners;
   };
   -->
-  <Polygon Id="MyPolygon">
+  <Polygon Type="MyPolygon" Id="MyPolygon">
     <ExteriorRing>
       <Name>outer</Name>
     </ExteriorRing>
@@ -151,7 +157,7 @@
   struct MyPolygon2 : std::vector<MyRing>
   { };
   -->
-  <Polygon Id="MyPolygon2">
+  <Polygon Type="MyPolygon2" Id="MyPolygon2">
     <ExteriorRing>
       <Name>(*_Mypair._Myval2._Myfirst)</Name>
     </ExteriorRing>
@@ -169,7 +175,7 @@
       std::vector<MyPoint> points;
   };
   -->
-  <MultiPoint Id="MyMultiPoint">
+  <MultiPoint Type="MyMultiPoint" Id="MyMultiPoint">
     <Points>
       <Container>
         <Name>points</Name>
@@ -183,7 +189,7 @@
       std::vector<MyLinestring> linestrings;
   };
   -->
-  <MultiLinestring Id="MyMultiLinestring">
+  <MultiLinestring Type="MyMultiLinestring" Id="MyMultiLinestring">
     <Linestrings>
       <Container>
         <Name>linestrings</Name>
@@ -197,7 +203,7 @@
       std::vector<MyPolygon> polygons;
   };
   -->
-  <MultiPolygon Id="MyMultiPolygon">
+  <MultiPolygon Type="MyMultiPolygon" Id="MyMultiPolygon">
     <Polygons>
       <Container>
         <Name>polygons</Name>
@@ -211,7 +217,7 @@
       std::vector<MyRing> rings;
   };
   -->
-  <MultiGeometry Id="MyMultiRing">
+  <MultiGeometry Type="MyMultiRing" Id="MyMultiRing">
     <Geometries>
       <Container>
         <Name>rings</Name>
@@ -224,7 +230,7 @@
   struct MyVector : std::vector<T>
   { };
   -->
-  <Container Id="MyVector">
+  <Container Type="MyVector&lt;*&gt;" Id="MyVector">
     <Array>
       <Pointer>_Mypair._Myval2._Myfirst</Pointer>
       <Size>_Mypair._Myval2._Mylast - _Mypair._Myval2._Myfirst</Size>
@@ -236,7 +242,7 @@
   struct MyList : std::list<T>
   { };
   -->
-  <Container Id="MyList">
+  <Container Type="MyList&lt;*&gt;" Id="MyList">
     <LinkedList>
       <Size>_Mypair._Myval2._Mysize</Size>
       <HeadPointer>_Mypair._Myval2._Myhead-&gt;_Next</HeadPointer>
