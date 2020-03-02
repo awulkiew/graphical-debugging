@@ -379,5 +379,15 @@ namespace GraphicalDebugging
         {
             return s == null || s == "";
         }
+
+        public static string TemplateType(string id, string tparam)
+        {
+            return id + "<" + tparam + (tparam.EndsWith(">") ? " >" : ">");
+        }
+
+        public static string TemplateType(string id, string tparam0, string tparam1)
+        {
+            return id + "<" + tparam0 + "," + tparam1 + (tparam1.EndsWith(">") ? " >" : ">");
+        }
     }
 }

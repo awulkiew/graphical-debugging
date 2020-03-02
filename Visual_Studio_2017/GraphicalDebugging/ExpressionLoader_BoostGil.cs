@@ -23,7 +23,10 @@ namespace GraphicalDebugging
         {
             public override ExpressionLoader.Kind Kind() { return ExpressionLoader.Kind.Image; }
 
-            public override string Id() { return "boost::gil::image"; }
+            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            {
+                return id == "boost::gil::image";
+            }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
                                       string name, string type,

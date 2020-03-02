@@ -50,8 +50,6 @@ namespace GraphicalDebugging
 
             public override bool IsUserDefined() { return true; }
 
-            public override string Id() { return null; }
-
             public override bool MatchType(Loaders loaders, string name, string type, string id)
             {
                 return typeMatcher.MatchType(type, id);
@@ -122,8 +120,6 @@ namespace GraphicalDebugging
             }
 
             public override bool IsUserDefined() { return true; }
-
-            public override string Id() { return null; }
 
             public override bool MatchType(Loaders loaders, string name, string type, string id)
             {
@@ -239,8 +235,6 @@ namespace GraphicalDebugging
             }
 
             public override bool IsUserDefined() { return true; }
-
-            public override string Id() { return null; }
 
             public override bool MatchType(Loaders loaders, string name, string type, string id)
             {
@@ -571,8 +565,6 @@ namespace GraphicalDebugging
 
             public override bool IsUserDefined() { return true; }
 
-            public override string Id() { return null; }
-
             public override bool MatchType(Loaders loaders, string name, string type, string id)
             {
                 return typeMatcher.MatchType(type, id);
@@ -663,8 +655,6 @@ namespace GraphicalDebugging
 
             public override bool IsUserDefined() { return true; }
 
-            public override string Id() { return null; }
-
             public override bool MatchType(Loaders loaders, string name, string type, string id)
             {
                 return typeMatcher.MatchType(type, id);
@@ -734,8 +724,6 @@ namespace GraphicalDebugging
             }
 
             public override bool IsUserDefined() { return true; }
-
-            public override string Id() { return null; }
 
             public override bool MatchType(Loaders loaders, string name, string type, string id)
             {
@@ -833,8 +821,6 @@ namespace GraphicalDebugging
 
             public override bool IsUserDefined() { return true; }
 
-            public override string Id() { return null; }
-
             public override bool MatchType(Loaders loaders, string name, string type, string id)
             {
                 return typeMatcher.MatchType(type, id);
@@ -902,8 +888,6 @@ namespace GraphicalDebugging
             }
 
             public override bool IsUserDefined() { return true; }
-
-            public override string Id() { return null; }
 
             public override bool MatchType(Loaders loaders, string name, string type, string id)
             {

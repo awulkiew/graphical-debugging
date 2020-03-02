@@ -104,8 +104,6 @@ namespace GraphicalDebugging
 
         class CArray : ContiguousContainer
         {
-            public override string Id() { return null; }
-
             public override bool MatchType(Loaders loaders, string name, string type, string id)
             {
                 string foo;
@@ -179,7 +177,10 @@ namespace GraphicalDebugging
 
         class StdArray : ContiguousContainer
         {
-            public override string Id() { return "std::array"; }
+            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            {
+                return id == "std::array";
+            }
 
             public override string ElementType(string type)
             {
@@ -203,7 +204,10 @@ namespace GraphicalDebugging
 
         class BoostArray : StdArray
         {
-            public override string Id() { return "boost::array"; }
+            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            {
+                return id == "boost::array";
+            }
 
             public override string ElementName(string name, string elType)
             {
@@ -213,7 +217,10 @@ namespace GraphicalDebugging
 
         class BoostContainerVector : ContiguousContainer
         {
-            public override string Id() { return "boost::container::vector"; }
+            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            {
+                return id == "boost::container::vector";
+            }
 
             public override string ElementType(string type)
             {
@@ -234,7 +241,10 @@ namespace GraphicalDebugging
 
         class BoostContainerStaticVector : BoostContainerVector
         {
-            public override string Id() { return "boost::container::static_vector"; }
+            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            {
+                return id == "boost::container::static_vector";
+            }
 
             public override string ElementName(string name, string elType)
             {
@@ -250,7 +260,10 @@ namespace GraphicalDebugging
 
         class BGVarray : BoostContainerVector // TODO: ContiguousContainer
         {
-            public override string Id() { return "boost::geometry::index::detail::varray"; }
+            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            {
+                return id == "boost::geometry::index::detail::varray";
+            }
 
             public override string ElementName(string name, string elType)
             {
@@ -266,7 +279,10 @@ namespace GraphicalDebugging
 
         class BoostCircularBuffer : RandomAccessContainer
         {
-            public override string Id() { return "boost::circular_buffer"; }
+            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            {
+                return id == "boost::circular_buffer";
+            }
 
             public override int LoadSize(Debugger debugger, string name)
             {
@@ -364,7 +380,10 @@ namespace GraphicalDebugging
 
         class StdVector : ContiguousContainer
         {
-            public override string Id() { return "std::vector"; }
+            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            {
+                return id == "std::vector";
+            }
 
             public override string RandomAccessElementName(string rawName, int i)
             {
@@ -415,7 +434,10 @@ namespace GraphicalDebugging
 
         class StdDeque : RandomAccessContainer
         {
-            public override string Id() { return "std::deque"; }
+            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            {
+                return id == "std::deque";
+            }
 
             public override string ElementType(string type)
             {
@@ -563,7 +585,10 @@ namespace GraphicalDebugging
 
         class StdList : ContainerLoader
         {
-            public override string Id() { return "std::list"; }
+            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            {
+                return id == "std::list";
+            }
 
             public override string ElementType(string type)
             {
@@ -685,7 +710,10 @@ namespace GraphicalDebugging
         //       in case some pointers were invalid
         class StdSet : ContainerLoader
         {
-            public override string Id() { return "std::set"; }
+            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            {
+                return id == "std::set";
+            }
 
             public override string ElementType(string type)
             {
@@ -834,8 +862,6 @@ namespace GraphicalDebugging
 
         class CSArray : ContiguousContainer
         {
-            public override string Id() { return null; }
-
             public override bool MatchType(Loaders loaders, string name, string type, string id)
             {
                 return ElementType(type).Length > 0;
@@ -869,7 +895,10 @@ namespace GraphicalDebugging
 
         class CSList : ContiguousContainer
         {
-            public override string Id() { return "System.Collections.Generic.List"; }
+            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            {
+                return id == "System.Collections.Generic.List";
+            }
 
             public override int LoadSize(Debugger debugger, string name)
             {
@@ -909,7 +938,10 @@ namespace GraphicalDebugging
 
         class CSLinkedList : ContainerLoader
         {
-            public override string Id() { return "System.Collections.Generic.LinkedList"; }
+            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            {
+                return id == "System.Collections.Generic.LinkedList";
+            }
 
             public override string ElementType(string type)
             {
