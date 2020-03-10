@@ -55,19 +55,16 @@ namespace GraphicalDebugging
                 return typeMatcher.MatchType(type, id);
             }
 
-            public override string ElementType(string type)
+            public override void ElementInfo(string name, string type,
+                                             out string elemName, out string elemType)
             {
-                return elemType == null ? "" : elemType;
+                elemType = this.elemType == null ? "" : this.elemType;
+                elemName = exprPointer.GetString(name) + "[0]";
             }
 
             public override string RandomAccessElementName(string rawName, int i)
             {
                 return exprPointer.GetString(rawName) + "[" + i + "]";
-            }
-
-            public override string ElementName(string name, string elType)
-            {
-                return exprPointer.GetString(name) + "[0]";
             }
 
             public override int LoadSize(Debugger debugger, string name)
@@ -126,15 +123,12 @@ namespace GraphicalDebugging
                 return typeMatcher.MatchType(type, id);
             }
 
-            public override string ElementType(string type)
+            public override void ElementInfo(string name, string type,
+                                             out string elemName, out string elemType)
             {
-                return elemType == null ? "" : elemType;
-            }
-
-            public override string ElementName(string name, string elType)
-            {
+                elemType = this.elemType == null ? "" : this.elemType;
                 // TODO: Only C++ ?
-                return exprValue.GetString('*' + exprHeadPointer.GetString(name));
+                elemName = exprValue.GetString('*' + exprHeadPointer.GetString(name));
             }
 
             public override int LoadSize(Debugger debugger, string name)
@@ -367,6 +361,7 @@ namespace GraphicalDebugging
             public ElementLoaderT ElementLoader;
             public string ContainerName;
             public string ContainerType;
+            public string ElementName;
             public string ElementType;
         }
 
@@ -417,9 +412,11 @@ namespace GraphicalDebugging
                 if (containerLoader == null)
                     return null;
 
-                string elementType = containerLoader.ElementType(containerType);
+                string elementName, elementType;
+                containerLoader.ElementInfo(containerName, containerType,
+                                            out elementName, out elementType);
                 ElementLoader elementLoader = loaders.FindByType(elementKindConstraint,
-                                                                 containerLoader.ElementName(containerName, elementType),
+                                                                 elementName,
                                                                  elementType) as ElementLoader;
                 if (elementLoader == null)
                     return null;
@@ -429,6 +426,7 @@ namespace GraphicalDebugging
                 result.ElementLoader = elementLoader;
                 result.ContainerName = containerName;
                 result.ContainerType = containerType;
+                result.ElementName = elementName;
                 result.ElementType = elementType;
                 return result;
             }
@@ -470,8 +468,9 @@ namespace GraphicalDebugging
                 UserArray containerLoader = new UserArray(new TypeMatcher(type), exprPointer, exprSize);
                 containerLoader.Initialize(debugger, name);
 
-                string elementType = containerLoader.ElementType(type);
-                string elementName = containerLoader.ElementName(name, elementType);
+                string elementName, elementType;
+                containerLoader.ElementInfo(name, type,
+                                            out elementName, out elementType);
                 ElementLoader elementLoader = loaders.FindByType(elementKindConstraint,
                                                                  elementName,
                                                                  elementType) as ElementLoader;
@@ -483,6 +482,7 @@ namespace GraphicalDebugging
                 result.ElementLoader = elementLoader;
                 result.ContainerName = name;
                 result.ContainerType = type;
+                result.ElementName = elementName;
                 result.ElementType = elementType;
                 return result;
             }
@@ -525,8 +525,9 @@ namespace GraphicalDebugging
                                                                     exprValue, exprSize);
                 containerLoader.Initialize(debugger, name);
 
-                string elementType = containerLoader.ElementType(type);
-                string elementName = containerLoader.ElementName(name, elementType);
+                string elementName, elementType;
+                containerLoader.ElementInfo(name, type,
+                                            out elementName, out elementType);
                 ElementLoader elementLoader = loaders.FindByType(elementKindConstraint,
                                                                  elementName,
                                                                  elementType) as ElementLoader;
@@ -538,6 +539,7 @@ namespace GraphicalDebugging
                 result.ElementLoader = elementLoader;
                 result.ContainerName = name;
                 result.ContainerType = type;
+                result.ElementName = elementName;
                 result.ElementType = elementType;
                 return result;
             }
@@ -601,6 +603,7 @@ namespace GraphicalDebugging
                     result = LoadMemory(loaders, mreader, debugger,
                                         containerLoaders.ContainerName,
                                         containerLoaders.ContainerType,
+                                        containerLoaders.ElementName,
                                         containerLoaders.ElementType,
                                         containerLoaders.ElementLoader,
                                         containerLoaders.ContainerLoader,

@@ -174,6 +174,14 @@ namespace GraphicalDebugging
             return true;
         }
 
+        public static string Tparam(string type, int index)
+        {
+            List<string> tparams = Util.Tparams(type);
+            return tparams.Count > index
+                 ? tparams[index]
+                 : "";
+        }
+
         public static void ShowWindow<WatchWindow>(Package package, string name)
             where WatchWindow : ToolWindowPane
         {

@@ -7,6 +7,7 @@
 using EnvDTE;
 
 using System;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Windows;
 
@@ -158,6 +159,34 @@ namespace GraphicalDebugging
 
             string pattern;
             Regex regex;
+        }
+
+        static string StdContainerType(string containerId, string elementType, string allocatorId)
+        {
+            return Util.TemplateType(containerId,
+                                     elementType,
+                                     Util.TemplateType(allocatorId,
+                                                       elementType));
+        }
+
+        static void GetBGContainerInfo(string type,
+                                       int pointTIndex,
+                                       int containerTIndex,
+                                       int allocatorTIndex,
+                                       out string elementType,
+                                       out string containerType)
+        {
+            elementType = "";
+            containerType = "";
+
+            List<string> tparams = Util.Tparams(type);
+            if (tparams.Count <= Math.Max(Math.Max(pointTIndex, containerTIndex), allocatorTIndex))
+                return;
+
+            elementType = tparams[pointTIndex];
+            containerType = StdContainerType(tparams[containerTIndex],
+                                             elementType,
+                                             tparams[allocatorTIndex]);
         }
     }
 }

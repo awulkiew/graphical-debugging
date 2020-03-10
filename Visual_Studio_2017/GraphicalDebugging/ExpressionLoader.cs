@@ -1011,43 +1011,39 @@ namespace GraphicalDebugging
                                             MemoryReader mreader,
                                             Debugger debugger,
                                             string name, string type,
-                                            string pointType,
+                                            string pointName, string pointType,
                                             PointLoader pointLoader,
                                             ContainerLoader containerLoader,
                                             LoadCallback callback)
             {
                 ResultType result = null;
 
-                string pointName = containerLoader.ElementName(name, pointType);
-                if (pointName != null)
+                MemoryReader.Converter<double> pointConverter = pointLoader.GetMemoryConverter(loaders, mreader, debugger,
+                                                                                                pointName, pointType);
+                if (pointConverter != null)
                 {
-                    MemoryReader.Converter<double> pointConverter = pointLoader.GetMemoryConverter(loaders, mreader, debugger,
-                                                                                                   pointName, pointType);
-                    if (pointConverter != null)
-                    {
-                        int dimension = pointConverter.ValueCount();
-                        result = new ResultType();
-                        bool ok = containerLoader.ForEachMemoryBlock(mreader, debugger, name, type, pointConverter,
-                            delegate (double[] values)
+                    int dimension = pointConverter.ValueCount();
+                    result = new ResultType();
+                    bool ok = containerLoader.ForEachMemoryBlock(mreader, debugger, name, type, pointConverter,
+                        delegate (double[] values)
+                        {
+                            if (dimension == 0 || values.Length % dimension != 0)
+                                return false;
+                            int size = dimension > 0
+                                        ? values.Length / dimension
+                                        : 0;
+                            for (int i = 0; i < size; ++i)
                             {
-                                if (dimension == 0 || values.Length % dimension != 0)
-                                    return false;
-                                int size = dimension > 0
-                                         ? values.Length / dimension
-                                         : 0;
-                                for (int i = 0; i < size; ++i)
-                                {
-                                    double x = dimension > 0 ? values[i * dimension] : 0;
-                                    double y = dimension > 1 ? values[i * dimension + 1] : 0;
-                                    ExpressionDrawer.Point p = new ExpressionDrawer.Point(x, y);
-                                    result.Add(p);
-                                }
+                                double x = dimension > 0 ? values[i * dimension] : 0;
+                                double y = dimension > 1 ? values[i * dimension + 1] : 0;
+                                ExpressionDrawer.Point p = new ExpressionDrawer.Point(x, y);
+                                result.Add(p);
+                            }
 
-                                return callback();
-                            });
-                        if (!ok)
-                            result = null;
-                    }
+                            return callback();
+                        });
+                    if (!ok)
+                        result = null;
                 }
 
                 return result;
@@ -1060,12 +1056,14 @@ namespace GraphicalDebugging
                              , Geometry.IContainer<Geometry.Point>
                              , new()
         {
-            protected BGRange(ExpressionLoader.Kind kind, string id, int pointTIndex, int containerTIndex)
+            protected BGRange(ExpressionLoader.Kind kind, string id,
+                              int pointTIndex, int containerTIndex, int allocatorTIndex)
                 : base(kind)
             {
                 this.id = id;
                 this.pointTIndex = pointTIndex;
                 this.containerTIndex = containerTIndex;
+                this.allocatorTIndex = allocatorTIndex;
             }
 
             public override bool MatchType(Loaders loaders, string name, string type, string id)
@@ -1082,20 +1080,21 @@ namespace GraphicalDebugging
                 traits = null;
                 result = null;
 
-                List<string> tparams = Util.Tparams(type);
-                if (tparams.Count <= Math.Max(pointTIndex, containerTIndex))
-                    return;
+                string pointType, containerType;
+                GetBGContainerInfo(type, pointTIndex, containerTIndex, allocatorTIndex,
+                                   out pointType, out containerType);
 
-                // TODO: This is not fully correct since the tparam may be an id, not a type
-                // however since FindByType() internaly uses the id/base-type it will work for both
-                string containerType = tparams[containerTIndex];
-                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container, name, containerType) as ContainerLoader;
+                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
+                                                                     name,
+                                                                     containerType) as ContainerLoader;
                 if (containerLoader == null)
                     return;
 
-                string pointType = tparams[pointTIndex];
+                string pointName, dummyType;
+                containerLoader.ElementInfo(name, containerType, out pointName, out dummyType);
+
                 PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
-                                                             containerLoader.ElementName(name, pointType),
+                                                             pointName,
                                                              pointType) as PointLoader;
                 if (pointLoader == null)
                     return;
@@ -1107,27 +1106,28 @@ namespace GraphicalDebugging
                 if (mreader != null)
                 {
                     result = LoadMemory(loaders, mreader, debugger, name, type,
-                                        pointType, pointLoader, containerLoader,
-                                        callback);
+                                        pointName, pointType, pointLoader,
+                                        containerLoader, callback);
                 }
 
                 if (result == null)
                 {
                     result = LoadParsed(mreader, debugger, name, type,
-                                        pointType, pointLoader, containerLoader,
-                                        callback);
+                                        pointType, pointLoader,
+                                        containerLoader, callback);
                 }
             }
 
             string id;
             int pointTIndex;
             int containerTIndex;
+            int allocatorTIndex;
         }
 
         class BGLinestring : BGRange<ExpressionDrawer.Linestring>
         {
             public BGLinestring()
-                : base(ExpressionLoader.Kind.Linestring, "boost::geometry::model::linestring", 0, 1)
+                : base(ExpressionLoader.Kind.Linestring, "boost::geometry::model::linestring", 0, 1, 2)
             { }
         }
 
@@ -1149,21 +1149,21 @@ namespace GraphicalDebugging
                 traits = null;
                 result = null;
 
-                List<string> tparams = Util.Tparams(type);
-                if (tparams.Count < 2)
-                    return;
+                string lsType, containerType;
+                GetBGContainerInfo(type, 0, 1, 2, out lsType, out containerType);
 
-                string containerType = tparams[1];
                 ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
                                                                      name,
                                                                      containerType) as ContainerLoader;
                 if (containerLoader == null)
                     return;
 
-                string lsType = tparams[0];
+                string lsName, dummyType;
+                containerLoader.ElementInfo(name, containerType, out lsName, out dummyType);
+
                 RangeLoader<ExpressionDrawer.Linestring>
                     lsLoader = loaders.FindByType(ExpressionLoader.Kind.Linestring,
-                                                  containerLoader.ElementName(name, lsType),
+                                                  lsName,
                                                   lsType) as RangeLoader<ExpressionDrawer.Linestring>;
                 if (lsLoader == null)
                     return;
@@ -1191,14 +1191,14 @@ namespace GraphicalDebugging
         class BGRing : BGRange<ExpressionDrawer.Ring>
         {
             public BGRing()
-                : base(ExpressionLoader.Kind.Ring, "boost::geometry::model::ring", 0, 3)
+                : base(ExpressionLoader.Kind.Ring, "boost::geometry::model::ring", 0, 3, 4)
             { }
         }
 
         class BGMultiPoint : BGRange<ExpressionDrawer.MultiPoint>
         {
             public BGMultiPoint()
-                : base(ExpressionLoader.Kind.MultiPoint, "boost::geometry::model::multi_point", 0, 1)
+                : base(ExpressionLoader.Kind.MultiPoint, "boost::geometry::model::multi_point", 0, 1, 2)
             { }
         }
 
@@ -1284,20 +1284,20 @@ namespace GraphicalDebugging
                 traits = null;
                 result = null;
 
-                List<string> tparams = Util.Tparams(type);
-                if (tparams.Count < 2)
-                    return;
+                string polyType, containerType;
+                GetBGContainerInfo(type, 0, 1, 2, out polyType, out containerType);
 
-                string containerType = tparams[1];
                 ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
                                                                      name,
                                                                      containerType) as ContainerLoader;
                 if (containerLoader == null)
                     return;
 
-                string polyType = tparams[0];
+                string polyName, dummyType;
+                containerLoader.ElementInfo(name, containerType, out polyName, out dummyType);
+
                 PolygonLoader polyLoader = loaders.FindByType(ExpressionLoader.Kind.Polygon,
-                                                              containerLoader.ElementName(name, polyType),
+                                                              polyName,
                                                               polyType) as PolygonLoader;
                 if (polyLoader == null)
                     return;
@@ -1384,20 +1384,20 @@ namespace GraphicalDebugging
                     return;
 
                 string ringType = tparams[0];
-                string containerType = Util.TemplateType("std::vector",
-                                            ringType,
-                                            Util.TemplateType("std::allocator",
-                                                ringType));
+                string containerType = StdContainerType("std::vector", ringType, "std::allocator");
 
                 ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
                                                                      name,
                                                                      containerType) as ContainerLoader;
                 if (containerLoader == null)
                     return;
-                
+
+                string ringName, dummyType;
+                containerLoader.ElementInfo(name, containerType, out ringName, out dummyType);
+
                 RangeLoader<ExpressionDrawer.Ring>
                     ringLoader = loaders.FindByType(ExpressionLoader.Kind.Ring,
-                                                    containerLoader.ElementName(name, ringType),
+                                                    ringName,
                                                     ringType) as RangeLoader<ExpressionDrawer.Ring>;
                 if (ringLoader == null)
                     return;
@@ -1959,10 +1959,7 @@ namespace GraphicalDebugging
                     return;
 
                 string pointType = Util.TemplateType("boost::polygon::point_data", tparams[0]);
-                string containerType = Util.TemplateType("std::vector",
-                                            pointType,
-                                            Util.TemplateType("std::allocator",
-                                                pointType));
+                string containerType = StdContainerType("std::vector", pointType, "std::allocator");
 
                 ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
                                                                    name,
@@ -1970,9 +1967,12 @@ namespace GraphicalDebugging
                 if (containerLoader == null)
                     return;
 
+                string pointName, dummyType;
+                containerLoader.ElementInfo(name, containerType, out pointName, out dummyType);
+
                 BPPoint pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
-                                                       containerLoader.ElementName(name, pointType),
-                                                       pointType) as BPPoint;
+                                                         pointName,
+                                                         pointType) as BPPoint;
                 if (pointLoader == null)
                     return;
 
@@ -1982,8 +1982,8 @@ namespace GraphicalDebugging
                 {
                     result = LoadMemory(loaders, mreader, debugger,
                                         containerName, type,
-                                        pointType, pointLoader, containerLoader,
-                                        callback);
+                                        pointName, pointType, pointLoader,
+                                        containerLoader, callback);
                 }
 
                 if (result == null)
@@ -2341,8 +2341,8 @@ namespace GraphicalDebugging
                     return false;
 
                 // Element is a Turn
-                string elType = loader.ElementType(type);
-                string elName = loader.ElementName(name, elType);
+                string elName, elType;
+                loader.ElementInfo(name, type, out elName, out elType);
                 // WARNING: Potentially recursive call, search for Turns only
                 return loaders.FindByType(ExpressionLoader.Kind.Turn, elName, elType) != null;
             }
@@ -2362,9 +2362,10 @@ namespace GraphicalDebugging
                 if (containerLoader == null)
                     return;
 
-                string turnType = containerLoader.ElementType(type);
+                string turnName, turnType;
+                containerLoader.ElementInfo(name, type, out turnName, out turnType);
                 BGTurn turnLoader = loaders.FindByType(ExpressionLoader.Kind.Turn,
-                                                       containerLoader.ElementName(name, turnType),
+                                                       turnName,
                                                        turnType) as BGTurn;
                 if (turnLoader == null)
                     return;
@@ -2406,8 +2407,8 @@ namespace GraphicalDebugging
                     return false;
 
                 // Element is a Geometry
-                string elType = loader.ElementType(type);
-                string elName = loader.ElementName(name, elType);
+                string elName, elType;
+                loader.ElementInfo(name, type, out elName, out elType);
                 // WARNING: Potentially recursive call, search for Geometries only,
                 //   GeometryContainer cannot be treated as a Geometry in GeometryKindConstraint
                 return loaders.FindByType(OnlyGeometries, elName, elType) != null;
@@ -2426,9 +2427,10 @@ namespace GraphicalDebugging
                 if (containerLoader == null)
                     return;
 
-                string geometryType = containerLoader.ElementType(type);
+                string geometryName, geometryType;
+                containerLoader.ElementInfo(name, type, out geometryName, out geometryType);
                 DrawableLoader geometryLoader = loaders.FindByType(OnlyGeometries,
-                                                                   containerLoader.ElementName(name, geometryType),
+                                                                   geometryName,
                                                                    geometryType) as DrawableLoader;
                 if (geometryLoader == null)
                     return;
@@ -2469,8 +2471,8 @@ namespace GraphicalDebugging
                     return false;
 
                 // Element is a Point
-                string elType = loader.ElementType(type);
-                string elName = loader.ElementName(name, elType);
+                string elName, elType;
+                loader.ElementInfo(name, type, out elName, out elType);
                 // WARNING: Potentially recursive call, search for Points only
                 return loaders.FindByType(ExpressionLoader.Kind.Point, elName, elType) != null;
             }
@@ -2488,9 +2490,10 @@ namespace GraphicalDebugging
                 if (containerLoader == null)
                     return;
 
-                string pointType = containerLoader.ElementType(type);
+                string pointName, pointType;
+                containerLoader.ElementInfo(name, type, out pointName, out pointType);
                 PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
-                                                             containerLoader.ElementName(name, pointType),
+                                                             pointName,
                                                              pointType) as PointLoader;
                 if (pointLoader == null)
                     return;
@@ -2503,8 +2506,8 @@ namespace GraphicalDebugging
                 {
                     result = LoadMemory(loaders, mreader, debugger,
                                         name, type,
-                                        pointType, pointLoader, containerLoader,
-                                        callback);
+                                        pointName, pointType, pointLoader,
+                                        containerLoader, callback);
                 }
 
                 if (result == null)
@@ -2529,8 +2532,8 @@ namespace GraphicalDebugging
                     return false;
 
                 // Element is not a Geometry
-                string elType = loader.ElementType(type);
-                string elName = loader.ElementName(name, elType);
+                string elName, elType;
+                loader.ElementInfo(name, type, out elName, out elType);
                 // WARNING: Potentially recursive call, avoid searching for ValuesContainers
                 return loaders.FindByType(OnlyNonValues, elName, elType) == null;
             }
@@ -2579,8 +2582,8 @@ namespace GraphicalDebugging
             {
                 result = null;
 
-                string elemType = loader.ElementType(type);
-                string elemName = loader.ElementName(name, elemType);
+                string elemName, elemType;
+                loader.ElementInfo(name, type, out elemName, out elemType);
 
                 int valSize = ExpressionParser.GetTypeSizeof(debugger, elemType);
 

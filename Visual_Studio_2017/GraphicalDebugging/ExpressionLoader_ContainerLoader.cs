@@ -33,8 +33,9 @@ namespace GraphicalDebugging
             // With ReadArray knowing which memory copying optimizations can be made based on ElementLoader's type
             // Or not
 
-            abstract public string ElementType(string type);
-            abstract public string ElementName(string name, string elemType);
+            abstract public void ElementInfo(string name, string type,
+                                             out string elemName, out string elemType);
+
             public delegate bool MemoryBlockPredicate(double[] values);
             abstract public bool ForEachMemoryBlock(MemoryReader mreader, Debugger debugger,
                                                     string name, string type,
@@ -75,26 +76,28 @@ namespace GraphicalDebugging
                                                     MemoryReader.Converter<double> elementConverter,
                                                     MemoryBlockPredicate memoryBlockPredicate)
             {
-                return this.ForEachMemoryBlock(mreader, debugger,
-                                               name, type,
-                                               ElementName(name, ElementType(type)),
-                                               elementConverter, memoryBlockPredicate);
+                string elemName, elemType;
+                ElementInfo(name, type, out elemName, out elemType);
+                ulong address = ExpressionParser.GetValueAddress(debugger, elemName);
+                if (address == 0)
+                    return false;
+                int size = LoadSize(debugger, name);
+                if (size <= 0)
+                    return true;
+                return ForEachMemoryBlock(mreader, address, size,
+                                          elementConverter, memoryBlockPredicate);
             }
 
-            protected bool ForEachMemoryBlock(MemoryReader mreader, Debugger debugger,
-                                              string name, string type, string blockName,
+            protected bool ForEachMemoryBlock(MemoryReader mreader,
+                                              ulong address, int elementsCount,
                                               MemoryReader.Converter<double> elementConverter,
                                               MemoryBlockPredicate memoryBlockPredicate)
             {
-                if (elementConverter == null)
+                if (address == 0 || elementConverter == null)
                     return false;
-                int size = LoadSize(debugger, name);
-                var blockConverter = new MemoryReader.ArrayConverter<double>(elementConverter, size);
-
-                ulong address = ExpressionParser.GetValueAddress(debugger, blockName);
-                if (address == 0)
-                    return false;
-
+                if (elementsCount <= 0)
+                    return true;
+                var blockConverter = new MemoryReader.ArrayConverter<double>(elementConverter, elementsCount);
                 double[] values = new double[blockConverter.ValueCount()];
                 if (! mreader.Read(address, values, blockConverter))
                     return false;
@@ -111,17 +114,12 @@ namespace GraphicalDebugging
                 return NameSizeFromType(type, out foo, out bar);
             }
 
-            public override string ElementType(string type)
+            public override void ElementInfo(string name, string type,
+                                             out string elemName, out string elemType)
             {
-                string elemType;
+                elemName = RawNameFromName(name) + "[0]";
                 int size;
                 NameSizeFromType(type, out elemType, out size);
-                return elemType;
-            }
-
-            public override string ElementName(string name, string elType)
-            {
-                return this.RandomAccessName(name) + "[0]";
             }
 
             public override string RandomAccessName(string name)
@@ -182,15 +180,11 @@ namespace GraphicalDebugging
                 return id == "std::array";
             }
 
-            public override string ElementType(string type)
+            public override void ElementInfo(string name, string type,
+                                             out string elemName, out string elemType)
             {
-                List<string> tparams = Util.Tparams(type);
-                return tparams.Count > 0 ? tparams[0] : "";
-            }
-
-            public override string ElementName(string name, string elType)
-            {
-                return name + "._Elems[0]";
+                elemName = name + "._Elems[0]";
+                elemType = Util.Tparam(type, 0);
             }
 
             public override int LoadSize(Debugger debugger, string name)
@@ -209,9 +203,11 @@ namespace GraphicalDebugging
                 return id == "boost::array";
             }
 
-            public override string ElementName(string name, string elType)
+            public override void ElementInfo(string name, string type,
+                                             out string elemName, out string elemType)
             {
-                return name + ".elems[0]";
+                elemName = name + ".elems[0]";
+                elemType = Util.Tparam(type, 0);
             }
         }
 
@@ -222,15 +218,11 @@ namespace GraphicalDebugging
                 return id == "boost::container::vector";
             }
 
-            public override string ElementType(string type)
+            public override void ElementInfo(string name, string type,
+                                             out string elemName, out string elemType)
             {
-                List<string> tparams = Util.Tparams(type);
-                return tparams.Count > 0 ? tparams[0] : "";
-            }
-
-            public override string ElementName(string name, string elType)
-            {
-                return name + ".m_holder.m_start[0]";
+                elemName = name + ".m_holder.m_start[0]";
+                elemType = Util.Tparam(type, 0);
             }
 
             public override int LoadSize(Debugger debugger, string name)
@@ -246,29 +238,33 @@ namespace GraphicalDebugging
                 return id == "boost::container::static_vector";
             }
 
-            public override string ElementName(string name, string elType)
+            public override void ElementInfo(string name, string type,
+                                             out string elemName, out string elemType)
             {
+                elemType = Util.Tparam(type, 0);
                 // TODO: The type-cast is needed here!!!
                 // Although it's possible it will be ok since this is used only to pass a value starting the memory block
                 // into the memory reader and type is not really important
                 // and in other places like PointRange or BGRange correct type is passed with it
                 // and based on this type the data is processed
                 // It needs testing
-                return "((" + elType + "*)" + name + ".m_holder.storage.data)[0]";
+                elemName = "((" + elemType + "*)" + name + ".m_holder.storage.data)[0]";
             }
         }
 
-        class BGVarray : BoostContainerVector // TODO: ContiguousContainer
+        class BGVarray : ContiguousContainer
         {
             public override bool MatchType(Loaders loaders, string name, string type, string id)
             {
                 return id == "boost::geometry::index::detail::varray";
             }
 
-            public override string ElementName(string name, string elType)
+            public override void ElementInfo(string name, string type,
+                                             out string elemName, out string elemType)
             {
+                elemType = Util.Tparam(type, 0);
                 // TODO: Check if type-cast is needed here
-                return "((" + elType + "*)" + name + ".m_storage.data_.buf)[0]";
+                elemName = "((" + elemType + "*)" + name + ".m_storage.data_.buf)[0]";
             }
 
             public override int LoadSize(Debugger debugger, string name)
@@ -289,15 +285,11 @@ namespace GraphicalDebugging
                 return ExpressionParser.LoadSize(debugger, name + ".m_size");
             }
 
-            public override string ElementType(string type)
+            public override void ElementInfo(string name, string type,
+                                             out string elemName, out string elemType)
             {
-                List<string> tparams = Util.Tparams(type);
-                return tparams.Count > 0 ? tparams[0] : "";
-            }
-
-            public override string ElementName(string name, string elType)
-            {
-                return "(*(" + name + ".m_first))";
+                elemType = Util.Tparam(type, 0);
+                elemName = "(*(" + name + ".m_first))";
             }
 
             public override bool ForEachElement(Debugger debugger, string name, ElementPredicate elementPredicate)
@@ -390,15 +382,11 @@ namespace GraphicalDebugging
                 return FirstStr(rawName) + "[" + i + "]";
             }
 
-            public override string ElementType(string type)
+            public override void ElementInfo(string name, string type,
+                                             out string elemName, out string elemType)
             {
-                List<string> tparams = Util.Tparams(type);
-                return tparams.Count > 0 ? tparams[0] : "";
-            }
-
-            public override string ElementName(string name, string elType)
-            {
-                return FirstStr(name) + "[0]";
+                elemType = Util.Tparam(type, 0);
+                elemName = FirstStr(name) + "[0]";
             }
 
             public override int LoadSize(Debugger debugger, string name)
@@ -439,15 +427,11 @@ namespace GraphicalDebugging
                 return id == "std::deque";
             }
 
-            public override string ElementType(string type)
+            public override void ElementInfo(string name, string type,
+                                             out string elemName, out string elemType)
             {
-                List<string> tparams = Util.Tparams(type);
-                return tparams.Count > 0 ? tparams[0] : "";
-            }
-
-            public override string ElementName(string name, string elType)
-            {
-                return ElementStr(name, 0);
+                elemType = Util.Tparam(type, 0);
+                elemName = ElementStr(name, 0);
             }
 
             public override bool ForEachMemoryBlock(MemoryReader mreader, Debugger debugger,
@@ -590,15 +574,11 @@ namespace GraphicalDebugging
                 return id == "std::list";
             }
 
-            public override string ElementType(string type)
+            public override void ElementInfo(string name, string type,
+                                             out string elemName, out string elemType)
             {
-                List<string> tparams = Util.Tparams(type);
-                return tparams.Count > 0 ? tparams[0] : "";
-            }
-
-            public override string ElementName(string name, string elType)
-            {
-                return HeadStr(name) + "->_Next->_Myval";
+                elemType = Util.Tparam(type, 0);
+                elemName = HeadStr(name) + "->_Next->_Myval";
             }
 
             public override bool ForEachMemoryBlock(MemoryReader mreader, Debugger debugger,
@@ -715,15 +695,11 @@ namespace GraphicalDebugging
                 return id == "std::set";
             }
 
-            public override string ElementType(string type)
+            public override void ElementInfo(string name, string type,
+                                             out string elemName, out string elemType)
             {
-                List<string> tparams = Util.Tparams(type);
-                return tparams.Count > 0 ? tparams[0] : "";
-            }
-
-            public override string ElementName(string name, string elType)
-            {
-                return HeadStr(name) + "->_Myval";
+                elemType = Util.Tparam(type, 0);
+                elemName = HeadStr(name) + "->_Myval";
             }
 
             public override bool ForEachMemoryBlock(MemoryReader mreader, Debugger debugger,
@@ -864,22 +840,19 @@ namespace GraphicalDebugging
         {
             public override bool MatchType(Loaders loaders, string name, string type, string id)
             {
-                return ElementType(type).Length > 0;
+                return ElemTypeFromType(type).Length > 0;
             }
 
-            public override string ElementType(string type)
+            public override void ElementInfo(string name, string type,
+                                             out string elemName, out string elemType)
             {
-                return ElemTypeFromType(type);
+                elemType = ElemTypeFromType(type);
+                elemName = name + "[0]";
             }
-            
+
             public override int LoadSize(Debugger debugger, string name)
             {
                 return ExpressionParser.LoadSize(debugger, name + ".Length");
-            }
-
-            public override string ElementName(string name, string elType)
-            {
-                return name + "[0]";
             }
 
             // type -> name[]
@@ -910,15 +883,11 @@ namespace GraphicalDebugging
                 return rawName + "._items[" + i + "]";
             }
 
-            public override string ElementType(string type)
+            public override void ElementInfo(string name, string type,
+                                             out string elemName, out string elemType)
             {
-                List<string> tparams = Util.Tparams(type);
-                return tparams.Count > 0 ? tparams[0] : "";
-            }
-
-            public override string ElementName(string name, string elType)
-            {
-                return name + "._items[0]";
+                elemType = Util.Tparam(type, 0);
+                elemName = name + "._items[0]";
             }
 
             public override bool ForEachMemoryBlock(MemoryReader mreader, Debugger debugger,
@@ -943,15 +912,11 @@ namespace GraphicalDebugging
                 return id == "System.Collections.Generic.LinkedList";
             }
 
-            public override string ElementType(string type)
+            public override void ElementInfo(string name, string type,
+                                             out string elemName, out string elemType)
             {
-                List<string> tparams = Util.Tparams(type);
-                return tparams.Count > 0 ? tparams[0] : "";
-            }
-
-            public override string ElementName(string name, string elType)
-            {
-                return name + ".head.item";
+                elemType = Util.Tparam(type, 0);
+                elemName = name + ".head.item";
             }
 
             public override int LoadSize(Debugger debugger, string name)
