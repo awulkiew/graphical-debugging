@@ -34,8 +34,6 @@ namespace GraphicalDebugging
             else
                 m_colors.Clear();
 
-            Transparent = Color.FromArgb(0x00, 0xFF, 0xFF, 0xFF);
-
             if (GetBrightness() > 0.45f)
             {
                 ClearColor = Color.White;
@@ -114,7 +112,7 @@ namespace GraphicalDebugging
 
         private FrameworkElement frameworkElement;
 
-        public Color Transparent { get; set; }
+        public static readonly Color Transparent = Color.FromArgb(0x00, 0xFF, 0xFF, 0xFF);
 
         public Color ClearColor { get; set; }
         public Color TextColor { get; set; }

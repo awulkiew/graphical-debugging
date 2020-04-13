@@ -128,61 +128,62 @@ namespace GraphicalDebugging
 
     class ColoredDrawableItem : DrawableItem
     {
-        public ColoredDrawableItem(int colorId, Colors colors)
+        public ColoredDrawableItem()
         {
-            SetColor(colorId, colors);
+            ColorId = -1;
+            Color = Util.ConvertColor(Colors.Transparent);
         }
 
         public ColoredDrawableItem(ExpressionDrawer.IDrawable drawable,
                                    Geometry.Traits traits,
-                                   string name, string type, int colorId, Colors colors)
+                                   string name, string type,
+                                   int colorId, System.Windows.Media.Color color)
             : base(drawable, traits, name, type)
         {
-            SetColor(colorId, colors);
+            ColorId = colorId;
+            Color = color;
         }
 
-        protected int colorId;
-        public int ColorId
-        {
-            get { return colorId; }
-        }
-
-        protected System.Windows.Media.Color color;
-        public System.Windows.Media.Color Color
-        {
-            get { return color; }
-        }
-
-        protected void SetColor(int colorId, Colors colors)
-        {
-            this.colorId = colorId;
-            this.color = Util.ConvertColor(colors[colorId]);
-        }
+        public int ColorId { get; set; }
+        public System.Windows.Media.Color Color { get; set; }
     }
 
     class GeometryItem : ColoredDrawableItem
     {
-        public GeometryItem(int colorId, Colors colors)
-            : base(colorId, colors)
+        public GeometryItem()
+            : base()
         { }
 
         public GeometryItem(ExpressionDrawer.IDrawable drawable,
-                        Geometry.Traits traits,
-                        string name, string type, int colorId, Colors colors)
-            : base(drawable, traits, name, type, colorId, colors)
+                            Geometry.Traits traits,
+                            string name, string type, int colorId, System.Windows.Media.Color color)
+            : base(drawable, traits, name, type, colorId, color)
         { }
+
+        public static GeometryItem FromOther(GeometryItem other)
+        {
+            return new GeometryItem(other.Drawable, other.Traits,
+                                    other.Name, other.Type,
+                                    other.ColorId, other.Color);
+        }
     }
 
     class PlotItem : ColoredDrawableItem
     {
-        public PlotItem(int colorId, Colors colors)
-            : base(colorId, colors)
+        public PlotItem()
         { }
 
         public PlotItem(ExpressionDrawer.IDrawable drawable,
                         Geometry.Traits traits,
-                        string name, string type, int colorId, Colors colors)
-            : base(drawable, traits, name, type, colorId, colors)
+                        string name, string type, int colorId, System.Windows.Media.Color color)
+            : base(drawable, traits, name, type, colorId, color)
         { }
+
+        public static PlotItem FromOther(PlotItem other)
+        {
+            return new PlotItem(other.Drawable, other.Traits,
+                                other.Name, other.Type,
+                                other.ColorId, other.Color);
+        }
     }
 }

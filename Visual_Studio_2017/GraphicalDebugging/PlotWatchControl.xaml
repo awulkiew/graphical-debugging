@@ -100,7 +100,7 @@
                     <DataGridTemplateColumn Header="Color" Width="50">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock>
+                                <TextBlock MouseDown="colorTextBlock_MouseDown">
                                     <TextBlock.Background>
                                         <SolidColorBrush Color="{Binding Color}" />
                                     </TextBlock.Background>

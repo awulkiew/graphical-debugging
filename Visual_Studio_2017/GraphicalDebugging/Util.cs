@@ -208,6 +208,21 @@ namespace GraphicalDebugging
             }
         }
 
+        public static System.Drawing.Color ShowColorDialog(System.Drawing.Color color)
+        {
+            System.Windows.Forms.ColorDialog dialog = new System.Windows.Forms.ColorDialog();
+            if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                color = Color.FromArgb(255, dialog.Color);
+            }
+            return color;
+        }
+
+        public static System.Windows.Media.Color ShowColorDialog(System.Windows.Media.Color color)
+        {
+            return ConvertColor(ShowColorDialog(ConvertColor(color)));
+        }
+
         public static T GetDialogPage<T>()
             where T : DialogPage
         {

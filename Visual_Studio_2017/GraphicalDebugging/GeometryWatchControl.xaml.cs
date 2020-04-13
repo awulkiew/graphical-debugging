@@ -95,7 +95,7 @@ namespace GraphicalDebugging
             Geometries = new ObservableCollection<GeometryItem>();
             dataGrid.ItemsSource = Geometries;
 
-            ResetAt(new GeometryItem(-1, m_colors), Geometries.Count);
+            ResetAt(new GeometryItem(), Geometries.Count);
         }
 
         private void VSColorTheme_ThemeChanged(ThemeChangedEventArgs e)
@@ -147,7 +147,7 @@ namespace GraphicalDebugging
                 // insert new empty row if needed
                 if (next_index == Geometries.Count)
                 {
-                    ResetAt(new GeometryItem(-1, m_colors), next_index);
+                    ResetAt(new GeometryItem(), next_index);
                 }
                 // select current row, move to next one is automatic
                 Util.SelectDataGridItem(dataGrid, index);
@@ -245,16 +245,13 @@ namespace GraphicalDebugging
                 {
                     GeometryItem geometry = Geometries[index];
 
-                    System.Windows.Media.Color color = geometry.Color;
-                    int colorId = geometry.ColorId;
-                    string type = null;
-
                     bool updateRequred = modified_index < 0 || modified_index == index;
 
                     if (updateRequred && load)
                     {
+                        geometry.Type = null;
                         geometry.Drawable = null;
-                        geometry.Traits = null;
+                        geometry.Traits = null;                        
                     }
 
                     if (geometry.Name != null && geometry.Name != "")
@@ -265,17 +262,17 @@ namespace GraphicalDebugging
                         if (expressions == null || ExpressionLoader.AllValidValues(expressions))
                         {
                             if (expressions != null)
-                                type = ExpressionLoader.TypeFromExpressions(expressions);
+                                geometry.Type = ExpressionLoader.TypeFromExpressions(expressions);
 
                             names[index] = geometry.Name;
 
                             if (updateRequred && geometry.ColorId < 0)
                             {
-                                colorId = m_intsPool.Pull();
-                                color = Util.ConvertColor(m_colors[colorId]);
+                                geometry.ColorId = m_intsPool.Pull();
+                                geometry.Color = Util.ConvertColor(m_colors[geometry.ColorId]);
                             }
 
-                            settings[index] = referenceSettings.CopyColored(color);
+                            settings[index] = referenceSettings.CopyColored(geometry.Color);
 
                             tryDrawing = true;
                         }
@@ -284,9 +281,7 @@ namespace GraphicalDebugging
                     // set new row
                     if (updateRequred)
                     {
-                        ResetAt(new GeometryItem(geometry.Drawable, geometry.Traits,
-                                                 geometry.Name, type, colorId, m_colors),
-                                index);
+                        ResetAt(GeometryItem.FromOther(geometry), index);
                     }
                 }
 
@@ -554,6 +549,25 @@ namespace GraphicalDebugging
             m_zoomBox.Zoom(l, t, w, h, image.ActualWidth, image.ActualHeight);
 
             UpdateItems(false);
+        }
+
+        private void colorTextBlock_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            TextBlock textBlock = sender as TextBlock;
+            GeometryItem geometry = textBlock.DataContext as GeometryItem;
+            if (geometry.ColorId >= 0)
+            {
+                var color = (textBlock.Background as System.Windows.Media.SolidColorBrush).Color;
+                var newColor = Util.ShowColorDialog(color);
+                if (newColor != color)
+                {
+                    textBlock.Background = new System.Windows.Media.SolidColorBrush(newColor);
+                    m_intsPool.Push(geometry.ColorId);
+                    geometry.ColorId = int.MaxValue;
+                    geometry.Color = newColor;
+                    UpdateItems(false); // TODO: pass modified_index?
+                }
+            }
         }
     }
 }
