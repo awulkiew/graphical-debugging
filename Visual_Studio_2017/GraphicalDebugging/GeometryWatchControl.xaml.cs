@@ -116,47 +116,54 @@ namespace GraphicalDebugging
             UpdateItems(false);
         }
 
-        private void GeometryItem_NameChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void GeometryItem_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
-            //e.PropertyName == "Name"
-
             GeometryItem geometry = sender as GeometryItem;
             int index = Geometries.IndexOf(geometry);
 
             if (index < 0 || index >= dataGrid.Items.Count)
                 return;
 
-            if (geometry.Name == null || geometry.Name == "")
+            if (e.PropertyName == "Name")
             {
-                if (index < dataGrid.Items.Count - 1)
+                if (geometry.Name == null || geometry.Name == "")
                 {
-                    m_intsPool.Push(geometry.ColorId);
-                    Geometries.RemoveAt(index);
-                    UpdateItems(true);
-                    if (index > 0)
+                    if (index < dataGrid.Items.Count - 1)
                     {
-                        Util.SelectDataGridItem(dataGrid, index - 1);
+                        m_intsPool.Push(geometry.ColorId);
+                        Geometries.RemoveAt(index);
+
+                        UpdateItems(false);
+
+                        if (index > 0)
+                        {
+                            Util.SelectDataGridItem(dataGrid, index - 1);
+                        }
                     }
                 }
+                else
+                {
+                    UpdateItems(true, index);
+
+                    int next_index = index + 1;
+                    // insert new empty row if needed
+                    if (next_index == Geometries.Count)
+                    {
+                        ResetAt(new GeometryItem(), next_index);
+                    }
+                    // select current row, move to next one is automatic
+                    Util.SelectDataGridItem(dataGrid, index);
+                }
             }
-            else
+            else if (e.PropertyName == "IsEnabled")
             {
                 UpdateItems(true, index);
-
-                int next_index = index + 1;
-                // insert new empty row if needed
-                if (next_index == Geometries.Count)
-                {
-                    ResetAt(new GeometryItem(), next_index);
-                }
-                // select current row, move to next one is automatic
-                Util.SelectDataGridItem(dataGrid, index);
             }
         }
 
         private void ResetAt(GeometryItem item, int index)
         {
-            ((System.ComponentModel.INotifyPropertyChanged)item).PropertyChanged += GeometryItem_NameChanged;
+            ((System.ComponentModel.INotifyPropertyChanged)item).PropertyChanged += GeometryItem_PropertyChanged;
             if (index < Geometries.Count)
                 Geometries.RemoveAt(index);
             Geometries.Insert(index, item);
@@ -213,6 +220,11 @@ namespace GraphicalDebugging
             m_isDataGridEdited = false;
         }
 
+        private void dataGrid_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            Util.DataGridSingleClickHack(e.OriginalSource as DependencyObject);
+        }
+
         private void UpdateItems(bool load, int modified_index = -1)
         {
             m_currentBox = null;
@@ -251,10 +263,12 @@ namespace GraphicalDebugging
                     {
                         geometry.Type = null;
                         geometry.Drawable = null;
-                        geometry.Traits = null;                        
+                        geometry.Traits = null;
+                        geometry.Error = null;
                     }
 
-                    if (geometry.Name != null && geometry.Name != "")
+                    if (geometry.Name != null && geometry.Name != ""
+                        && geometry.IsEnabled)
                     {
                         var expressions = updateRequred
                                        ? ExpressionLoader.GetExpressions(geometry.Name)
@@ -281,7 +295,7 @@ namespace GraphicalDebugging
                     // set new row
                     if (updateRequred)
                     {
-                        ResetAt(GeometryItem.FromOther(geometry), index);
+                        ResetAt(geometry.ShallowCopy(), index);
                     }
                 }
 
@@ -304,7 +318,9 @@ namespace GraphicalDebugging
                             Geometry.Traits[] traits = new Geometry.Traits[names.Length];
                             for (int i = 0; i < names.Length; ++i)
                             {
-                                if (Geometries[i].Drawable == null && names[i] != null && names[i] != "")
+                                if (Geometries[i].Drawable == null
+                                    && names[i] != null && names[i] != ""
+                                    && Geometries[i].IsEnabled)
                                 {
                                     try
                                     {

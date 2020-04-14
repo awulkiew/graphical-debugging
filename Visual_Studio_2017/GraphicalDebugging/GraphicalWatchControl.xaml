@@ -25,7 +25,10 @@
                   Foreground="{DynamicResource VsBrush.ToolWindowText}"
                   RowHeight="101"
                   BorderThickness="0"
-                  PreviewKeyDown="dataGrid_PreviewKeyDown" BeginningEdit="dataGrid_BeginningEdit" CellEditEnding="dataGrid_CellEditEnding">
+                  PreviewKeyDown="dataGrid_PreviewKeyDown"
+                  BeginningEdit="dataGrid_BeginningEdit"
+                  CellEditEnding="dataGrid_CellEditEnding"
+                  PreviewMouseLeftButtonDown="dataGrid_PreviewMouseLeftButtonDown">
             <DataGrid.ColumnHeaderStyle>
                 <Style TargetType="{x:Type DataGridColumnHeader}">
                     <Setter Property="Background" Value="{DynamicResource VsBrush.GridHeadingBackground}" />

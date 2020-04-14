@@ -45,7 +45,10 @@
                       Background="{DynamicResource VsBrush.ToolWindowBackground}"
                       Foreground="{DynamicResource VsBrush.ToolWindowText}"
                       BorderThickness="0"
-                      PreviewKeyDown="dataGrid_PreviewKeyDown" BeginningEdit="dataGrid_BeginningEdit" CellEditEnding="dataGrid_CellEditEnding">
+                      PreviewKeyDown="dataGrid_PreviewKeyDown"
+                      BeginningEdit="dataGrid_BeginningEdit"
+                      CellEditEnding="dataGrid_CellEditEnding"
+                      PreviewMouseLeftButtonDown="dataGrid_PreviewMouseLeftButtonDown">
                 <DataGrid.ColumnHeaderStyle>
                     <Style TargetType="{x:Type DataGridColumnHeader}">
                         <Setter Property="Background" Value="{DynamicResource VsBrush.GridHeadingBackground}" />
@@ -96,7 +99,8 @@
                     </Style>
                 </DataGrid.CellStyle>
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Name"  Binding="{Binding Name}" Width="100" />
+                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="100" />
+                    <DataGridCheckBoxColumn Binding="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}"/>
                     <DataGridTemplateColumn Header="Color" Width="50">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>

@@ -116,47 +116,54 @@ namespace GraphicalDebugging
             UpdateItems(false);
         }
 
-        private void PlotItem_NameChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void PlotItem_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
-            //e.PropertyName == "Name"
-
             PlotItem plot = sender as PlotItem;
             int index = Plots.IndexOf(plot);
 
             if (index < 0 || index >= dataGrid.Items.Count)
                 return;
 
-            if (plot.Name == null || plot.Name == "")
+            if (e.PropertyName == "Name")
             {
-                if (index < dataGrid.Items.Count - 1)
+                if (plot.Name == null || plot.Name == "")
                 {
-                    m_intsPool.Push(plot.ColorId);
-                    Plots.RemoveAt(index);
-                    UpdateItems(true);
-                    if (index > 0)
+                    if (index < dataGrid.Items.Count - 1)
                     {
-                        Util.SelectDataGridItem(dataGrid, index - 1);
+                        m_intsPool.Push(plot.ColorId);
+                        Plots.RemoveAt(index);
+
+                        UpdateItems(false);
+
+                        if (index > 0)
+                        {
+                            Util.SelectDataGridItem(dataGrid, index - 1);
+                        }
                     }
                 }
+                else
+                {
+                    UpdateItems(true, index);
+
+                    int next_index = index + 1;
+                    // insert new empty row if needed
+                    if (next_index == Plots.Count)
+                    {
+                        ResetAt(new PlotItem(), next_index);
+                    }
+                    // select current row, move to next one is automatic
+                    Util.SelectDataGridItem(dataGrid, index);
+                }
             }
-            else
+            else if (e.PropertyName == "IsEnabled")
             {
                 UpdateItems(true, index);
-
-                int next_index = index + 1;
-                // insert new empty row if needed
-                if (next_index == Plots.Count)
-                {
-                    ResetAt(new PlotItem(), next_index);
-                }
-                // select current row, move to next one is automatic
-                Util.SelectDataGridItem(dataGrid, index);
             }
         }
 
         private void ResetAt(PlotItem item, int index)
         {
-            ((System.ComponentModel.INotifyPropertyChanged)item).PropertyChanged += PlotItem_NameChanged;
+            ((System.ComponentModel.INotifyPropertyChanged)item).PropertyChanged += PlotItem_PropertyChanged;
             if (index < Plots.Count)
                 Plots.RemoveAt(index);
             Plots.Insert(index, item);
@@ -213,6 +220,11 @@ namespace GraphicalDebugging
             m_isDataGridEdited = false;
         }
 
+        private void dataGrid_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            Util.DataGridSingleClickHack(e.OriginalSource as DependencyObject);
+        }
+
         private void UpdateItems(bool load, int modified_index = -1)
         {
             m_currentBox = null;
@@ -250,37 +262,39 @@ namespace GraphicalDebugging
                 // update the list, gather names and settings
                 for (int index = 0; index < Plots.Count; ++index)
                 {
-                    PlotItem geometry = Plots[index];
+                    PlotItem plot = Plots[index];
 
                     bool updateRequred = modified_index < 0 || modified_index == index;
 
                     if (updateRequred && load)
                     {
-                        geometry.Type = null;
-                        geometry.Drawable = null;
-                        geometry.Traits = null;                        
+                        plot.Type = null;
+                        plot.Drawable = null;
+                        plot.Traits = null;
+                        plot.Error = null;
                     }
 
-                    if (geometry.Name != null && geometry.Name != "")
+                    if (plot.Name != null && plot.Name != ""
+                        && plot.IsEnabled)
                     {
                         var expressions = updateRequred
-                                        ? ExpressionLoader.GetExpressions(geometry.Name)
+                                        ? ExpressionLoader.GetExpressions(plot.Name)
                                         : null;
 
                         if (expressions == null || ExpressionLoader.AllValidValues(expressions))
                         {
                             if (expressions != null)
-                                geometry.Type = ExpressionLoader.TypeFromExpressions(expressions);
+                                plot.Type = ExpressionLoader.TypeFromExpressions(expressions);
 
-                            names[index] = geometry.Name;
+                            names[index] = plot.Name;
 
-                            if (updateRequred && geometry.ColorId < 0)
+                            if (updateRequred && plot.ColorId < 0)
                             {
-                                geometry.ColorId = m_intsPool.Pull();
-                                geometry.Color = Util.ConvertColor(m_colors[geometry.ColorId]);
+                                plot.ColorId = m_intsPool.Pull();
+                                plot.Color = Util.ConvertColor(m_colors[plot.ColorId]);
                             }
 
-                            settings[index] = referenceSettings.CopyColored(geometry.Color);
+                            settings[index] = referenceSettings.CopyColored(plot.Color);
 
                             tryDrawing = true;
                         }
@@ -289,7 +303,7 @@ namespace GraphicalDebugging
                     // set new row
                     if (updateRequred)
                     {
-                        ResetAt(PlotItem.FromOther(geometry), index);
+                        ResetAt(plot.ShallowCopy(), index);
                     }
                 }
 
@@ -312,7 +326,9 @@ namespace GraphicalDebugging
                             Geometry.Traits[] traits = new Geometry.Traits[names.Length];
                             for (int i = 0; i < names.Length; ++i)
                             {
-                                if (Plots[i].Drawable == null && names[i] != null && names[i] != "")
+                                if (Plots[i].Drawable == null
+                                    && names[i] != null && names[i] != ""
+                                    && Plots[i].IsEnabled)
                                 {
                                     try
                                     {

@@ -10,20 +10,10 @@ namespace GraphicalDebugging
         : System.ComponentModel.INotifyPropertyChanged
     {
         public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
-        private void NotifyPropertyChanged([System.Runtime.CompilerServices.CallerMemberName] string propertyName = "")
+        protected void NotifyPropertyChanged([System.Runtime.CompilerServices.CallerMemberName] string propertyName = "")
         {
             if (PropertyChanged != null)
                 PropertyChanged(this, new System.ComponentModel.PropertyChangedEventArgs(propertyName));
-        }
-
-        public VariableItem()
-        { }
-
-        public VariableItem(string name, string type)
-        {
-            Name = name;
-            Type = type;
-            Error = null;
         }
 
         protected string name;
@@ -54,6 +44,20 @@ namespace GraphicalDebugging
             set { this.error = value; }
         }
 
+        protected bool isEnabled = true;
+        public bool IsEnabled
+        {
+            get { return this.isEnabled; }
+            set
+            {
+                if (value != this.isEnabled)
+                {
+                    this.isEnabled = value;
+                    NotifyPropertyChanged("IsEnabled");
+                }
+            }
+        }
+
         public bool IsError
         {
             get { return Error != null && Error != ""; }
@@ -67,18 +71,6 @@ namespace GraphicalDebugging
 
     class DrawableItem : VariableItem
     {
-        public DrawableItem()
-        { }
-
-        public DrawableItem(ExpressionDrawer.IDrawable drawable,
-                            Geometry.Traits traits,
-                            string name, string type)
-            : base(name, type)
-        {
-            Drawable = drawable;
-            Traits = traits;
-        }
-
         protected ExpressionDrawer.IDrawable drawable;
         public ExpressionDrawer.IDrawable Drawable
         {
@@ -96,18 +88,6 @@ namespace GraphicalDebugging
 
     class GraphicalItem : DrawableItem
     {
-        public GraphicalItem()
-        { }
-
-        public GraphicalItem(ExpressionDrawer.IDrawable drawable,
-                             Geometry.Traits traits,
-                             string name, System.Drawing.Bitmap bmp, string type, string error)
-            : base(drawable, traits, name, type)
-        {
-            Error = error;
-            Bmp = bmp;
-        }
-
         protected System.Drawing.Bitmap bmp;
         public System.Drawing.Bitmap Bmp
         {
@@ -124,66 +104,38 @@ namespace GraphicalDebugging
         {
             get { return this.bmpImg; }
         }
+
+        public GraphicalItem ShallowCopy()
+        {
+            return this.MemberwiseClone() as GraphicalItem;
+        }
     }
 
     class ColoredDrawableItem : DrawableItem
     {
         public ColoredDrawableItem()
         {
-            ColorId = -1;
             Color = Util.ConvertColor(Colors.Transparent);
+            ColorId = -1;
         }
 
-        public ColoredDrawableItem(ExpressionDrawer.IDrawable drawable,
-                                   Geometry.Traits traits,
-                                   string name, string type,
-                                   int colorId, System.Windows.Media.Color color)
-            : base(drawable, traits, name, type)
-        {
-            ColorId = colorId;
-            Color = color;
-        }
-
-        public int ColorId { get; set; }
         public System.Windows.Media.Color Color { get; set; }
+        public int ColorId { get; set; }
     }
 
     class GeometryItem : ColoredDrawableItem
     {
-        public GeometryItem()
-            : base()
-        { }
-
-        public GeometryItem(ExpressionDrawer.IDrawable drawable,
-                            Geometry.Traits traits,
-                            string name, string type, int colorId, System.Windows.Media.Color color)
-            : base(drawable, traits, name, type, colorId, color)
-        { }
-
-        public static GeometryItem FromOther(GeometryItem other)
+        public GeometryItem ShallowCopy()
         {
-            return new GeometryItem(other.Drawable, other.Traits,
-                                    other.Name, other.Type,
-                                    other.ColorId, other.Color);
+            return this.MemberwiseClone() as GeometryItem;
         }
     }
 
     class PlotItem : ColoredDrawableItem
     {
-        public PlotItem()
-        { }
-
-        public PlotItem(ExpressionDrawer.IDrawable drawable,
-                        Geometry.Traits traits,
-                        string name, string type, int colorId, System.Windows.Media.Color color)
-            : base(drawable, traits, name, type, colorId, color)
-        { }
-
-        public static PlotItem FromOther(PlotItem other)
+        public PlotItem ShallowCopy()
         {
-            return new PlotItem(other.Drawable, other.Traits,
-                                other.Name, other.Type,
-                                other.ColorId, other.Color);
+            return this.MemberwiseClone() as PlotItem;
         }
     }
 }

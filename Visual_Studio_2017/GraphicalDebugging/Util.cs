@@ -13,6 +13,9 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Threading;
 using Task = System.Threading.Tasks.Task;
@@ -213,7 +216,7 @@ namespace GraphicalDebugging
             System.Windows.Forms.ColorDialog dialog = new System.Windows.Forms.ColorDialog();
             if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-                color = Color.FromArgb(255, dialog.Color);
+                color = System.Drawing.Color.FromArgb(255, dialog.Color);
             }
             return color;
         }
@@ -301,6 +304,43 @@ namespace GraphicalDebugging
             {
                 dataGrid.CurrentItem = null;
                 dataGrid.SelectedItem = null;
+            }
+        }
+
+        // https://softwaremechanik.wordpress.com/2013/10/02/how-to-make-all-wpf-datagrid-cells-have-a-single-click-to-edit/
+        public static void DataGridSingleClickHack(DependencyObject originalSource)
+        {
+            DataGridCell cell = null;
+            DataGridRow row = null;
+            {
+                DependencyObject parent = originalSource;
+                while (parent != null)
+                {
+                    if (parent is DataGridCell)
+                    {
+                        cell = parent as DataGridCell;
+                    }
+                    else if (parent is DataGridRow)
+                    {
+                        row = parent as DataGridRow;
+                        break;
+                    }
+                    parent = VisualTreeHelper.GetParent(parent);
+                }
+            }
+
+            if (cell != null && !cell.IsEditing && !cell.IsReadOnly)
+            {
+                if (!cell.IsFocused)
+                {
+                    cell.Focus();
+                }
+
+                // NOTE: assuming SelectionUnit == FullRow
+                if (row != null && !row.IsSelected)
+                {
+                    row.IsSelected = true;
+                }
             }
         }
 

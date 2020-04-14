@@ -58,7 +58,7 @@ namespace GraphicalDebugging
             UpdateItems(false);
         }
 
-        private void GraphicalItem_NameChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void GraphicalItem_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             //e.PropertyName == "Name"
 
@@ -96,7 +96,7 @@ namespace GraphicalDebugging
 
         private void ResetAt(GraphicalItem item, int index)
         {
-            ((System.ComponentModel.INotifyPropertyChanged)item).PropertyChanged += GraphicalItem_NameChanged;
+            ((System.ComponentModel.INotifyPropertyChanged)item).PropertyChanged += GraphicalItem_PropertyChanged;
             if (index < Variables.Count)
                 Variables.RemoveAt(index);
             Variables.Insert(index, item);
@@ -148,6 +148,11 @@ namespace GraphicalDebugging
             m_isDataGridEdited = false;
         }
 
+        private void dataGrid_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            Util.DataGridSingleClickHack(e.OriginalSource as DependencyObject);
+        }
+
         private void UpdateItems(bool load)
         {
             for (int index = 0; index < Variables.Count; ++index)
@@ -159,9 +164,6 @@ namespace GraphicalDebugging
         private void UpdateItem(bool load, int index)
         {
             GraphicalItem variable = Variables[index];
-
-            Bitmap bmp = null;
-            string type = null;
 
             if (ExpressionLoader.Debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
             {
@@ -212,6 +214,9 @@ namespace GraphicalDebugging
                 {
                     variable.Drawable = null;
                     variable.Traits = null;
+                    variable.Bmp = null;
+                    variable.Type = null;
+                    variable.Error = null;
                 }
 
                 if (variable.Name != null && variable.Name != "")
@@ -220,9 +225,9 @@ namespace GraphicalDebugging
                     if (ExpressionLoader.AllValidValues(expressions))
                     {
                         // create bitmap
-                        bmp = new Bitmap(imageWidth, imageHeight);
+                        variable.Bmp = new Bitmap(imageWidth, imageHeight);
 
-                        Graphics graphics = Graphics.FromImage(bmp);
+                        Graphics graphics = Graphics.FromImage(variable.Bmp);
                         graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                         graphics.Clear(m_colors.ClearColor);
 
@@ -249,26 +254,24 @@ namespace GraphicalDebugging
                             }
 
                             if (!ExpressionDrawer.Draw(graphics, variable.Drawable, variable.Traits, settings, m_colors))
-                                bmp = null;
+                                variable.Bmp = null;
 
                             variable.Error = null;
                         }
                         catch (Exception e)
                         {
-                            bmp = null;
+                            variable.Bmp = null;
 
                             variable.Error = e.Message;
                         }
 
-                        type = ExpressionLoader.TypeFromExpressions(expressions);
+                        variable.Type = ExpressionLoader.TypeFromExpressions(expressions);
                     }
                 }
             }
 
             // set new row
-            ResetAt(new GraphicalItem(variable.Drawable, variable.Traits,
-                                      variable.Name, bmp, type, variable.Error),
-                    index);
+            ResetAt(variable.ShallowCopy(), index);
         }
 
         private void imageItem_Copy(object sender, RoutedEventArgs e)
