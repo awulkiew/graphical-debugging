@@ -95,14 +95,19 @@ namespace GraphicalDebugging
             set
             {
                 this.bmp = value;
-                this.bmpImg = this.bmp == null ? null : Util.BitmapToBitmapImage(this.bmp);
+                this.bmpImg = null;
             }
         }
 
         protected System.Windows.Media.Imaging.BitmapImage bmpImg;
         public System.Windows.Media.Imaging.BitmapImage BmpImg
         {
-            get { return this.bmpImg; }
+            get
+            {
+                if (this.bmpImg == null && this.bmp != null)
+                    this.bmpImg = Util.BitmapToBitmapImage(this.bmp);
+                return this.bmpImg;
+            }
         }
 
         public GraphicalItem ShallowCopy()

@@ -310,6 +310,17 @@ namespace GraphicalDebugging
         // https://softwaremechanik.wordpress.com/2013/10/02/how-to-make-all-wpf-datagrid-cells-have-a-single-click-to-edit/
         public static void DataGridSingleClickHack(DependencyObject originalSource)
         {
+            // Enable single click edit only for the last, empty row
+            if (!(originalSource is FrameworkElement))
+                return;
+            object item = (originalSource as FrameworkElement).DataContext;
+            if (!(item is VariableItem))
+                return;
+            VariableItem variable = item as VariableItem;
+            if (variable.Name != null && variable.Name != "")
+                return;
+
+            // Find corresponding cell and row
             DataGridCell cell = null;
             DataGridRow row = null;
             {
@@ -329,6 +340,7 @@ namespace GraphicalDebugging
                 }
             }
 
+            // Do magic stuff
             if (cell != null && !cell.IsEditing && !cell.IsReadOnly)
             {
                 if (!cell.IsFocused)
