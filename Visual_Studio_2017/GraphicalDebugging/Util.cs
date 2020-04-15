@@ -211,12 +211,17 @@ namespace GraphicalDebugging
             }
         }
 
+        private static System.Windows.Forms.ColorDialog colorDialog;
+
         public static System.Drawing.Color ShowColorDialog(System.Drawing.Color color)
         {
-            System.Windows.Forms.ColorDialog dialog = new System.Windows.Forms.ColorDialog();
-            if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            if (colorDialog == null)
+                colorDialog = new System.Windows.Forms.ColorDialog();
+            colorDialog.Color = System.Drawing.Color.FromArgb(255, color);
+            colorDialog.FullOpen = true;
+            if (colorDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-                color = System.Drawing.Color.FromArgb(255, dialog.Color);
+                color = System.Drawing.Color.FromArgb(255, colorDialog.Color);
             }
             return color;
         }
