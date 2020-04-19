@@ -312,6 +312,79 @@ namespace GraphicalDebugging
             }
         }
 
+        public delegate void DataGridItemUpdatedPredicate(int index);
+        public delegate void DataGridItemRemovePredicate<Item>(Item item);
+        public delegate void DataGridItemRemovedPredicate<Item>(Item item);
+        public delegate void DataGridItemInsertEmptyPredicate(int index);
+
+        public static void DataGridItemPropertyChanged<Item>(System.Windows.Controls.DataGrid dataGrid,
+                                                             System.Collections.ObjectModel.ObservableCollection<Item> items,
+                                                             Item item,
+                                                             string propertyName,
+                                                             DataGridItemUpdatedPredicate updatePredicate,
+                                                             DataGridItemInsertEmptyPredicate insertEmptyPredicate,
+                                                             DataGridItemRemovePredicate<Item> removePredicate,
+                                                             DataGridItemRemovedPredicate<Item> removedPredicate)
+            where Item : VariableItem
+        {
+            int index = items.IndexOf(item);
+
+            if (index < 0 || index >= dataGrid.Items.Count)
+                return;
+
+            if (propertyName == "Name")
+            {
+                if (item.Name == null || item.Name == "")
+                {
+                    if (index < dataGrid.Items.Count - 1)
+                    {
+                        removePredicate(item);
+
+                        items.RemoveAt(index);
+
+                        removedPredicate(item);
+
+                        if (index > 0)
+                        {
+                            Util.SelectDataGridItem(dataGrid, index - 1);
+                        }
+                    }
+                }
+                else
+                {
+                    updatePredicate(index);
+
+                    int next_index = index + 1;
+                    // insert new empty row if needed
+                    if (next_index == items.Count)
+                    {
+                        insertEmptyPredicate(next_index);
+                    }
+                    // select current row, move to next one is automatic
+                    Util.SelectDataGridItem(dataGrid, index);
+                }
+            }
+            else if (propertyName == "IsEnabled")
+            {
+                updatePredicate(index);
+            }
+        }
+
+        public static void DataGridItemPropertyChanged<Item>(System.Windows.Controls.DataGrid dataGrid,
+                                                             System.Collections.ObjectModel.ObservableCollection<Item> items,
+                                                             Item item,
+                                                             string propertyName,
+                                                             DataGridItemUpdatedPredicate updatePredicate,
+                                                             DataGridItemInsertEmptyPredicate insertEmptyPredicate)
+            where Item : VariableItem
+        {
+            DataGridItemPropertyChanged(dataGrid, items, item, propertyName,
+                                        updatePredicate,
+                                        insertEmptyPredicate,
+                                        delegate (Item it) { },
+                                        delegate (Item it) { } );
+        }
+
         // https://softwaremechanik.wordpress.com/2013/10/02/how-to-make-all-wpf-datagrid-cells-have-a-single-click-to-edit/
         public static void DataGridSingleClickHack(DependencyObject originalSource)
         {

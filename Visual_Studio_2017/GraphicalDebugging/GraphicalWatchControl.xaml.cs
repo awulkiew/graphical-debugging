@@ -60,38 +60,18 @@ namespace GraphicalDebugging
 
         private void GraphicalItem_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
-            //e.PropertyName == "Name"
-
-            GraphicalItem variable = (GraphicalItem)sender;
-            int index = Variables.IndexOf(variable);
-
-            if (index < 0 || index >= dataGrid.Items.Count)
-                return;
-
-            if (variable.Name == null || variable.Name == "")
-            {
-                if (index < dataGrid.Items.Count - 1)
-                {
-                    Variables.RemoveAt(index);
-                    if (index > 0)
-                    {
-                        Util.SelectDataGridItem(dataGrid, index - 1);
-                    }
-                }
-            }
-            else
-            {
-                UpdateItem(true, index);
-
-                int next_index = index + 1;
-                // insert new empty row if needed
-                if (next_index == Variables.Count)
+            Util.DataGridItemPropertyChanged(
+                dataGrid,
+                Variables,
+                sender as GraphicalItem,
+                e.PropertyName,
+                delegate (int index) {
+                    UpdateItem(true, index);
+                },
+                delegate (int next_index)
                 {
                     ResetAt(new GraphicalItem(), next_index);
-                }
-                // select current row, move to next one is automatic
-                Util.SelectDataGridItem(dataGrid, index);
-            }
+                });
         }
 
         private void ResetAt(GraphicalItem item, int index)

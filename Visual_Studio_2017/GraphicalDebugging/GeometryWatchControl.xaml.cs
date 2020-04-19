@@ -118,47 +118,24 @@ namespace GraphicalDebugging
 
         private void GeometryItem_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
-            GeometryItem geometry = sender as GeometryItem;
-            int index = Geometries.IndexOf(geometry);
-
-            if (index < 0 || index >= dataGrid.Items.Count)
-                return;
-
-            if (e.PropertyName == "Name")
-            {
-                if (geometry.Name == null || geometry.Name == "")
-                {
-                    if (index < dataGrid.Items.Count - 1)
-                    {
-                        m_intsPool.Push(geometry.ColorId);
-                        Geometries.RemoveAt(index);
-
-                        UpdateItems(false);
-
-                        if (index > 0)
-                        {
-                            Util.SelectDataGridItem(dataGrid, index - 1);
-                        }
-                    }
-                }
-                else
-                {
+            Util.DataGridItemPropertyChanged(
+                dataGrid,
+                Geometries,
+                sender as GeometryItem,
+                e.PropertyName,
+                delegate (int index) {
                     UpdateItems(true, index);
-
-                    int next_index = index + 1;
-                    // insert new empty row if needed
-                    if (next_index == Geometries.Count)
-                    {
-                        ResetAt(new GeometryItem(), next_index);
-                    }
-                    // select current row, move to next one is automatic
-                    Util.SelectDataGridItem(dataGrid, index);
-                }
-            }
-            else if (e.PropertyName == "IsEnabled")
-            {
-                UpdateItems(true, index);
-            }
+                },
+                delegate (int next_index)
+                {
+                    ResetAt(new GeometryItem(), next_index);
+                },
+                delegate (GeometryItem geometry) {
+                    m_intsPool.Push(geometry.ColorId);
+                },
+                delegate (GeometryItem geometry) {
+                    UpdateItems(false);
+                });
         }
 
         private void ResetAt(GeometryItem item, int index)
