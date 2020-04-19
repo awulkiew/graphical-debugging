@@ -21,21 +21,39 @@ namespace GraphicalDebugging
 {
     class Colors
     {
-        public Colors(FrameworkElement frameworkElement)
+        public Colors()
         {
-            this.frameworkElement = frameworkElement;
+            // for safety, m_colors are updated in Update() again
+            CreateColors(DarkColorValues);
+            m_brightness = 0.5f;
+
             Update();
+
+            VSColorTheme.ThemeChanged += VSColorTheme_ThemeChanged;
+        }
+
+        public delegate void ColorsChangedEventHandler();
+        public event ColorsChangedEventHandler ColorsChanged;
+        
+        private void VSColorTheme_ThemeChanged(ThemeChangedEventArgs e)
+        {
+            Update();
+
+            ColorsChanged?.Invoke();
         }
 
         public void Update()
         {
-            if (m_colors == null)
-                m_colors = new List<Color>();
-            else
-                m_colors.Clear();
+            float brightness = GetBrightness();
+            if (brightness == m_brightness)
+                return;
 
-            if (GetBrightness() > 0.45f)
+            m_brightness = brightness;
+
+            if (m_brightness > 0.45f)
             {
+                CreateColors(DarkColorValues);
+
                 ClearColor = Color.White;
                 TextColor = Color.Black;
                 AabbColor = Color.Black;
@@ -54,12 +72,11 @@ namespace GraphicalDebugging
                 MultiPolygonColor = Color.FromArgb(0xFF, 0, 0, 128);
                 TurnColor = Color.DarkOrange;
                 GeometriesContainerColor = Color.SaddleBrown;
-
-                foreach (var v in DarkColorValues)
-                    m_colors.Add(Color.FromArgb((int)v));
             }
             else
             {
+                CreateColors(LightColorValues);
+
                 ClearColor = Color.FromArgb(0xFF, 24, 24, 24);
                 TextColor = Color.White;
                 AabbColor = Color.White;
@@ -79,38 +96,29 @@ namespace GraphicalDebugging
                 MultiPolygonColor = Color.FromArgb(0xFF, 128, 128, 172);
                 TurnColor = Color.FromArgb(0xFF, 255, 197, 128);
                 GeometriesContainerColor = Color.Tan;
-
-                foreach (var v in LightColorValues)
-                    m_colors.Add(Color.FromArgb((int)v));
             }
         }
 
         private float GetBrightness()
         {
             float result = 0.5f;
-            try
-            {
-                var tmp = (System.Windows.Media.Color)frameworkElement.FindResource(VsColors.ToolWindowBackgroundKey);
-                Color baseColor = Util.ConvertColor(tmp);
-                result = baseColor.GetBrightness();
-            }
-            catch (System.Exception) { }
+            var col = Application.Current.TryFindResource(VsColors.ToolWindowBackgroundKey);
+            if (col != null)
+                result = Util.ConvertColor((System.Windows.Media.Color)col).GetBrightness();
             return result;
         }
 
-        private static System.UInt32[] DarkColorValues = new System.UInt32[] {
+        private static uint[] DarkColorValues = new uint[] {
             0xFFC00000, 0xFF00C000, 0xFF0000C0,
             0xFFC08000, 0xFF00C080, 0xFF8000C0, 0xFFC00080, 0xFF80C000, 0xFF0080C0,
             0xFFC08080, 0xFF80C080, 0xFF8080C0
         };
 
-        private static System.UInt32[] LightColorValues = new System.UInt32[] {
+        private static uint[] LightColorValues = new uint[] {
             0xFFF06060, 0xFF60F060, 0xFF6070F0,
             0xFFF0B060, 0xFF60F0B0, 0xFFB060F0, 0xFFF060B0, 0xFFB0F060, 0xFF60B0F0,
             0xFFF0B0B0, 0xFFB0F0B0, 0xFFB0B0F0
         };
-
-        private FrameworkElement frameworkElement;
 
         public static readonly Color Transparent = Color.FromArgb(0x00, 0xFF, 0xFF, 0xFF);
 
@@ -133,20 +141,28 @@ namespace GraphicalDebugging
         public Color TurnColor { get; set; }
         public Color GeometriesContainerColor { get; set; }
 
-        public int Count { get { return m_colors.Count; } }
+        private void CreateColors(uint[] colorValues)
+        {
+            m_colors = new Color[colorValues.Length];
+            for (int i = 0; i < colorValues.Length; ++i)
+                m_colors[i] = Color.FromArgb((int)colorValues[i]);
+        }
+
+        public int Count { get { return m_colors.Length; } }
         public Color this[int i]
         {
             get
             {
                 if (i < 0)
                     return Transparent;
-                else if (i >= m_colors.Count)
+                else if (i >= m_colors.Length)
                     return DrawColor;
                 else
                     return m_colors[i];                    
             }
         }
 
-        private List<Color> m_colors;
+        private Color[] m_colors;
+        private float m_brightness;
     }
 }

@@ -26,8 +26,6 @@ namespace GraphicalDebugging
     {
         private bool m_isDataGridEdited;
 
-        private Colors m_colors;
-
         ObservableCollection<GraphicalItem> Variables { get; set; }
 
         /// <summary>
@@ -37,11 +35,9 @@ namespace GraphicalDebugging
         {
             ExpressionLoader.DebuggerEvents.OnEnterBreakMode += DebuggerEvents_OnEnterBreakMode;
 
-            VSColorTheme.ThemeChanged += VSColorTheme_ThemeChanged;
+            Util.Colors.ColorsChanged += Colors_ColorsChanged;
 
             m_isDataGridEdited = false;
-
-            m_colors = new Colors(this);
 
             Variables = new ObservableCollection<GraphicalItem>();
 
@@ -52,9 +48,8 @@ namespace GraphicalDebugging
             ResetAt(new GraphicalItem(), Variables.Count);
         }
 
-        private void VSColorTheme_ThemeChanged(ThemeChangedEventArgs e)
+        private void Colors_ColorsChanged()
         {
-            m_colors.Update();
             UpdateItems(false);
         }
 
@@ -209,7 +204,7 @@ namespace GraphicalDebugging
 
                         Graphics graphics = Graphics.FromImage(variable.Bmp);
                         graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                        graphics.Clear(m_colors.ClearColor);
+                        graphics.Clear(Util.Colors.ClearColor);
 
                         try
                         {
@@ -233,7 +228,7 @@ namespace GraphicalDebugging
                                     variable.Drawable = (variable.Drawable as ExpressionDrawer.PointsContainer).MultiPoint;
                             }
 
-                            if (!ExpressionDrawer.Draw(graphics, variable.Drawable, variable.Traits, settings, m_colors))
+                            if (!ExpressionDrawer.Draw(graphics, variable.Drawable, variable.Traits, settings, Util.Colors))
                                 variable.Bmp = null;
 
                             variable.Error = null;

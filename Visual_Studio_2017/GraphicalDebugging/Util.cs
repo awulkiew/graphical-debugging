@@ -231,6 +231,17 @@ namespace GraphicalDebugging
             return ConvertColor(ShowColorDialog(ConvertColor(color)));
         }
 
+        private static GraphicalDebugging.Colors colors;
+        public static GraphicalDebugging.Colors Colors
+        {
+            get
+            {
+                if (colors == null)
+                    colors = new GraphicalDebugging.Colors();
+                return colors;
+            }
+        }
+
         public static T GetDialogPage<T>()
             where T : DialogPage
         {

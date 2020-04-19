@@ -27,11 +27,10 @@ namespace GraphicalDebugging
     /// </summary>
     public partial class PlotWatchControl : UserControl
     {
-        Util.IntsPool m_intsPool;
+        Util.IntsPool m_colorIds;
 
         private bool m_isDataGridEdited;
 
-        Colors m_colors;
         Bitmap m_emptyBitmap;
 
         System.Windows.Shapes.Rectangle m_selectionRect = new System.Windows.Shapes.Rectangle();
@@ -53,18 +52,17 @@ namespace GraphicalDebugging
         {
             ExpressionLoader.DebuggerEvents.OnEnterBreakMode += DebuggerEvents_OnEnterBreakMode;
 
-            VSColorTheme.ThemeChanged += VSColorTheme_ThemeChanged;
+            Util.Colors.ColorsChanged += Colors_ColorsChanged;
 
             m_isDataGridEdited = false;
 
-            m_colors = new Colors(this);
-            m_intsPool = new Util.IntsPool(m_colors.Count);
+            m_colorIds = new Util.IntsPool(Util.Colors.Count);
 
             this.InitializeComponent();
 
             m_emptyBitmap = new Bitmap(100, 100);
             Graphics graphics = Graphics.FromImage(m_emptyBitmap);
-            graphics.Clear(m_colors.ClearColor);
+            graphics.Clear(Util.Colors.ClearColor);
             image.Source = Util.BitmapToBitmapImage(m_emptyBitmap);
 
             m_selectionRect.Width = 0;
@@ -73,7 +71,7 @@ namespace GraphicalDebugging
             System.Windows.Media.Color colR = System.Windows.SystemColors.HighlightColor;
             colR.A = 92;
             m_selectionRect.Fill = new System.Windows.Media.SolidColorBrush(colR);
-            System.Windows.Media.Color colL = Util.ConvertColor(m_colors.AabbColor);
+            System.Windows.Media.Color colL = Util.ConvertColor(Util.Colors.AabbColor);
             colL.A = 128;
             m_mouseVLine.Stroke = new System.Windows.Media.SolidColorBrush(colL);
             //m_mouseVLine.StrokeThickness = 1;
@@ -81,7 +79,7 @@ namespace GraphicalDebugging
             m_mouseHLine.Stroke = new System.Windows.Media.SolidColorBrush(colL);
             //m_mouseHLine.StrokeThickness = 1;
             m_mouseHLine.Visibility = Visibility.Hidden;
-            System.Windows.Media.Color colT = Util.ConvertColor(m_colors.TextColor);
+            System.Windows.Media.Color colT = Util.ConvertColor(Util.Colors.TextColor);
             colL.A = 128;
             m_mouseTxt.Foreground = new System.Windows.Media.SolidColorBrush(colT);
             //m_mouseTxt.FontFamily = new System.Windows.Media.FontFamily("sans-serif");
@@ -98,18 +96,17 @@ namespace GraphicalDebugging
             ResetAt(new PlotItem(), Plots.Count);
         }
 
-        private void VSColorTheme_ThemeChanged(ThemeChangedEventArgs e)
+        private void Colors_ColorsChanged()
         {
-            m_colors.Update();
             Graphics graphics = Graphics.FromImage(m_emptyBitmap);
-            graphics.Clear(m_colors.ClearColor);
+            graphics.Clear(Util.Colors.ClearColor);
 
-            System.Windows.Media.Color colL = Util.ConvertColor(m_colors.AabbColor);
+            System.Windows.Media.Color colL = Util.ConvertColor(Util.Colors.AabbColor);
             colL.A = 128;
             m_mouseHLine.Stroke = new System.Windows.Media.SolidColorBrush(colL);
             m_mouseVLine.Stroke = new System.Windows.Media.SolidColorBrush(colL);
 
-            System.Windows.Media.Color colT = Util.ConvertColor(m_colors.TextColor);
+            System.Windows.Media.Color colT = Util.ConvertColor(Util.Colors.TextColor);
             colL.A = 128;
             m_mouseTxt.Foreground = new System.Windows.Media.SolidColorBrush(colT);
 
@@ -131,7 +128,7 @@ namespace GraphicalDebugging
                     ResetAt(new PlotItem(), next_index);
                 },
                 delegate (PlotItem plot) {
-                    m_intsPool.Push(plot.ColorId);
+                    m_colorIds.Push(plot.ColorId);
                 },
                 delegate (PlotItem plot) {
                     UpdateItems(false);
@@ -176,7 +173,7 @@ namespace GraphicalDebugging
                                                         Plots,
                                                         delegate (PlotItem plot)
                                                         {
-                                                            m_intsPool.Push(plot.ColorId);
+                                                            m_colorIds.Push(plot.ColorId);
                                                         },
                                                         out selectIndex);
 
@@ -267,8 +264,8 @@ namespace GraphicalDebugging
 
                             if (updateRequred && plot.ColorId < 0)
                             {
-                                plot.ColorId = m_intsPool.Pull();
-                                plot.Color = Util.ConvertColor(m_colors[plot.ColorId]);
+                                plot.ColorId = m_colorIds.Pull();
+                                plot.Color = Util.ConvertColor(Util.Colors[plot.ColorId]);
                             }
 
                             settings[index] = referenceSettings.CopyColored(plot.Color);
@@ -295,7 +292,7 @@ namespace GraphicalDebugging
 
                         Graphics graphics = Graphics.FromImage(bmp);
                         graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                        graphics.Clear(m_colors.ClearColor);
+                        graphics.Clear(Util.Colors.ClearColor);
 
                         try
                         {
@@ -333,7 +330,7 @@ namespace GraphicalDebugging
                                 traits[i] = Plots[i].Traits;
                             }
 
-                            m_currentBox = ExpressionDrawer.DrawPlots(graphics, drawables, traits, settings, m_colors, m_zoomBox);
+                            m_currentBox = ExpressionDrawer.DrawPlots(graphics, drawables, traits, settings, Util.Colors, m_zoomBox);
                         }
                         catch (Exception e)
                         {
@@ -562,7 +559,7 @@ namespace GraphicalDebugging
                 if (newColor != color)
                 {
                     textBlock.Background = new System.Windows.Media.SolidColorBrush(newColor);
-                    m_intsPool.Push(geometry.ColorId);
+                    m_colorIds.Push(geometry.ColorId);
                     geometry.ColorId = int.MaxValue;
                     geometry.Color = newColor;
                     UpdateItems(false); // TODO: pass modified_index?
