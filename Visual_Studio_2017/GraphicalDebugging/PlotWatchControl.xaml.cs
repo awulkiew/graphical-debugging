@@ -123,14 +123,13 @@ namespace GraphicalDebugging
                 delegate (int index) {
                     UpdateItems(true, index);
                 },
-                delegate (int next_index)
-                {
+                delegate (int next_index) {
                     ResetAt(new PlotItem(), next_index);
                 },
                 delegate (PlotItem plot) {
                     m_colorIds.Push(plot.ColorId);
                 },
-                delegate (PlotItem plot) {
+                delegate (int index) {
                     UpdateItems(false);
                 });
         }
@@ -165,22 +164,17 @@ namespace GraphicalDebugging
                 if (m_isDataGridEdited)
                     return;
 
-                if (dataGrid.SelectedItems.Count < 1)
-                    return;
-
-                int selectIndex = -1;
-                bool removed = Util.RemoveDataGridItems(dataGrid,
-                                                        Plots,
-                                                        delegate (PlotItem plot)
-                                                        {
-                                                            m_colorIds.Push(plot.ColorId);
-                                                        },
-                                                        out selectIndex);
-
-                if (removed)
-                    UpdateItems(false);
-
-                Util.SelectDataGridItem(dataGrid, selectIndex);
+                Util.RemoveDataGridItems(dataGrid,
+                                         Plots,
+                                         delegate (int selectIndex) {
+                                             ResetAt(new PlotItem(), selectIndex);
+                                         },
+                                         delegate (PlotItem plot) {
+                                             m_colorIds.Push(plot.ColorId);
+                                         },
+                                         delegate () {
+                                             UpdateItems(false);
+                                         });
             }
         }
 

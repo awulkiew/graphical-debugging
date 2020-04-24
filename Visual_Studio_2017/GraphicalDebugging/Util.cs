@@ -270,13 +270,21 @@ namespace GraphicalDebugging
             });
         }
 
-        public delegate void RemovedItemPredicate<Item>(Item item);
+        public delegate void ItemUpdatedPredicate(int index);
+        public delegate void ItemInsertEmptyPredicate(int index);
+        public delegate void ItemRemovePredicate<Item>(Item item);
+        public delegate void ItemRemovedPredicate(int index);
+        public delegate void ItemsRemovedPredicate();        
 
-        public static bool RemoveDataGridItems<Item>(System.Windows.Controls.DataGrid dataGrid,
+        public static void RemoveDataGridItems<Item>(System.Windows.Controls.DataGrid dataGrid,
                                                      System.Collections.ObjectModel.ObservableCollection<Item> itemsCollection,
-                                                     RemovedItemPredicate<Item> removedPredicate,
-                                                     out int selectIndex)
+                                                     ItemInsertEmptyPredicate insertEmptyPredicate,
+                                                     ItemRemovePredicate<Item> removePredicate,
+                                                     ItemsRemovedPredicate removedPredicate)
         {
+            if (dataGrid.SelectedItems.Count < 1)
+                return;
+
             int[] indexes = new int[dataGrid.SelectedItems.Count];
             int i = 0;
             foreach (var item in dataGrid.SelectedItems)
@@ -293,17 +301,30 @@ namespace GraphicalDebugging
                 if (index + 1 < itemsCollection.Count)
                 {
                     Item item = itemsCollection[index];
-                    removedPredicate(item);
+
+                    removePredicate(item);
+
                     itemsCollection.RemoveAt(index);
+
                     removed = true;
                 }
             }
 
-            selectIndex = -1;
+            int selectIndex = -1;
             if (indexes.Length > 0)
                 selectIndex = indexes[indexes.Length - 1];
-            
-            return removed;
+
+            if (removed)
+            {
+                if (selectIndex >= 0 && selectIndex == itemsCollection.Count - 1)
+                {
+                    insertEmptyPredicate(selectIndex);
+                }
+
+                removedPredicate();
+            }
+
+            Util.SelectDataGridItem(dataGrid, selectIndex);
         }
 
         public static void SelectDataGridItem(System.Windows.Controls.DataGrid dataGrid,
@@ -323,19 +344,14 @@ namespace GraphicalDebugging
             }
         }
 
-        public delegate void DataGridItemUpdatedPredicate(int index);
-        public delegate void DataGridItemRemovePredicate<Item>(Item item);
-        public delegate void DataGridItemRemovedPredicate<Item>(Item item);
-        public delegate void DataGridItemInsertEmptyPredicate(int index);
-
         public static void DataGridItemPropertyChanged<Item>(System.Windows.Controls.DataGrid dataGrid,
                                                              System.Collections.ObjectModel.ObservableCollection<Item> items,
                                                              Item item,
                                                              string propertyName,
-                                                             DataGridItemUpdatedPredicate updatePredicate,
-                                                             DataGridItemInsertEmptyPredicate insertEmptyPredicate,
-                                                             DataGridItemRemovePredicate<Item> removePredicate,
-                                                             DataGridItemRemovedPredicate<Item> removedPredicate)
+                                                             ItemUpdatedPredicate updatePredicate,
+                                                             ItemInsertEmptyPredicate insertEmptyPredicate,
+                                                             ItemRemovePredicate<Item> removePredicate,
+                                                             ItemRemovedPredicate removedPredicate)
             where Item : VariableItem
         {
             int index = items.IndexOf(item);
@@ -353,7 +369,7 @@ namespace GraphicalDebugging
 
                         items.RemoveAt(index);
 
-                        removedPredicate(item);
+                        removedPredicate(index);
 
                         if (index > 0)
                         {
@@ -385,15 +401,15 @@ namespace GraphicalDebugging
                                                              System.Collections.ObjectModel.ObservableCollection<Item> items,
                                                              Item item,
                                                              string propertyName,
-                                                             DataGridItemUpdatedPredicate updatePredicate,
-                                                             DataGridItemInsertEmptyPredicate insertEmptyPredicate)
+                                                             ItemUpdatedPredicate updatePredicate,
+                                                             ItemInsertEmptyPredicate insertEmptyPredicate)
             where Item : VariableItem
         {
             DataGridItemPropertyChanged(dataGrid, items, item, propertyName,
                                         updatePredicate,
                                         insertEmptyPredicate,
                                         delegate (Item it) { },
-                                        delegate (Item it) { } );
+                                        delegate (int index) { } );
         }
 
         // https://softwaremechanik.wordpress.com/2013/10/02/how-to-make-all-wpf-datagrid-cells-have-a-single-click-to-edit/

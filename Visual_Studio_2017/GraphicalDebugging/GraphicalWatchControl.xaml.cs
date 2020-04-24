@@ -63,8 +63,7 @@ namespace GraphicalDebugging
                 delegate (int index) {
                     UpdateItem(true, index);
                 },
-                delegate (int next_index)
-                {
+                delegate (int next_index) {
                     ResetAt(new GraphicalItem(), next_index);
                 });
         }
@@ -92,24 +91,13 @@ namespace GraphicalDebugging
                 if (m_isDataGridEdited)
                     return;
 
-                if (dataGrid.SelectedItems.Count < 1)
-                    return;
-
-                int selectIndex = -1;
-                bool removed = Util.RemoveDataGridItems(dataGrid,
-                                                        Variables,
-                                                        delegate (GraphicalItem variable) { },
-                                                        out selectIndex);
-
-                if (removed)
-                {
-                    if (selectIndex >= 0 && selectIndex == Variables.Count - 1)
-                    {
-                        ResetAt(new GraphicalItem(), selectIndex);
-                    }
-                }
-
-                Util.SelectDataGridItem(dataGrid, selectIndex);
+                Util.RemoveDataGridItems(dataGrid,
+                                         Variables,
+                                         delegate (int selectIndex) {
+                                             ResetAt(new GraphicalItem(), selectIndex);
+                                         },
+                                         delegate (GraphicalItem variable) { },
+                                         delegate () { });
             }
         }
 
