@@ -193,6 +193,20 @@ namespace GraphicalDebugging
             Util.DataGridSingleClickHack(e.OriginalSource as DependencyObject);
         }
 
+        private ExpressionDrawer.Settings GetOptions()
+        {
+            ExpressionDrawer.Settings settings = new ExpressionDrawer.Settings();
+            GeometryWatchOptionPage optionPage = Util.GetDialogPage<GeometryWatchOptionPage>();
+            if (optionPage != null)
+            {
+                settings.densify = optionPage.Densify;
+                settings.showDir = optionPage.EnableDirections;
+                settings.showLabels = optionPage.EnableLabels;
+                settings.showDots = true;
+            }
+            return settings;
+        }
+
         private void UpdateItems(bool load, int modified_index = -1)
         {
             m_currentBox = null;
@@ -205,15 +219,8 @@ namespace GraphicalDebugging
                     ExpressionLoader.ReloadUserTypes(Util.GetDialogPage<GeneralOptionPage>());
                 }
 
-                ExpressionDrawer.Settings referenceSettings = new ExpressionDrawer.Settings();
-                GeometryWatchOptionPage optionPage = Util.GetDialogPage<GeometryWatchOptionPage>();
-                if (optionPage != null)
-                {
-                    referenceSettings.densify = optionPage.Densify;
-                    referenceSettings.showDir = optionPage.EnableDirections;
-                    referenceSettings.showLabels = optionPage.EnableLabels;
-                    referenceSettings.showDots = true;
-                }
+                // Load settings from option page
+                ExpressionDrawer.Settings referenceSettings = GetOptions();
 
                 // TODO: Names are redundant
                 string[] names = new string[Geometries.Count];

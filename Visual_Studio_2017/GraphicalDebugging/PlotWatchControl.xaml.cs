@@ -193,6 +193,27 @@ namespace GraphicalDebugging
             Util.DataGridSingleClickHack(e.OriginalSource as DependencyObject);
         }
 
+        private ExpressionDrawer.Settings GetOptions()
+        {
+            ExpressionDrawer.Settings settings = new ExpressionDrawer.Settings();
+            PlotWatchOptionPage optionPage = Util.GetDialogPage<PlotWatchOptionPage>();
+            if (optionPage != null)
+            {
+                if (optionPage.ValuePlot_EnableBars || optionPage.ValuePlot_EnableLines || optionPage.ValuePlot_EnablePoints)
+                {
+                    settings.valuePlot_enableBars = optionPage.ValuePlot_EnableBars;
+                    settings.valuePlot_enableLines = optionPage.ValuePlot_EnableLines;
+                    settings.valuePlot_enablePoints = optionPage.ValuePlot_EnablePoints;
+                }
+                if (optionPage.PointPlot_EnableLines || optionPage.PointPlot_EnablePoints)
+                {
+                    settings.pointPlot_enableLines = optionPage.PointPlot_EnableLines;
+                    settings.pointPlot_enablePoints = optionPage.PointPlot_EnablePoints;
+                }
+            }
+            return settings;
+        }
+
         private void UpdateItems(bool load, int modified_index = -1)
         {
             m_currentBox = null;
@@ -205,22 +226,8 @@ namespace GraphicalDebugging
                     ExpressionLoader.ReloadUserTypes(Util.GetDialogPage<GeneralOptionPage>());
                 }
 
-                ExpressionDrawer.Settings referenceSettings = new ExpressionDrawer.Settings();
-                PlotWatchOptionPage optionPage = Util.GetDialogPage<PlotWatchOptionPage>();
-                if (optionPage != null)
-                {
-                    if (optionPage.ValuePlot_EnableBars || optionPage.ValuePlot_EnableLines || optionPage.ValuePlot_EnablePoints)
-                    {
-                        referenceSettings.valuePlot_enableBars = optionPage.ValuePlot_EnableBars;
-                        referenceSettings.valuePlot_enableLines = optionPage.ValuePlot_EnableLines;
-                        referenceSettings.valuePlot_enablePoints = optionPage.ValuePlot_EnablePoints;
-                    }
-                    if (optionPage.PointPlot_EnableLines || optionPage.PointPlot_EnablePoints)
-                    {
-                        referenceSettings.pointPlot_enableLines = optionPage.PointPlot_EnableLines;
-                        referenceSettings.pointPlot_enablePoints = optionPage.PointPlot_EnablePoints;
-                    }
-                }
+                // Load settings from option page
+                ExpressionDrawer.Settings referenceSettings = GetOptions();
 
                 // TODO: Names are redundant
                 string[] names = new string[Plots.Count];

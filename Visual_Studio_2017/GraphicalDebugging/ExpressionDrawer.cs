@@ -51,15 +51,21 @@ namespace GraphicalDebugging
             }
 
             public Color color = Color.Empty;
+            // GraphicalWatch and GeometryWatch
             public bool showDir = true;
             public bool showLabels = true;
             public bool showDots = true;
             public bool densify = true;
+            // GraphicalWatch and PlotWatch
             public bool valuePlot_enableBars = true;
             public bool valuePlot_enableLines = false;
             public bool valuePlot_enablePoints = false;
             public bool pointPlot_enableLines = false;
             public bool pointPlot_enablePoints = true;
+            // GraphicalWatch
+            public int imageWidth = 100;
+            public int imageHeight = 100;
+            public bool displayMultiPointsAsPlots = false;
             public bool image_maintainAspectRatio = false;
         }
 

@@ -116,6 +116,44 @@ namespace GraphicalDebugging
             Util.DataGridSingleClickHack(e.OriginalSource as DependencyObject);
         }
 
+        private ExpressionDrawer.Settings GetOptions()
+        {
+            // Empty color - use default
+            ExpressionDrawer.Settings settings = new ExpressionDrawer.Settings();
+            settings.showDir = false;
+            settings.showLabels = false;
+            settings.showDots = false;
+            settings.densify = true;            
+            settings.imageWidth = 100;
+            settings.imageHeight = 100;
+            settings.displayMultiPointsAsPlots = false;
+            settings.image_maintainAspectRatio = false;
+            GraphicalWatchOptionPage optionPage = Util.GetDialogPage<GraphicalWatchOptionPage>();
+            if (optionPage != null)
+            {
+                if (optionPage.ValuePlot_EnableBars || optionPage.ValuePlot_EnableLines || optionPage.ValuePlot_EnablePoints)
+                {
+                    settings.valuePlot_enableBars = optionPage.ValuePlot_EnableBars;
+                    settings.valuePlot_enableLines = optionPage.ValuePlot_EnableLines;
+                    settings.valuePlot_enablePoints = optionPage.ValuePlot_EnablePoints;
+                }
+                if (optionPage.PointPlot_EnableLines || optionPage.PointPlot_EnablePoints)
+                {
+                    settings.pointPlot_enableLines = optionPage.PointPlot_EnableLines;
+                    settings.pointPlot_enablePoints = optionPage.PointPlot_EnablePoints;
+                }
+                settings.densify = optionPage.Densify;
+                settings.showDir = optionPage.EnableDirections;
+                settings.showLabels = optionPage.EnableLabels;
+                settings.showDots = false;
+                settings.imageHeight = Math.Max(optionPage.ImageHeight, 20);
+                settings.imageWidth = Math.Max(optionPage.ImageWidth, 20);
+                settings.displayMultiPointsAsPlots = (optionPage.MultiPointDisplayMode == GraphicalWatchOptionPage.MultiPointDisplayModeValue.PointPlot);
+                settings.image_maintainAspectRatio = optionPage.Image_MaintainAspectRatio;
+            }
+            return settings;
+        }
+
         private void UpdateItems(bool load)
         {
             for (int index = 0; index < Variables.Count; ++index)
@@ -135,43 +173,11 @@ namespace GraphicalDebugging
                     ExpressionLoader.ReloadUserTypes(Util.GetDialogPage<GeneralOptionPage>());
                 }
 
-                // Empty color - use default
-                ExpressionDrawer.Settings settings = new ExpressionDrawer.Settings();
-                settings.densify = true;
-                settings.showDir = false;
-                settings.showLabels = false;
-                settings.showDots = false;
-                // Other settings
-                int imageWidth = 100;
-                int imageHeight = 100;
-                bool displayMultiPointsAsPlots = false;
                 // Load settings from option page
-                GraphicalWatchOptionPage optionPage = Util.GetDialogPage<GraphicalWatchOptionPage>();
-                if (optionPage != null)
-                {
-                    if (optionPage.ValuePlot_EnableBars || optionPage.ValuePlot_EnableLines || optionPage.ValuePlot_EnablePoints)
-                    {
-                        settings.valuePlot_enableBars = optionPage.ValuePlot_EnableBars;
-                        settings.valuePlot_enableLines = optionPage.ValuePlot_EnableLines;
-                        settings.valuePlot_enablePoints = optionPage.ValuePlot_EnablePoints;
-                    }
-                    if (optionPage.PointPlot_EnableLines || optionPage.PointPlot_EnablePoints)
-                    {
-                        settings.pointPlot_enableLines = optionPage.PointPlot_EnableLines;
-                        settings.pointPlot_enablePoints = optionPage.PointPlot_EnablePoints;
-                    }
-                    settings.densify = optionPage.Densify;
-                    settings.showDir = optionPage.EnableDirections;
-                    settings.showLabels = optionPage.EnableLabels;
-                    settings.showDots = false;
-                    settings.image_maintainAspectRatio = optionPage.Image_MaintainAspectRatio;
-                    imageHeight = Math.Max(optionPage.ImageHeight, 20);
-                    imageWidth = Math.Max(optionPage.ImageWidth, 20);                    
-                    displayMultiPointsAsPlots = optionPage.MultiPointDisplayMode == GraphicalWatchOptionPage.MultiPointDisplayModeValue.PointPlot;
-                }
+                ExpressionDrawer.Settings settings = GetOptions();
 
-                (dataGrid.Columns[1] as DataGridTemplateColumn).Width = imageWidth + 1;
-                dataGrid.RowHeight = imageHeight + 1;
+                (dataGrid.Columns[1] as DataGridTemplateColumn).Width = settings.imageWidth + 1;
+                dataGrid.RowHeight = settings.imageHeight + 1;
 
                 if (load)
                 {
@@ -188,7 +194,7 @@ namespace GraphicalDebugging
                     if (ExpressionLoader.AllValidValues(expressions))
                     {
                         // create bitmap
-                        variable.Bmp = new Bitmap(imageWidth, imageHeight);
+                        variable.Bmp = new Bitmap(settings.imageWidth, settings.imageHeight);
 
                         Graphics graphics = Graphics.FromImage(variable.Bmp);
                         graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
@@ -202,22 +208,34 @@ namespace GraphicalDebugging
                                 ExpressionDrawer.IDrawable drawable = null;
                                 ExpressionLoader.Load(variable.Name, out traits, out drawable);
 
-                                if (drawable != null && displayMultiPointsAsPlots && drawable is ExpressionDrawer.MultiPoint)
+                                if (drawable != null
+                                    && settings.displayMultiPointsAsPlots
+                                    && drawable is ExpressionDrawer.MultiPoint)
+                                {
                                     drawable = new ExpressionDrawer.PointsContainer(drawable as ExpressionDrawer.MultiPoint);
+                                }
 
                                 variable.Drawable = drawable;
                                 variable.Traits = traits;
                             }
                             else
                             {
-                                if (displayMultiPointsAsPlots && variable.Drawable is ExpressionDrawer.MultiPoint)
+                                if (settings.displayMultiPointsAsPlots
+                                    && variable.Drawable is ExpressionDrawer.MultiPoint)
+                                {
                                     variable.Drawable = new ExpressionDrawer.PointsContainer(variable.Drawable as ExpressionDrawer.MultiPoint);
-                                else if (!displayMultiPointsAsPlots && variable.Drawable is ExpressionDrawer.PointsContainer)
+                                }
+                                else if (!settings.displayMultiPointsAsPlots
+                                    && variable.Drawable is ExpressionDrawer.PointsContainer)
+                                {
                                     variable.Drawable = (variable.Drawable as ExpressionDrawer.PointsContainer).MultiPoint;
+                                }
                             }
 
                             if (!ExpressionDrawer.Draw(graphics, variable.Drawable, variable.Traits, settings, Util.Colors))
+                            {
                                 variable.Bmp = null;
+                            }
 
                             variable.Error = null;
                         }
