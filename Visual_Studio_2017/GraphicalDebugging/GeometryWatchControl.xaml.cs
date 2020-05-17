@@ -50,7 +50,7 @@ namespace GraphicalDebugging
         /// </summary>
         public GeometryWatchControl()
         {
-            ExpressionLoader.DebuggerEvents.OnEnterBreakMode += DebuggerEvents_OnEnterBreakMode;
+            ExpressionLoader.BreakModeEntered += ExpressionLoader_BreakModeEntered;
 
             Util.Colors.ColorsChanged += Colors_ColorsChanged;
 
@@ -142,7 +142,7 @@ namespace GraphicalDebugging
             Geometries.Insert(index, item);
         }
 
-        private void DebuggerEvents_OnEnterBreakMode(dbgEventReason Reason, ref dbgExecutionAction ExecutionAction)
+        private void ExpressionLoader_BreakModeEntered()
         {
             UpdateItems(true);
         }
@@ -212,7 +212,7 @@ namespace GraphicalDebugging
             m_currentBox = null;
 
             bool imageEmpty = true;
-            if (ExpressionLoader.Debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
+            if (ExpressionLoader.IsBreakMode)
             {
                 if (load)
                 {

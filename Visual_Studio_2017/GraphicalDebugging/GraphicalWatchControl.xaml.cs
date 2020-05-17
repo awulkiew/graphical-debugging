@@ -33,7 +33,7 @@ namespace GraphicalDebugging
         /// </summary>
         public GraphicalWatchControl()
         {
-            ExpressionLoader.DebuggerEvents.OnEnterBreakMode += DebuggerEvents_OnEnterBreakMode;
+            ExpressionLoader.BreakModeEntered += ExpressionLoader_BreakModeEntered;
 
             Util.Colors.ColorsChanged += Colors_ColorsChanged;
 
@@ -76,12 +76,9 @@ namespace GraphicalDebugging
             Variables.Insert(index, item);
         }
         
-        private void DebuggerEvents_OnEnterBreakMode(dbgEventReason Reason, ref dbgExecutionAction ExecutionAction)
+        private void ExpressionLoader_BreakModeEntered()
         {
-            if (ExpressionLoader.Debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
-            {
-                UpdateItems(true);
-            }
+            UpdateItems(true);
         }
 
         private void dataGrid_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
@@ -166,7 +163,7 @@ namespace GraphicalDebugging
         {
             GraphicalItem variable = Variables[index];
 
-            if (ExpressionLoader.Debugger.CurrentMode == dbgDebugMode.dbgBreakMode)
+            if (ExpressionLoader.IsBreakMode)
             {
                 if (load)
                 {

@@ -20,7 +20,6 @@ namespace GraphicalDebugging
     {
         private DTE2 dte;
         private Debugger debugger;
-        private DebuggerEvents debuggerEvents;
         private Loaders loadersCpp;
         private Loaders loadersCS;
 
@@ -36,8 +35,25 @@ namespace GraphicalDebugging
             Variant, Image
         };
 
-        private static ExpressionLoader Instance { get; set; }
+        public delegate void BreakModeEnteredEventHandler();
+        public static event BreakModeEnteredEventHandler BreakModeEntered;
 
+        private static void DebuggerEvents_OnEnterBreakMode(dbgEventReason Reason, ref dbgExecutionAction ExecutionAction)
+        {
+            BreakModeEntered?.Invoke();
+        }
+
+        public static bool IsBreakMode
+        {
+            get { return Debugger.CurrentMode == dbgDebugMode.dbgBreakMode; }
+        }
+
+        private static ExpressionLoader Instance { get; set; }
+        private static Debugger Debugger
+        {
+            get { return Instance.debugger; }
+        }
+        
         public static void Initialize(GraphicalWatchPackage package)
         {
             DTE2 dte = package.GetService(typeof(DTE)) as DTE2;
@@ -51,7 +67,7 @@ namespace GraphicalDebugging
 
             this.dte = dte;
             this.debugger = dte.Debugger;
-            this.debuggerEvents = this.dte.Events.DebuggerEvents;
+            this.dte.Events.DebuggerEvents.OnEnterBreakMode += DebuggerEvents_OnEnterBreakMode;
 
             loadersCpp = new Loaders();
 
@@ -115,16 +131,6 @@ namespace GraphicalDebugging
             loadersCS.Add(new PointContainer());
             loadersCS.Add(new ValuesContainer());
             loadersCS.Add(new GeometryContainer());
-        }
-
-        public static Debugger Debugger
-        {
-            get { return Instance.debugger; }
-        }
-
-        public static DebuggerEvents DebuggerEvents
-        {
-            get { return Instance.debuggerEvents; }
         }
 
         // Expressions utilities
