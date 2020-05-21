@@ -800,10 +800,29 @@ namespace GraphicalDebugging
                 public Kind Kind() { return ExpressionLoader.Kind.Box; }
                 public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
                 {
-                    return id == "boost::geometry::model::box"
-                         ? new BGBox()
-                         : null;
+                    if (id != "boost::geometry::model::box")
+                        return null;
+
+                    List<string> tparams = Util.Tparams(type);
+                    if (tparams.Count < 1)
+                        return null;
+
+                    string m_min_corner = name + ".m_min_corner";
+                    string pointType = tparams[0];
+                    PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
+                                                                 m_min_corner,
+                                                                 pointType) as PointLoader;
+                    if (pointLoader == null)
+                        return null;
+
+                    return new BGBox(pointLoader, pointType);
                 }
+            }
+
+            private BGBox(PointLoader pointLoader, string pointType)
+            {
+                this.pointLoader = pointLoader;
+                this.pointType = pointType;
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -815,23 +834,13 @@ namespace GraphicalDebugging
                 traits = null;
                 result = null;
 
-                List<string> tparams = Util.Tparams(type);
-                if (tparams.Count < 1)
+                // TODO: traits could be calculated once in Create
+                traits = pointLoader.LoadTraits(pointType);
+                if (traits == null)
                     return;
 
                 string m_min_corner = name + ".m_min_corner";
                 string m_max_corner = name + ".m_max_corner";
-
-                string pointType = tparams[0];
-                PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
-                                                             m_min_corner,
-                                                             pointType) as PointLoader;
-                if (pointLoader == null)
-                    return;
-
-                traits = pointLoader.LoadTraits(pointType);
-                if (traits == null)
-                    return;
 
                 Geometry.Point fp = pointLoader.LoadPoint(mreader, debugger, m_min_corner, pointType);
                 Geometry.Point sp = pointLoader.LoadPoint(mreader, debugger, m_max_corner, pointType);
@@ -841,24 +850,17 @@ namespace GraphicalDebugging
                        : null;
             }
 
+            // TODO: LoadMemory
+
             public override MemoryReader.Converter<double> GetMemoryConverter(Loaders loaders,
                                                                               MemoryReader mreader,
                                                                               Debugger debugger, // TODO - remove
                                                                               string name, string type)
             {
-                List<string> tparams = Util.Tparams(type);
-                if (tparams.Count < 1)
-                    return null;
-
                 string m_min_corner = name + ".m_min_corner";
                 string m_max_corner = name + ".m_max_corner";
 
-                string pointType = tparams[0];
-                PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
-                                                             m_min_corner,
-                                                             pointType) as PointLoader;
-                if (pointLoader == null)
-                    return null;
+                // TODO: All of the values here could be calculated once in Create
 
                 MemoryReader.Converter<double> pointConverter = pointLoader.GetMemoryConverter(loaders, mreader, debugger, m_min_corner, pointType);
 
@@ -875,6 +877,9 @@ namespace GraphicalDebugging
                             new MemoryReader.Member<double>(pointConverter, (int)minDiff),
                             new MemoryReader.Member<double>(pointConverter, (int)maxDiff));
             }
+
+            PointLoader pointLoader;
+            string pointType;
         }
 
         class BGSegment : SegmentLoader
@@ -885,10 +890,29 @@ namespace GraphicalDebugging
                 public Kind Kind() { return ExpressionLoader.Kind.Segment; }
                 public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
                 {
-                    return id == "boost::geometry::model::segment"
-                         ? new BGSegment()
-                         : null;
+                    if (id != "boost::geometry::model::segment")
+                        return null;
+
+                    List<string> tparams = Util.Tparams(type);
+                    if (tparams.Count < 1)
+                        return null;
+
+                    string first = name + ".first";
+                    string pointType = tparams[0];
+                    PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
+                                                                 first,
+                                                                 pointType) as PointLoader;
+                    if (pointLoader == null)
+                        return null;
+
+                    return new BGSegment(pointLoader, pointType);
                 }
+            }
+
+            protected BGSegment(PointLoader pointLoader, string pointType)
+            {
+                this.pointLoader = pointLoader;
+                this.pointType = pointType;
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -900,20 +924,10 @@ namespace GraphicalDebugging
                 traits = null;
                 segment = null;
 
-                List<string> tparams = Util.Tparams(type);
-                if (tparams.Count < 1)
-                    return;
-
                 string first = name + ".first";
                 string second = name + ".second";
 
-                string pointType = tparams[0];
-                PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
-                                                             first,
-                                                             pointType) as PointLoader;
-                if (pointLoader == null)
-                    return;
-
+                // TODO: traits could be calculated once in Create
                 traits = pointLoader.LoadTraits(pointType);
                 if (traits == null)
                     return;
@@ -925,6 +939,12 @@ namespace GraphicalDebugging
                         ? new ExpressionDrawer.Segment(fp, sp)
                         : null;
             }
+
+            // TODO: LoadMemory
+            // TODO: GetMemoryConverter
+
+            PointLoader pointLoader;
+            string pointType;
         }
 
         class BGReferringSegment : BGSegment
@@ -935,11 +955,28 @@ namespace GraphicalDebugging
                 public Kind Kind() { return ExpressionLoader.Kind.Segment; }
                 public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
                 {
-                    return id == "boost::geometry::model::referring_segment"
-                         ? new BGReferringSegment()
-                         : null;
+                    if (id != "boost::geometry::model::referring_segment")
+                        return null;
+
+                    List<string> tparams = Util.Tparams(type);
+                    if (tparams.Count < 1)
+                        return null;
+
+                    string first = name + ".first";
+                    string pointType = tparams[0];
+                    PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
+                                                                 first,
+                                                                 pointType) as PointLoader;
+                    if (pointLoader == null)
+                        return null;
+
+                    return new BGReferringSegment(pointLoader, pointType);
                 }
             }
+
+            private BGReferringSegment(PointLoader pointLoader, string pointType)
+                : base(pointLoader, pointType)
+            { }
         }
 
         class BGNSphere : NSphereLoader
