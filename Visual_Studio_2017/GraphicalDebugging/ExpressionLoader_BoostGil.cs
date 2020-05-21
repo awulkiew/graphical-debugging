@@ -21,11 +21,16 @@ namespace GraphicalDebugging
     {
         class BoostGilImage : LoaderR<ExpressionDrawer.Image>
         {
-            public override ExpressionLoader.Kind Kind() { return ExpressionLoader.Kind.Image; }
-
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "boost::gil::image";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Image; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::gil::image"
+                         ? new BoostGilImage()
+                         : null;
+                }
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -52,7 +57,7 @@ namespace GraphicalDebugging
                 if (! Util.Tparams(type, out pixelType, out isPlanarStr))
                     return;
 
-                string pixelId = Util.BaseType(pixelType);
+                string pixelId = Util.TypeId(pixelType);
                 if (pixelId != "boost::gil::pixel")
                     return;
 
@@ -62,7 +67,7 @@ namespace GraphicalDebugging
                 if (! Util.Tparams(pixelType, out channelValueType, out layoutType))
                     return;
 
-                string layoutId = Util.BaseType(layoutType);
+                string layoutId = Util.TypeId(layoutType);
                 if (layoutId != "boost::gil::layout")
                     return;
 
@@ -76,7 +81,7 @@ namespace GraphicalDebugging
                 if (channelValueKind == ChannelValueKind.Unknown || channelValueSize == 0)
                     return;
 
-                string colorSpaceId = Util.BaseType(colorSpaceType);
+                string colorSpaceId = Util.TypeId(colorSpaceType);
                 ColorSpace colorSpace = ParseColorSpace(colorSpaceType);
                 int colorSpaceSize = ColorSpaceSize(colorSpace);
 
@@ -193,7 +198,7 @@ namespace GraphicalDebugging
                 {
                     channelValueKind = ChannelValueKind.FloatingPoint;
                 }
-                else if (Util.BaseType(type) == "boost::gil::scoped_channel_value")
+                else if (Util.TypeId(type) == "boost::gil::scoped_channel_value")
                 {
                     List<string> tparams = Util.Tparams(type);
                     if (tparams.Count >= 1)
@@ -225,7 +230,7 @@ namespace GraphicalDebugging
 
             ColorSpace ParseColorSpace(string colorSpaceType)
             {
-                string colorSpaceId = Util.BaseType(colorSpaceType);
+                string colorSpaceId = Util.TypeId(colorSpaceType);
                 List<string> tparams = Util.Tparams(colorSpaceType);
                 // NOTE: Do not check the Util.BaseType(colorSpaceType)
                 //  to avoid checking all MPL and MP11 vectors and lists
@@ -288,7 +293,7 @@ namespace GraphicalDebugging
 
             Layout ParseChannelMapping(ColorSpace colorSpace, string channelMappingType)
             {
-                string channelMappingId = Util.BaseType(channelMappingType);
+                string channelMappingId = Util.TypeId(channelMappingType);
                 List<string> tparams = Util.Tparams(channelMappingType);
 
                 bool isRange = false;

@@ -17,15 +17,31 @@ namespace GraphicalDebugging
 {
     class ClassScopeExpression
     {
+        public ClassScopeExpression()
+        {
+            mParts = new List<IPart>();
+        }
+
+        public ClassScopeExpression(IPart part)
+        {
+            mParts = new List<IPart>();
+            Add(part);
+        }
+
         public ClassScopeExpression(string expression)
         {
             mParts = ParseImpl(expression);
         }
 
-        public void Initialize(Debugger debugger, string name, string type)
+        void Add(IPart part)
+        {
+            mParts.Add(part);
+        }
+
+        public void Reinitialize(Debugger debugger, string name, string type)
         {
             foreach (IPart part in mParts)
-                part.Initialize(debugger, name, type);
+                part.Reinitialize(debugger, name, type);
         }
 
         public string GetString(string name)
@@ -36,22 +52,37 @@ namespace GraphicalDebugging
             return result + ")";
         }
 
-        interface IPart
+        public ClassScopeExpression DeepCopy()
         {
-            void Initialize(Debugger debugger, string name, string type);
-            string GetString(string name);
+            ClassScopeExpression res = new ClassScopeExpression();
+            res.mParts.Capacity = mParts.Count;
+            foreach (IPart p in mParts)
+                res.mParts.Add(p.DeepCopy());
+            return res;
         }
 
-        class StringPart : IPart
+        public interface IPart
+        {
+            void Reinitialize(Debugger debugger, string name, string type);
+            string GetString(string name);
+            IPart DeepCopy();
+        }
+
+        public class StringPart : IPart
         {
             public StringPart(string value) { mValue = value; }
 
-            public void Initialize(Debugger debugger, string name, string type)
+            public void Reinitialize(Debugger debugger, string name, string type)
             { }
 
             public string GetString(string name)
             {
                 return mValue;
+            }
+
+            public IPart DeepCopy()
+            {
+                return new StringPart(mValue);
             }
 
             string mValue;
@@ -60,7 +91,7 @@ namespace GraphicalDebugging
         // TODO: Possible members may be used multiple times in an expression.
         //       Consider keeping a dictionary to avoid multiple checks for
         //       the same identifier.
-        class PossibleMemberPart : IPart
+        public class PossibleMemberPart : IPart
         {
             public PossibleMemberPart(string identifier)
             {
@@ -69,9 +100,10 @@ namespace GraphicalDebugging
                 mKind = Kind.Unknown;
             }
 
-            public void Initialize(Debugger debugger, string name, string type)
+            public void Reinitialize(Debugger debugger, string name, string type)
             {
                 mValue = mIdentifier;
+                mKind = Kind.Unknown;
 
                 // The same check in both C++ and C#
                 string memVar = "(" + name + ")." + mIdentifier;
@@ -111,6 +143,14 @@ namespace GraphicalDebugging
                      : mValue;
             }
 
+            public IPart DeepCopy()
+            {
+                PossibleMemberPart part = new PossibleMemberPart(mIdentifier);
+                part.mValue = mValue;
+                part.mKind = mKind;
+                return part;
+            }
+
             readonly string mIdentifier;
 
             string mValue; // member type or global variable/type
@@ -118,13 +158,13 @@ namespace GraphicalDebugging
             Kind mKind;
         }
 
-        class ThisPart : IPart
+        public class ThisPart : IPart
         {
             public ThisPart() { }
 
-            public void Initialize(Debugger debugger, string name, string type)
+            public void Reinitialize(Debugger debugger, string name, string type)
             {
-                mIsCxx = debugger.CurrentStackFrame.Language == "C++";
+                mIsCxx = (debugger.CurrentStackFrame.Language == "C++");
             }
 
             public string GetString(string name)
@@ -134,10 +174,34 @@ namespace GraphicalDebugging
                      : name;
             }
 
+            public IPart DeepCopy()
+            {
+                ThisPart part = new ThisPart();
+                part.mIsCxx = mIsCxx;
+                return part;
+            }
+
             bool mIsCxx = false;
         }
 
-        class TParamPart : IPart
+        public class NamePart : IPart
+        {
+            public NamePart() { }
+
+            public void Reinitialize(Debugger debugger, string name, string type) { }
+
+            public string GetString(string name)
+            {
+                return name;
+            }
+
+            public IPart DeepCopy()
+            {
+                return new NamePart();
+            }
+        }
+
+        public class TParamPart : IPart
         {
             public TParamPart(int index)
             {
@@ -145,17 +209,26 @@ namespace GraphicalDebugging
                 this.index = index;
             }
 
-            public void Initialize(Debugger debugger, string name, string type)
+            public void Reinitialize(Debugger debugger, string name, string type)
             {
                 List<string> tparams = Util.Tparams(type);
                 // Or throw an exception
                 if (0 <= index && index < tparams.Count)
                     tparam = tparams[index];
+                else
+                    tparam = "";
             }
 
             public string GetString(string name)
             {
                 return tparam;
+            }
+
+            public IPart DeepCopy()
+            {
+                TParamPart part = new TParamPart(index);
+                part.tparam = tparam;
+                return part;
             }
 
             string tparam;

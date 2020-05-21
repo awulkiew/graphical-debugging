@@ -21,8 +21,6 @@ namespace GraphicalDebugging
     {
         abstract class ContainerLoader : Loader
         {
-            public override ExpressionLoader.Kind Kind() { return ExpressionLoader.Kind.Container; }
-
             // TODO: This method should probably return ulong
             abstract public int LoadSize(Debugger debugger, string name);
 
@@ -107,11 +105,18 @@ namespace GraphicalDebugging
 
         class CArray : ContiguousContainer
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                string foo;
-                int bar;
-                return NameSizeFromType(type, out foo, out bar);
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Container; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    string foo;
+                    int bar;
+                    return NameSizeFromType(type, out foo, out bar)
+                         ? new CArray()
+                         : null;
+                }
             }
 
             public override void ElementInfo(string name, string type,
@@ -175,9 +180,16 @@ namespace GraphicalDebugging
 
         class StdArray : ContiguousContainer
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "std::array";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Container; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "std::array"
+                         ? new StdArray()
+                         : null;
+                }
             }
 
             public override void ElementInfo(string name, string type,
@@ -198,9 +210,16 @@ namespace GraphicalDebugging
 
         class BoostArray : StdArray
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public new class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "boost::array";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Container; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::array"
+                         ? new BoostArray()
+                         : null;
+                }
             }
 
             public override void ElementInfo(string name, string type,
@@ -213,9 +232,16 @@ namespace GraphicalDebugging
 
         class BoostContainerVector : ContiguousContainer
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "boost::container::vector";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Container; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::container::vector"
+                         ? new BoostContainerVector()
+                         : null;
+                }
             }
 
             public override void ElementInfo(string name, string type,
@@ -233,9 +259,16 @@ namespace GraphicalDebugging
 
         class BoostContainerStaticVector : BoostContainerVector
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public new class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "boost::container::static_vector";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Container; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::container::static_vector"
+                         ? new BoostContainerStaticVector()
+                         : null;
+                }
             }
 
             public override void ElementInfo(string name, string type,
@@ -254,9 +287,16 @@ namespace GraphicalDebugging
 
         class BGVarray : ContiguousContainer
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "boost::geometry::index::detail::varray";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Container; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::geometry::index::detail::varray"
+                         ? new BGVarray()
+                         : null;
+                }
             }
 
             public override void ElementInfo(string name, string type,
@@ -275,9 +315,16 @@ namespace GraphicalDebugging
 
         class BoostCircularBuffer : RandomAccessContainer
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "boost::circular_buffer";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Container; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::circular_buffer"
+                         ? new BoostCircularBuffer()
+                         : null;
+                }
             }
 
             public override int LoadSize(Debugger debugger, string name)
@@ -372,9 +419,25 @@ namespace GraphicalDebugging
 
         class StdVector : ContiguousContainer
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "std::vector";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Container; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "std::vector"
+                         ? new StdVector(debugger, name)
+                         : null;
+                }
+            }
+
+            public StdVector(Debugger debugger, string name)
+            {
+                string name12 = name + "._Myfirst";
+                //string name14_15 = name + "._Mypair._Myval2._Myfirst";
+
+                if (debugger.GetExpression(name12).IsValidValue)
+                    version = Version.Msvc12;
             }
 
             public override string RandomAccessElementName(string rawName, int i)
@@ -408,23 +471,31 @@ namespace GraphicalDebugging
                      : name + "._Mypair._Myval2._Mylast-" + name + "._Mypair._Myval2._Myfirst";
             }
 
-            public override void Initialize(Debugger debugger, string name)
-            {
-                string name12 = name + "._Myfirst";
-                //string name14_15 = name + "._Mypair._Myval2._Myfirst";
-
-                if (debugger.GetExpression(name12).IsValidValue)
-                    version = Version.Msvc12;
-            }
             private enum Version { Unknown, Msvc12, Msvc14_15 };
             private Version version = Version.Msvc14_15;
         }
 
         class StdDeque : RandomAccessContainer
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "std::deque";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Container; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "std::deque"
+                         ? new StdDeque(debugger, name)
+                         : null;
+                }
+            }
+
+            public StdDeque(Debugger debugger, string name)
+            {
+                string name12 = name + "._Mysize";
+                //string name14_15 = name + "._Mypair._Myval2._Mysize";
+
+                if (debugger.GetExpression(name12).IsValidValue)
+                    version = Version.Msvc12;
             }
 
             public override void ElementInfo(string name, string type,
@@ -555,23 +626,31 @@ namespace GraphicalDebugging
                      : name + "._Mypair._Myval2._Mysize";
             }
 
-            public override void Initialize(Debugger debugger, string name)
-            {
-                string name12 = name + "._Mysize";
-                //string name14_15 = name + "._Mypair._Myval2._Mysize";
-
-                if (debugger.GetExpression(name12).IsValidValue)
-                    version = Version.Msvc12;
-            }
             private enum Version { Unknown, Msvc12, Msvc14_15 };
             private Version version = Version.Msvc14_15;
         }
 
         class StdList : ContainerLoader
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "std::list";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Container; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "std::list"
+                         ? new StdList(debugger, name)
+                         : null;
+                }
+            }
+
+            public StdList(Debugger debugger, string name)
+            {
+                string name12 = name + "._Mysize";
+                //string name14_15 = name + "._Mypair._Myval2._Mysize";
+
+                if (debugger.GetExpression(name12).IsValidValue)
+                    version = Version.Msvc12;
             }
 
             public override void ElementInfo(string name, string type,
@@ -674,14 +753,6 @@ namespace GraphicalDebugging
                      : name + "._Mypair._Myval2._Mysize";
             }
 
-            public override void Initialize(Debugger debugger, string name)
-            {
-                string name12 = name + "._Mysize";
-                //string name14_15 = name + "._Mypair._Myval2._Mysize";
-
-                if (debugger.GetExpression(name12).IsValidValue)
-                    version = Version.Msvc12;
-            }
             private enum Version { Unknown, Msvc12, Msvc14_15 };
             private Version version = Version.Msvc14_15;
         }
@@ -690,9 +761,25 @@ namespace GraphicalDebugging
         //       in case some pointers were invalid
         class StdSet : ContainerLoader
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "std::set";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Container; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "std::set"
+                         ? new StdSet(debugger, name)
+                         : null;
+                }
+            }
+
+            public StdSet(Debugger debugger, string name)
+            {
+                string name12 = name + "._Mysize";
+                //string name14_15 = name + "._Mypair._Myval2._Myval2._Mysize";
+
+                if (debugger.GetExpression(name12).IsValidValue)
+                    version = Version.Msvc12;
             }
 
             public override void ElementInfo(string name, string type,
@@ -824,23 +911,22 @@ namespace GraphicalDebugging
                      : name + "._Mypair._Myval2._Myval2._Mysize";
             }
 
-            public override void Initialize(Debugger debugger, string name)
-            {
-                string name12 = name + "._Mysize";
-                //string name14_15 = name + "._Mypair._Myval2._Myval2._Mysize";
-
-                if (debugger.GetExpression(name12).IsValidValue)
-                    version = Version.Msvc12;
-            }
             private enum Version { Unknown, Msvc12, Msvc14_15 };
             private Version version = Version.Msvc14_15;
         }
 
         class CSArray : ContiguousContainer
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return ElemTypeFromType(type).Length > 0;
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Container; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return IsCSArrayType(type)
+                         ? new CSArray()
+                         : null;
+                }
             }
 
             public override void ElementInfo(string name, string type,
@@ -855,22 +941,32 @@ namespace GraphicalDebugging
                 return ExpressionParser.LoadSize(debugger, name + ".Length");
             }
 
-            // type -> name[]
-            static public string ElemTypeFromType(string type)
+            static public bool IsCSArrayType(string type)
             {
-                string name = "";
-                int begin = type.LastIndexOf('[');
-                if (begin > 0 && begin + 1 < type.Length && type[begin + 1] == ']')
-                    name = type.Substring(0, begin);
-                return name;
+                return type.EndsWith("[]");
+            }
+
+            // type -> name[]
+            static private string ElemTypeFromType(string type)
+            {
+                return type.EndsWith("[]")
+                     ? type.Substring(0, type.Length - 2)
+                     : "";
             }
         }
 
         class CSList : ContiguousContainer
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "System.Collections.Generic.List";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Container; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "System.Collections.Generic.List"
+                         ? new CSList()
+                         : null;
+                }
             }
 
             public override int LoadSize(Debugger debugger, string name)
@@ -896,8 +992,10 @@ namespace GraphicalDebugging
                                                     MemoryBlockPredicate memoryBlockPredicate)
             {
                 Expression expr = debugger.GetExpression(name + "._items");
-                if (!expr.IsValidValue || CSArray.ElemTypeFromType(expr.Type).Length <= 0)
+                if (!expr.IsValidValue || !CSArray.IsCSArrayType(expr.Type))
+                {
                     return false;
+                }
 
                 return base.ForEachMemoryBlock(mreader, debugger,
                                                name, type,
@@ -905,11 +1003,97 @@ namespace GraphicalDebugging
             }
         }
 
+        // This approach would work for any C# base class
+        class CSIList : ContiguousContainer
+        {
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            {
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Container; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    if (id != "System.Collections.Generic.IList")
+                        return null;
+
+                    string derivedType = Util.CSDerivedType(type);
+
+                    if (Util.Empty(derivedType))
+                        return null;
+
+                    ContainerLoader loader = loaders.FindByType(ExpressionLoader.Kind.Container,
+                                                                DerivedName(derivedType, name),
+                                                                derivedType) as ContainerLoader;
+                    return loader != null
+                         ? new CSIList(loader, derivedType)
+                         : null;
+                }
+            }
+
+            private CSIList(ContainerLoader loader, string derivedType)
+            {
+                this.loader = loader;
+                this.derivedType = derivedType;
+            }
+
+            public override int LoadSize(Debugger debugger, string name)
+            {
+                return loader.LoadSize(debugger, DerivedName(derivedType, name));
+            }
+
+            public override string RandomAccessElementName(string rawName, int i)
+            {
+                // TODO: derived name?
+                // TODO: What to do with other kinds of containers?
+                RandomAccessContainer l = loader as RandomAccessContainer;
+                return l != null
+                     ? l.RandomAccessElementName(DerivedName(derivedType, rawName), i)
+                     : "";
+            }
+
+            public override void ElementInfo(string name, string type,
+                                             out string elemName, out string elemType)
+            {
+                loader.ElementInfo(DerivedName(derivedType, name),
+                                   derivedType,
+                                   out elemName, out elemType);
+            }
+
+            public override bool ForEachMemoryBlock(MemoryReader mreader, Debugger debugger,
+                                                    string name, string type,
+                                                    MemoryReader.Converter<double> elementConverter,
+                                                    MemoryBlockPredicate memoryBlockPredicate)
+            {
+                // TODO: What to do with other kinds of containers?
+                ContiguousContainer l = loader as ContiguousContainer;
+                return l != null
+                     ? l.ForEachMemoryBlock(mreader, debugger,
+                                            // TODO: is the name and type ok below?
+                                            DerivedName(derivedType, name), derivedType,
+                                            elementConverter, memoryBlockPredicate)
+                     : false;
+            }
+
+            static string DerivedName(string derivedType, string name)
+            {
+                return "((" + derivedType + ")" + name + ")";
+            }
+
+            string derivedType = "";
+            ContainerLoader loader = null;
+        }
+
         class CSLinkedList : ContainerLoader
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "System.Collections.Generic.LinkedList";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Container; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "System.Collections.Generic.LinkedList"
+                         ? new CSLinkedList()
+                         : null;
+                }
             }
 
             public override void ElementInfo(string name, string type,

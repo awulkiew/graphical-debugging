@@ -71,66 +71,67 @@ namespace GraphicalDebugging
 
             loadersCpp = new Loaders();
 
-            loadersCpp.Add(new BGPoint());
-            loadersCpp.Add(new BGPointXY());
-            loadersCpp.Add(new BGSegment());
-            loadersCpp.Add(new BGReferringSegment());
-            loadersCpp.Add(new BGBox());
-            loadersCpp.Add(new BGNSphere());
-            loadersCpp.Add(new BGMultiPoint());
-            loadersCpp.Add(new BGLinestring());
-            loadersCpp.Add(new BGMultiLinestring());
-            loadersCpp.Add(new BGRing());
-            loadersCpp.Add(new BGPolygon());
-            loadersCpp.Add(new BGMultiPolygon());
-            loadersCpp.Add(new BGBufferedRing());
-            loadersCpp.Add(new BGBufferedRingCollection());
+            loadersCpp.Add(new BGPoint.LoaderCreator());
+            loadersCpp.Add(new BGPointXY.LoaderCreator());
+            loadersCpp.Add(new BGSegment.LoaderCreator());
+            loadersCpp.Add(new BGReferringSegment.LoaderCreator());
+            loadersCpp.Add(new BGBox.LoaderCreator());
+            loadersCpp.Add(new BGNSphere.LoaderCreator());
+            loadersCpp.Add(new BGMultiPoint.LoaderCreator());
+            loadersCpp.Add(new BGLinestring.LoaderCreator());
+            loadersCpp.Add(new BGMultiLinestring.LoaderCreator());
+            loadersCpp.Add(new BGRing.LoaderCreator());
+            loadersCpp.Add(new BGPolygon.LoaderCreator());
+            loadersCpp.Add(new BGMultiPolygon.LoaderCreator());
+            loadersCpp.Add(new BGBufferedRing.LoaderCreator());
+            loadersCpp.Add(new BGBufferedRingCollection.LoaderCreator());
 
-            loadersCpp.Add(new BGIRtree());
+            loadersCpp.Add(new BGIRtree.LoaderCreator());
 
-            loadersCpp.Add(new BPPoint());
-            loadersCpp.Add(new BPSegment());
-            loadersCpp.Add(new BPBox());
-            loadersCpp.Add(new BPRing());
-            loadersCpp.Add(new BPPolygon());
+            loadersCpp.Add(new BPPoint.LoaderCreator());
+            loadersCpp.Add(new BPSegment.LoaderCreator());
+            loadersCpp.Add(new BPBox.LoaderCreator());
+            loadersCpp.Add(new BPRing.LoaderCreator());
+            loadersCpp.Add(new BPPolygon.LoaderCreator());
 
-            loadersCpp.Add(new StdPairPoint());
-            loadersCpp.Add(new StdComplexPoint());
+            loadersCpp.Add(new StdPairPoint.LoaderCreator());
+            loadersCpp.Add(new StdComplexPoint.LoaderCreator());
 
-            loadersCpp.Add(new BVariant());
+            loadersCpp.Add(new BVariant.LoaderCreator());
 
-            loadersCpp.Add(new StdArray());
-            loadersCpp.Add(new BoostArray());
-            loadersCpp.Add(new BGVarray());
-            loadersCpp.Add(new BoostContainerVector());
-            loadersCpp.Add(new BoostContainerStaticVector());
-            loadersCpp.Add(new BoostCircularBuffer());
-            loadersCpp.Add(new StdVector());
-            loadersCpp.Add(new StdDeque());
-            loadersCpp.Add(new StdList());
-            loadersCpp.Add(new StdSet());
-            loadersCpp.Add(new CArray());
+            loadersCpp.Add(new StdArray.LoaderCreator());
+            loadersCpp.Add(new BoostArray.LoaderCreator());
+            loadersCpp.Add(new BGVarray.LoaderCreator());
+            loadersCpp.Add(new BoostContainerVector.LoaderCreator());
+            loadersCpp.Add(new BoostContainerStaticVector.LoaderCreator());
+            loadersCpp.Add(new BoostCircularBuffer.LoaderCreator());
+            loadersCpp.Add(new StdVector.LoaderCreator());
+            loadersCpp.Add(new StdDeque.LoaderCreator());
+            loadersCpp.Add(new StdList.LoaderCreator());
+            loadersCpp.Add(new StdSet.LoaderCreator());
+            loadersCpp.Add(new CArray.LoaderCreator());
 
-            loadersCpp.Add(new BGTurn("boost::geometry::detail::overlay::turn_info"));
-            loadersCpp.Add(new BGTurn("boost::geometry::detail::overlay::traversal_turn_info"));
-            loadersCpp.Add(new BGTurn("boost::geometry::detail::buffer::buffer_turn_info"));
+            loadersCpp.Add(new BGTurn.LoaderCreator("boost::geometry::detail::overlay::turn_info"));
+            loadersCpp.Add(new BGTurn.LoaderCreator("boost::geometry::detail::overlay::traversal_turn_info"));
+            loadersCpp.Add(new BGTurn.LoaderCreator("boost::geometry::detail::buffer::buffer_turn_info"));
 
-            loadersCpp.Add(new BGTurnContainer());
-            loadersCpp.Add(new PointContainer());
-            loadersCpp.Add(new ValuesContainer());
-            loadersCpp.Add(new GeometryContainer());
+            loadersCpp.Add(new BGTurnContainer.LoaderCreator());
+            loadersCpp.Add(new PointContainer.LoaderCreator());
+            loadersCpp.Add(new ValuesContainer.LoaderCreator());
+            loadersCpp.Add(new GeometryContainer.LoaderCreator());
 
-            loadersCpp.Add(new BoostGilImage());
+            loadersCpp.Add(new BoostGilImage.LoaderCreator());
 
             loadersCS = new Loaders();
 
-            loadersCS.Add(new CSLinkedList());
-            loadersCS.Add(new CSList());
-            loadersCS.Add(new CSArray());
+            loadersCS.Add(new CSLinkedList.LoaderCreator());
+            loadersCS.Add(new CSList.LoaderCreator());
+            loadersCS.Add(new CSArray.LoaderCreator());
+            loadersCS.Add(new CSIList.LoaderCreator());
 
-            loadersCS.Add(new PointContainer());
-            loadersCS.Add(new ValuesContainer());
-            loadersCS.Add(new GeometryContainer());
+            loadersCS.Add(new PointContainer.LoaderCreator());
+            loadersCS.Add(new ValuesContainer.LoaderCreator());
+            loadersCS.Add(new GeometryContainer.LoaderCreator());
         }
 
         // Expressions utilities
@@ -356,16 +357,16 @@ namespace GraphicalDebugging
 
             public Loaders()
             {
-                lists = new List<Loader>[KindsCount];
+                lists = new List<LoaderCreator>[KindsCount];
                 for (int i = 0; i < KindsCount; ++i)
-                    lists[i] = new List<Loader>();
+                    lists[i] = new List<LoaderCreator>();
             }
 
-            public void Add(Loader loader)
+            public void Add(LoaderCreator loaderCreator)
             {
-                int i = (int)loader.Kind();
+                int i = (int)loaderCreator.Kind();
                 System.Diagnostics.Debug.Assert(0 <= i && i < KindsCount);
-                lists[i].Add(loader);
+                lists[i].Add(loaderCreator);
             }
 
             /// <summary>
@@ -389,18 +390,16 @@ namespace GraphicalDebugging
             /// <returns>Loader object or null if not found</returns>
             public Loader FindByType(IKindConstraint kindConstraint, string name, string type)
             {
-                string id = Util.BaseType(type);
+                string id = Util.TypeId(type);
 
                 if (kindConstraint is KindConstraint)
                 {
                     int kindIndex = (int)(kindConstraint as KindConstraint).Kind;
-                    foreach (Loader l in lists[kindIndex])
+                    foreach (LoaderCreator creator in lists[kindIndex])
                     {
-                        if (l.MatchType(this, name, type, id))
-                        {
-                            l.Initialize(ExpressionLoader.Instance.debugger, name);
+                        Loader l = creator.Create(this, Debugger, name, type, id);
+                        if (l != null)
                             return l;
-                        }
                     }
                 }
                 else
@@ -409,13 +408,11 @@ namespace GraphicalDebugging
                     {
                         if (kindConstraint.Check((Kind)i))
                         {
-                            foreach (Loader l in lists[i])
+                            foreach (LoaderCreator creator in lists[i])
                             {
-                                if (l.MatchType(this, name, type, id))
-                                {
-                                    l.Initialize(ExpressionLoader.Instance.debugger, name);
+                                Loader l = creator.Create(this, Debugger, name, type, id);
+                                if (l != null)
                                     return l;
-                                }
                             }
                         }
                     }
@@ -425,18 +422,42 @@ namespace GraphicalDebugging
 
             public void RemoveUserDefined()
             {
-                foreach (List<Loader> li in lists)
+                foreach (List<LoaderCreator> li in lists)
                 {
-                    List<Loader> removeList = new List<Loader>();
-                    foreach (Loader l in li)
-                        if (l.IsUserDefined())
-                            removeList.Add(l);
-                    foreach (Loader l in removeList)
-                        li.Remove(l);
+                    List<LoaderCreator> removeList = new List<LoaderCreator>();
+                    for (int i = li.Count - 1; i >= 0; --i)
+                        if (li[i].IsUserDefined())
+                            li.RemoveAt(i);
                 }                
             }
 
-            List<Loader>[] lists;
+            List<LoaderCreator>[] lists;
+        }
+
+        /// <summary>
+        /// The interface of a loader creator.
+        /// </summary>
+        interface LoaderCreator
+        {
+            /// <summary>
+            /// Returns true for user-defined Loaders which has to be reloaded
+            /// before loading variables.
+            /// </summary>
+            bool IsUserDefined(); // Instead of this make 2 containers?
+
+            /// <summary>
+            /// Returns kind of created Loader.
+            /// </summary>
+            Kind Kind();
+
+            /// <summary>
+            /// Matches type and/or qualified identifier, then creates and initializes
+            /// the Loader before it's used to load a debugged variable.
+            /// Type and identifier can both receove the same value e.g. unsigned char[4].
+            /// </summary>
+            /// <param name="type">Full type</param>
+            /// <param name="id">Qualified idenifier of type</param>
+            Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id);
         }
 
         /// <summary>
@@ -444,34 +465,6 @@ namespace GraphicalDebugging
         /// </summary>
         abstract class Loader
         {
-            /// <summary>
-            /// Returns true for user-defined Loaders which has to be reloaded
-            /// before loading variables.
-            /// </summary>
-            virtual public bool IsUserDefined()
-            {
-                return false;
-            }
-
-            /// <summary>
-            /// Returns kind of Loader.
-            /// </summary>
-            abstract public ExpressionLoader.Kind Kind();
-
-            /// <summary>
-            /// Matches type and/or qualified identifier.
-            /// Type and identifier can both receove the same value e.g. unsigned char[4]
-            /// </summary>
-            /// <param name="type">Full type</param>
-            /// <param name="id">Qualified idenifier of type</param>
-            abstract public bool MatchType(Loaders loaders, string name, string type, string id);
-
-            /// <summary>
-            /// Initializes the Loader before it's used to load a debugged
-            /// variable.
-            /// </summary>
-            virtual public void Initialize(Debugger debugger, string name)
-            { }
         }
 
         /// <summary>
@@ -543,17 +536,10 @@ namespace GraphicalDebugging
 
         abstract class GeometryLoader<ResultType> : LoaderR<ResultType>
             where ResultType : ExpressionDrawer.IDrawable
-        {
-            protected GeometryLoader(ExpressionLoader.Kind kind) { this.kind = kind; }
-            public override ExpressionLoader.Kind Kind() { return kind; }
-            
-            ExpressionLoader.Kind kind;
-        }
+        {}
 
         abstract class PointLoader : GeometryLoader<ExpressionDrawer.Point>
         {
-            protected PointLoader() : base(ExpressionLoader.Kind.Point) { }
-            
             public override void Load(Loaders loaders, MemoryReader mreader,
                                       Debugger debugger, string name, string type,
                                       out Geometry.Traits traits,
@@ -583,28 +569,23 @@ namespace GraphicalDebugging
 
         abstract class BoxLoader : GeometryLoader<ExpressionDrawer.Box>
         {
-            protected BoxLoader() : base(ExpressionLoader.Kind.Box) { }
         }
 
         abstract class SegmentLoader : GeometryLoader<ExpressionDrawer.Segment>
         {
-            protected SegmentLoader() : base(ExpressionLoader.Kind.Segment) { }
         }
 
         abstract class NSphereLoader : GeometryLoader<ExpressionDrawer.NSphere>
         {
-            protected NSphereLoader() : base(ExpressionLoader.Kind.NSphere) { }
         }
 
         abstract class RangeLoader<ResultType> : GeometryLoader<ResultType>
             where ResultType : ExpressionDrawer.IDrawable
         {
-            protected RangeLoader(ExpressionLoader.Kind kind) : base(kind) { }
         }
 
         abstract class PolygonLoader : GeometryLoader<ExpressionDrawer.Polygon>
         {
-            protected PolygonLoader() : base(ExpressionLoader.Kind.Polygon) { }
         }
 
         abstract class BXPoint : PointLoader
@@ -664,9 +645,16 @@ namespace GraphicalDebugging
 
         class BGPoint : BXPoint
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "boost::geometry::model::point";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Point; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::geometry::model::point"
+                         ? new BGPoint()
+                         : null;
+                }
             }
 
             public override Geometry.Traits LoadTraits(string type)
@@ -730,7 +718,7 @@ namespace GraphicalDebugging
                     return;
                 }
 
-                string cs_base_type = Util.BaseType(cs_type);
+                string cs_base_type = Util.TypeId(cs_type);
                 if (cs_base_type == "boost::geometry::cs::spherical")
                     cs = Geometry.CoordinateSystem.SphericalPolar;
                 else if (cs_base_type == "boost::geometry::cs::spherical_equatorial")
@@ -752,9 +740,16 @@ namespace GraphicalDebugging
 
         class BGPointXY : BGPoint
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public new class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "boost::geometry::model::d2::point_xy";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Point; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::geometry::model::d2::point_xy"
+                         ? new BGPointXY()
+                         : null;
+                }
             }
 
             public override Geometry.Traits LoadTraits(string type)
@@ -799,9 +794,16 @@ namespace GraphicalDebugging
 
         class BGBox : BoxLoader
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "boost::geometry::model::box";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Box; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::geometry::model::box"
+                         ? new BGBox()
+                         : null;
+                }
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -877,18 +879,16 @@ namespace GraphicalDebugging
 
         class BGSegment : SegmentLoader
         {
-            public BGSegment()
-                : this("boost::geometry::model::segment")
-            { }
-
-            protected BGSegment(string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                this.id = id;
-            }
-
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
-            {
-                return id == this.id;
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Segment; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::geometry::model::segment"
+                         ? new BGSegment()
+                         : null;
+                }
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -925,22 +925,35 @@ namespace GraphicalDebugging
                         ? new ExpressionDrawer.Segment(fp, sp)
                         : null;
             }
-
-            string id;
         }
 
         class BGReferringSegment : BGSegment
         {
-            public BGReferringSegment()
-                : base("boost::geometry::model::referring_segment")
-            { }
+            public new class LoaderCreator : ExpressionLoader.LoaderCreator
+            {
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Segment; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::geometry::model::referring_segment"
+                         ? new BGReferringSegment()
+                         : null;
+                }
+            }
         }
 
         class BGNSphere : NSphereLoader
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "boost::geometry::model::nsphere";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.NSphere; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::geometry::model::nsphere"
+                         ? new BGNSphere()
+                         : null;
+                }
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -986,10 +999,6 @@ namespace GraphicalDebugging
                              , Geometry.IContainer<Geometry.Point>
                              , new()
         {
-            protected PointRange(ExpressionLoader.Kind kind)
-                : base(kind)
-            { }
-
             protected ResultType LoadParsed(MemoryReader mreader, // should this be passed?
                                             Debugger debugger, string name, string type,
                                             string pointType,
@@ -1064,17 +1073,11 @@ namespace GraphicalDebugging
         {
             protected BGRange(ExpressionLoader.Kind kind, string id,
                               int pointTIndex, int containerTIndex, int allocatorTIndex)
-                : base(kind)
             {
                 this.id = id;
                 this.pointTIndex = pointTIndex;
                 this.containerTIndex = containerTIndex;
                 this.allocatorTIndex = allocatorTIndex;
-            }
-
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
-            {
-                return id == this.id;
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -1132,6 +1135,18 @@ namespace GraphicalDebugging
 
         class BGLinestring : BGRange<ExpressionDrawer.Linestring>
         {
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            {
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Linestring; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::geometry::model::linestring"
+                         ? new BGLinestring()
+                         : null;
+                }
+            }
+
             public BGLinestring()
                 : base(ExpressionLoader.Kind.Linestring, "boost::geometry::model::linestring", 0, 1, 2)
             { }
@@ -1139,11 +1154,16 @@ namespace GraphicalDebugging
 
         class BGMultiLinestring : RangeLoader<ExpressionDrawer.MultiLinestring>
         {
-            public BGMultiLinestring() : base(ExpressionLoader.Kind.MultiLinestring) { }
-
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "boost::geometry::model::multi_linestring";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.MultiLinestring; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::geometry::model::multi_linestring"
+                         ? new BGMultiLinestring()
+                         : null;
+                }
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -1196,6 +1216,18 @@ namespace GraphicalDebugging
 
         class BGRing : BGRange<ExpressionDrawer.Ring>
         {
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            {
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Ring; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::geometry::model::ring"
+                         ? new BGRing()
+                         : null;
+                }
+            }
+
             public BGRing()
                 : base(ExpressionLoader.Kind.Ring, "boost::geometry::model::ring", 0, 3, 4)
             { }
@@ -1203,6 +1235,18 @@ namespace GraphicalDebugging
 
         class BGMultiPoint : BGRange<ExpressionDrawer.MultiPoint>
         {
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            {
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.MultiPoint; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::geometry::model::multi_point"
+                         ? new BGMultiPoint()
+                         : null;
+                }
+            }
+
             public BGMultiPoint()
                 : base(ExpressionLoader.Kind.MultiPoint, "boost::geometry::model::multi_point", 0, 1, 2)
             { }
@@ -1210,9 +1254,16 @@ namespace GraphicalDebugging
 
         class BGPolygon : PolygonLoader
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "boost::geometry::model::polygon";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Polygon; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::geometry::model::polygon"
+                         ? new BGPolygon()
+                         : null;
+                }
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -1274,11 +1325,16 @@ namespace GraphicalDebugging
 
         class BGMultiPolygon : RangeLoader<ExpressionDrawer.MultiPolygon>
         {
-            public BGMultiPolygon() : base(ExpressionLoader.Kind.MultiPolygon) { }
-
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "boost::geometry::model::multi_polygon";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.MultiPolygon; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::geometry::model::multi_polygon"
+                         ? new BGMultiPolygon()
+                         : null;
+                }
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -1332,11 +1388,16 @@ namespace GraphicalDebugging
 
         class BGBufferedRing : RangeLoader<ExpressionDrawer.Ring>
         {
-            public BGBufferedRing() : base(ExpressionLoader.Kind.Ring) { }
-
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "boost::geometry::detail::buffer::buffered_ring";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Ring; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::geometry::detail::buffer::buffered_ring"
+                         ? new BGBufferedRing()
+                         : null;
+                }
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -1369,11 +1430,16 @@ namespace GraphicalDebugging
         // NOTE: There is no MultiRing concept so use MultiPolygon for now
         class BGBufferedRingCollection : RangeLoader<ExpressionDrawer.MultiPolygon>
         {
-            public BGBufferedRingCollection() : base(ExpressionLoader.Kind.MultiPolygon) { }
-
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "boost::geometry::detail::buffer::buffered_ring_collection";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.MultiPolygon; } // Or MultiGeometry
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::geometry::detail::buffer::buffered_ring_collection"
+                         ? new BGBufferedRingCollection()
+                         : null;
+                }
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -1436,11 +1502,16 @@ namespace GraphicalDebugging
 
         class BGIRtree : GeometryLoader<ExpressionDrawer.DrawablesContainer>
         {
-            public BGIRtree() : base(ExpressionLoader.Kind.OtherGeometry) { }
-
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "boost::geometry::index::rtree";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.OtherGeometry; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::geometry::index::rtree"
+                         ? new BGIRtree()
+                         : null;
+                }
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -1756,7 +1827,7 @@ namespace GraphicalDebugging
                 if (!Util.Tparams(type, out valueType))
                     return null;
 
-                string valueId = Util.BaseType(valueType);
+                string valueId = Util.TypeId(valueType);
                 DrawableLoader indexableLoader = null;
                 indexableMember = "";
                 indexableType = valueType;
@@ -1844,9 +1915,16 @@ namespace GraphicalDebugging
 
         class BPPoint : BXPoint
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "boost::polygon::point_data";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Point; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::polygon::point_data"
+                         ? new BPPoint()
+                         : null;
+                }
             }
 
             public override Geometry.Traits LoadTraits(string type)
@@ -1880,9 +1958,16 @@ namespace GraphicalDebugging
 
         class BPSegment : SegmentLoader
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "boost::polygon::segment_data";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Segment; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::polygon::segment_data"
+                         ? new BPSegment()
+                         : null;
+                }
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -1912,9 +1997,16 @@ namespace GraphicalDebugging
 
         class BPBox : BoxLoader
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "boost::polygon::rectangle_data";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Box; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::polygon::rectangle_data"
+                         ? new BPBox()
+                         : null;
+                }
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -1944,11 +2036,16 @@ namespace GraphicalDebugging
 
         class BPRing : PointRange<ExpressionDrawer.Ring>
         {
-            public BPRing() : base(ExpressionLoader.Kind.Ring) { }
-
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "boost::polygon::polygon_data";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Ring; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::polygon::polygon_data"
+                         ? new BPRing()
+                         : null;
+                }
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -2003,9 +2100,16 @@ namespace GraphicalDebugging
 
         class BPPolygon : PolygonLoader
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "boost::polygon::polygon_with_holes_data";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Polygon; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::polygon::polygon_with_holes_data"
+                         ? new BPPolygon()
+                         : null;
+                }
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -2083,12 +2187,17 @@ namespace GraphicalDebugging
 
         class BVariant : DrawableLoader
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "boost::variant";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Variant; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "boost::variant"
+                         ? new BVariant()
+                         : null;
+                }
             }
-
-            public override ExpressionLoader.Kind Kind() { return ExpressionLoader.Kind.Variant; }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
                                       string name, string type,
@@ -2123,9 +2232,16 @@ namespace GraphicalDebugging
 
         class StdPairPoint : PointLoader
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "std::pair";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Point; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "std::pair"
+                         ? new StdPairPoint()
+                         : null;
+                }
             }
 
             public override Geometry.Traits LoadTraits(string type)
@@ -2208,9 +2324,16 @@ namespace GraphicalDebugging
 
         class StdComplexPoint : BXPoint
         {
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                return id == "std::complex";
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Point; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "std::complex"
+                         ? new StdComplexPoint()
+                         : null;
+                }
             }
 
             public override Geometry.Traits LoadTraits(string type)
@@ -2244,15 +2367,23 @@ namespace GraphicalDebugging
 
         class BGTurn : GeometryLoader<ExpressionDrawer.Turn>
         {
-            public BGTurn(string id)
-                : base(ExpressionLoader.Kind.Turn)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                this.id = id;
-            }
+                public LoaderCreator(string id)
+                {
+                    this.id = id;
+                }
 
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
-            {
-                return id == this.id;
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Turn; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == this.id
+                         ? new BGTurn()
+                         : null;
+                }
+
+                string id;
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -2329,29 +2460,34 @@ namespace GraphicalDebugging
                     default: return '?';
                 }
             }
-
-            string id;
         }
 
         class BGTurnContainer : GeometryLoader<ExpressionDrawer.TurnsContainer>
         {
-            public BGTurnContainer()
-                : base(ExpressionLoader.Kind.TurnsContainer)
-            {}
-
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                // Is a Container
-                ContainerLoader loader = loaders.FindByType(ExpressionLoader.Kind.Container, name, type) as ContainerLoader;
-                if (loader == null)
-                    return false;
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.TurnsContainer; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    // Is a Container
+                    ContainerLoader loader = loaders.FindByType(ExpressionLoader.Kind.Container, name, type) as ContainerLoader;
+                    if (loader == null)
+                        return null;
 
-                // Element is a Turn
-                string elName, elType;
-                loader.ElementInfo(name, type, out elName, out elType);
-                // WARNING: Potentially recursive call, search for Turns only
-                return loaders.FindByType(ExpressionLoader.Kind.Turn, elName, elType) != null;
+                    // Element is a Turn
+                    string elName, elType;
+                    loader.ElementInfo(name, type, out elName, out elType);
+                    // WARNING: Potentially recursive call, search for Turns only
+                    Loader l = loaders.FindByType(ExpressionLoader.Kind.Turn, elName, elType);
+
+                    return l != null
+                         ? new BGTurnContainer()
+                         : null;
+                }
             }
+
+            // TODO: keep the loaders created above in Create()
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
                                       string name, string type,
@@ -2401,24 +2537,31 @@ namespace GraphicalDebugging
         //   including User-Defined ones, so if possible unify all of them
         class GeometryContainer : GeometryLoader<ExpressionDrawer.DrawablesContainer>
         {
-            public GeometryContainer()
-                : base(ExpressionLoader.Kind.GeometriesContainer)
-            {}
-
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                // Is a Container
-                ContainerLoader loader = loaders.FindByType(ExpressionLoader.Kind.Container, name, type) as ContainerLoader;
-                if (loader == null)
-                    return false;
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.GeometriesContainer; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    // Is a Container
+                    ContainerLoader loader = loaders.FindByType(ExpressionLoader.Kind.Container, name, type) as ContainerLoader;
+                    if (loader == null)
+                        return null;
 
-                // Element is a Geometry
-                string elName, elType;
-                loader.ElementInfo(name, type, out elName, out elType);
-                // WARNING: Potentially recursive call, search for Geometries only,
-                //   GeometryContainer cannot be treated as a Geometry in GeometryKindConstraint
-                return loaders.FindByType(OnlyGeometries, elName, elType) != null;
+                    // Element is a Geometry
+                    string elName, elType;
+                    loader.ElementInfo(name, type, out elName, out elType);
+                    // WARNING: Potentially recursive call, search for Geometries only,
+                    //   GeometryContainer cannot be treated as a Geometry in GeometryKindConstraint
+                    Loader l = loaders.FindByType(OnlyGeometries, elName, elType);
+
+                    return l != null
+                         ? new GeometryContainer()
+                         : null;
+                }
             }
+
+            // TODO: keep the loaders created above in Create()
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
                                       string name, string type,
@@ -2465,23 +2608,30 @@ namespace GraphicalDebugging
 
         class PointContainer : PointRange<ExpressionDrawer.MultiPoint>
         {
-            public PointContainer()
-                : base(ExpressionLoader.Kind.MultiPoint)
-            {}
-
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                // Is a Container
-                ContainerLoader loader = loaders.FindByType(ExpressionLoader.Kind.Container, name, type) as ContainerLoader;
-                if (loader == null)
-                    return false;
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.MultiPoint; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    // Is a Container
+                    ContainerLoader loader = loaders.FindByType(ExpressionLoader.Kind.Container, name, type) as ContainerLoader;
+                    if (loader == null)
+                        return null;
 
-                // Element is a Point
-                string elName, elType;
-                loader.ElementInfo(name, type, out elName, out elType);
-                // WARNING: Potentially recursive call, search for Points only
-                return loaders.FindByType(ExpressionLoader.Kind.Point, elName, elType) != null;
+                    // Element is a Point
+                    string elName, elType;
+                    loader.ElementInfo(name, type, out elName, out elType);
+                    // WARNING: Potentially recursive call, search for Points only
+                    Loader l = loaders.FindByType(ExpressionLoader.Kind.Point, elName, elType);
+
+                    return l != null
+                         ? new PointContainer()
+                         : null;
+                }
             }
+
+            // TODO: keep the loaders created above in Create()
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
                                       string name, string type,
@@ -2528,21 +2678,30 @@ namespace GraphicalDebugging
 
         class ValuesContainer : LoaderR<ExpressionDrawer.ValuesContainer>
         {
-            public override ExpressionLoader.Kind Kind() { return ExpressionLoader.Kind.ValuesContainer; }
-
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                // Is a Container
-                ContainerLoader loader = loaders.FindByType(ExpressionLoader.Kind.Container, name, type) as ContainerLoader;
-                if (loader == null)
-                    return false;
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.ValuesContainer; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    // Is a Container
+                    ContainerLoader loader = loaders.FindByType(ExpressionLoader.Kind.Container, name, type) as ContainerLoader;
+                    if (loader == null)
+                        return null;
 
-                // Element is not a Geometry
-                string elName, elType;
-                loader.ElementInfo(name, type, out elName, out elType);
-                // WARNING: Potentially recursive call, avoid searching for ValuesContainers
-                return loaders.FindByType(OnlyNonValues, elName, elType) == null;
+                    // Element is not a Geometry
+                    string elName, elType;
+                    loader.ElementInfo(name, type, out elName, out elType);
+                    // WARNING: Potentially recursive call, avoid searching for ValuesContainers
+                    Loader l = loaders.FindByType(OnlyNonValues, elName, elType);
+
+                    return l == null // this is not non-value
+                         ? new ValuesContainer()
+                         : null;
+                }
             }
+
+            // TODO: keep the loaders created above in Create()
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
                                       string name, string type,
@@ -2633,19 +2792,9 @@ namespace GraphicalDebugging
             }
         }
 
-        // This is the only one loader created manually right now
-        // so the overrides below are not used
+        // This loader is created manually right now so LoaderCreator is not needed
         class CoordinatesContainers : PointRange<ExpressionDrawer.MultiPoint>
         {
-            public CoordinatesContainers()
-                : base(ExpressionLoader.Kind.MultiPoint)
-            { }
-
-            public override bool MatchType(Loaders loaders, string name, string type, string id)
-            {
-                return false;
-            }
-
             public override void Load(Loaders loaders,
                                       MemoryReader mreader, Debugger debugger,
                                       string name, string type,

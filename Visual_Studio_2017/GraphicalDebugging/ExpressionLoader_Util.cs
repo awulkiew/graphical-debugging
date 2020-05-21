@@ -94,6 +94,14 @@ namespace GraphicalDebugging
             bool MatchType(string type, string id);
         }
 
+        class DummyMatcher : ITypeMatcher
+        {
+            public bool MatchType(string type, string id)
+            {
+                return true;
+            }
+        }
+
         class IdMatcher : ITypeMatcher
         {
             public IdMatcher(string id) { this.id = id; }

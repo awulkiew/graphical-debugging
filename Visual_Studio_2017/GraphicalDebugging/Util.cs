@@ -98,17 +98,31 @@ namespace GraphicalDebugging
             private int max_count;
         }
 
-        public static string BaseType(string type)
+        public static string TypeId(string type)
         {
-            if (type.StartsWith("const "))
-                type = type.Remove(0, 6);
-            int i = type.IndexOf('<');
-            if (i > 0)
-                type = type.Remove(i);
+            int startIndex = 0;
+            int endIndex = type.Length;
+
+            if (type.StartsWith("const ")) // volatile?
+                startIndex = 6;
+            int i = type.IndexOf('<', startIndex); // ignore template parameters
+            if (i >= 0)
+                endIndex = Math.Min(endIndex, i);
+            int j = type.IndexOf('{', startIndex); // ignore C# derived class
+            if (j >= 0)
+                endIndex = Math.Min(endIndex, j);
+            // An artifact of C# derived class, but do in all cases just in case
+            while (endIndex > 0 && type[endIndex - 1] == ' ')
+                --endIndex;
+            if (startIndex > 0 || endIndex < type.Length)
+                type = type.Substring(startIndex, endIndex - startIndex);
             return type;
         }
 
-        public static List<string> Tparams(string type)
+        public static List<string> TypesList(string type,
+                                             char begCh = '<',
+                                             char endCh = '>',
+                                             char sepCh = ',')
         {
             List<string> result = new List<string>();
 
@@ -118,18 +132,18 @@ namespace GraphicalDebugging
             int param_last = -1;
             foreach (char c in type)
             {
-                if (c == '<')
+                if (c == begCh)
                 {
                     ++param_list_index;
                 }
-                else if (c == '>')
+                else if (c == endCh)
                 {
                     if (param_last == -1 && param_list_index == 1)
                         param_last = index;
 
                     --param_list_index;
                 }
-                else if (c == ',')
+                else if (c == sepCh)
                 {
                     if (param_last == -1 && param_list_index == 1)
                         param_last = index;
@@ -153,6 +167,17 @@ namespace GraphicalDebugging
             }
 
             return result;
+        }
+
+        public static string CSDerivedType(string type)
+        {
+            List<string> list = TypesList(type, '{', '}');
+            return list.Count > 0 ? list[0] : "";
+        }
+
+        public static List<string> Tparams(string type)
+        {
+            return TypesList(type);
         }
 
         public static bool Tparams(string type, out string param1)
