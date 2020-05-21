@@ -676,46 +676,43 @@ namespace GraphicalDebugging
                 public Kind Kind() { return ExpressionLoader.Kind.Point; }
                 public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
                 {
-                    return id == "boost::geometry::model::point"
-                         ? new BGPoint()
-                         : null;
-                }
-            }
+                    if (id != "boost::geometry::model::point")
+                        return null;
 
-            public override Geometry.Traits LoadTraits(string type)
-            {
-                List<string> tparams = Util.Tparams(type);
-                if (tparams.Count >= 3)
-                {
+                    List<string> tparams = Util.Tparams(type);
+                    if (tparams.Count < 3)
+                        return null;
+
+                    string coordType = tparams[0];
                     int dimension = int.Parse(tparams[1]);
                     Geometry.CoordinateSystem cs = Geometry.CoordinateSystem.Cartesian;
                     Geometry.Unit unit = Geometry.Unit.None;
                     ParseCSAndUnit(tparams[2], out cs, out unit);
 
-                    return new Geometry.Traits(dimension, cs, unit);
+                    return new BGPoint(coordType, new Geometry.Traits(dimension, cs, unit));
                 }
+            }
 
-                return null;
+            public BGPoint(string coordType, Geometry.Traits traits)
+            {
+                this.coordType = coordType;
+                this.traits = traits;
+                count = Math.Min(traits.Dimension, 2);
+            }
+
+            public override Geometry.Traits LoadTraits(string type)
+            {
+                return traits;
             }
 
             protected override ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type)
             {
-                List<string> tparams = Util.Tparams(type);
-                if (tparams.Count < 2)
-                    return null;
-                int dimension = int.Parse(tparams[1]);
-                int count = Math.Min(dimension, 2);
                 return LoadPointParsed(debugger, name, type, name + ".m_values", count);
             }
 
             protected override ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, Debugger debugger,
                                                                       string name, string type)
             {
-                List<string> tparams = Util.Tparams(type);
-                if (tparams.Count < 2)
-                    return null;
-                int dimension = int.Parse(tparams[1]);
-                int count = Math.Min(dimension, 2);
                 return LoadPointMemory(mreader, debugger, name, type, name + ".m_values", count);
             }
 
@@ -724,16 +721,10 @@ namespace GraphicalDebugging
                                                                               Debugger debugger, // TODO - remove
                                                                               string name, string type)
             {
-                List<string> tparams = Util.Tparams(type);
-                if (tparams.Count < 2)
-                    return null;
-                string coordType = tparams[0];
-                int dimension = int.Parse(tparams[1]);
-                int count = Math.Min(dimension, 2);
                 return GetMemoryConverter(mreader, debugger, name, name + ".m_values", coordType, count);
             }
 
-            protected void ParseCSAndUnit(string cs_type, out Geometry.CoordinateSystem cs, out Geometry.Unit unit)
+            protected static void ParseCSAndUnit(string cs_type, out Geometry.CoordinateSystem cs, out Geometry.Unit unit)
             {
                 cs = Geometry.CoordinateSystem.Cartesian;
                 unit = Geometry.Unit.None;
@@ -761,6 +752,10 @@ namespace GraphicalDebugging
                         unit = Geometry.Unit.Degree;
                 }
             }
+
+            string coordType;
+            Geometry.Traits traits;
+            int count;            
         }
 
         class BGPointXY : BGPoint
@@ -771,50 +766,25 @@ namespace GraphicalDebugging
                 public Kind Kind() { return ExpressionLoader.Kind.Point; }
                 public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
                 {
-                    return id == "boost::geometry::model::d2::point_xy"
-                         ? new BGPointXY()
-                         : null;
-                }
-            }
+                    if (id != "boost::geometry::model::d2::point_xy")
+                        return null;
 
-            public override Geometry.Traits LoadTraits(string type)
-            {
-                List<string> tparams = Util.Tparams(type);
-                if (tparams.Count >= 2)
-                {
+                    List<string> tparams = Util.Tparams(type);
+                    if (tparams.Count < 2)
+                        return null;
+
+                    string coordType = tparams[0];
                     Geometry.CoordinateSystem cs = Geometry.CoordinateSystem.Cartesian;
                     Geometry.Unit unit = Geometry.Unit.None;
                     ParseCSAndUnit(tparams[1], out cs, out unit);
 
-                    return new Geometry.Traits(2, cs, unit);
+                    return new BGPointXY(coordType, new Geometry.Traits(2, cs, unit));
                 }
-
-                return null;
             }
 
-            protected override ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type)
-            {
-                return LoadPointParsed(debugger, name, type, name + ".m_values", 2);
-            }
-
-            protected override ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, Debugger debugger,
-                                                                      string name, string type)
-            {
-                return LoadPointMemory(mreader, debugger, name, type, name + ".m_values", 2);
-            }
-
-            public override MemoryReader.Converter<double> GetMemoryConverter(Loaders loaders,
-                                                                              MemoryReader mreader,
-                                                                              Debugger debugger, // TODO - remove
-                                                                              string name, string type)
-            {
-                List<string> tparams = Util.Tparams(type);
-                if (tparams.Count < 1)
-                    return null;
-                string coordType = tparams[0];
-
-                return GetMemoryConverter(mreader, debugger, name, name + ".m_values", coordType, 2);
-            }
+            public BGPointXY(string coordType, Geometry.Traits traits)
+                : base(coordType, traits)
+            {}
         }
 
         class BGBox : BoxLoader
@@ -1012,10 +982,31 @@ namespace GraphicalDebugging
                 public Kind Kind() { return ExpressionLoader.Kind.NSphere; }
                 public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
                 {
-                    return id == "boost::geometry::model::nsphere"
-                         ? new BGNSphere()
-                         : null;
+                    if (id != "boost::geometry::model::nsphere")
+                        return null;
+
+                    List<string> tparams = Util.Tparams(type);
+                    if (tparams.Count < 1)
+                        return null;
+
+                    string m_center = name + ".m_center";
+
+                    string pointType = tparams[0];
+                    PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
+                                                                 m_center,
+                                                                 pointType) as PointLoader;
+                    if (pointLoader == null)
+                        return null;
+
+
+                    return new BGNSphere(pointLoader, pointType);
                 }
+            }
+
+            private BGNSphere(PointLoader pointLoader, string pointType)
+            {
+                this.pointLoader = pointLoader;
+                this.pointType = pointType;
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -1027,18 +1018,8 @@ namespace GraphicalDebugging
                 traits = null;
                 result = null;
 
-                List<string> tparams = Util.Tparams(type);
-                if (tparams.Count < 1)
-                    return;
-
                 string m_center = name + ".m_center";
                 string m_radius = name + ".m_radius";
-
-                string pointType = tparams[0];
-                PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
-                                                             m_center, pointType) as PointLoader;
-                if (pointLoader == null)
-                    return;
 
                 traits = pointLoader.LoadTraits(pointType);
                 if (traits == null)
@@ -1053,6 +1034,9 @@ namespace GraphicalDebugging
                        ? new ExpressionDrawer.NSphere(center, radius)
                        : null;
             }
+
+            PointLoader pointLoader;
+            string pointType;
         }
 
         abstract class PointRange<ResultType> : RangeLoader<ResultType>
