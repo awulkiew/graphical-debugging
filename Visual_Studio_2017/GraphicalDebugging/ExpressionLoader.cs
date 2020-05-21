@@ -20,8 +20,11 @@ namespace GraphicalDebugging
     {
         private DTE2 dte;
         private Debugger debugger;
+        private DebuggerEvents debuggerEvents; // debuggerEvents member is needed for the events to fire properly
         private Loaders loadersCpp;
         private Loaders loadersCS;
+        private Dictionary<string, Loader> loadersDictCpp;
+        private Dictionary<string, Loader> loadersDictCS;
 
         // TODO: It's not clear what to do with Variant
         // At the initial stage it's not known what is stored in Variant
@@ -38,8 +41,11 @@ namespace GraphicalDebugging
         public delegate void BreakModeEnteredEventHandler();
         public static event BreakModeEnteredEventHandler BreakModeEntered;
 
-        private static void DebuggerEvents_OnEnterBreakMode(dbgEventReason Reason, ref dbgExecutionAction ExecutionAction)
+        private void DebuggerEvents_OnEnterBreakMode(dbgEventReason Reason, ref dbgExecutionAction ExecutionAction)
         {
+            loadersDictCpp.Clear();
+            loadersDictCS.Clear();
+
             BreakModeEntered?.Invoke();
         }
 
@@ -67,7 +73,8 @@ namespace GraphicalDebugging
 
             this.dte = dte;
             this.debugger = dte.Debugger;
-            this.dte.Events.DebuggerEvents.OnEnterBreakMode += DebuggerEvents_OnEnterBreakMode;
+            this.debuggerEvents = this.dte.Events.DebuggerEvents;
+            this.debuggerEvents.OnEnterBreakMode += DebuggerEvents_OnEnterBreakMode;
 
             loadersCpp = new Loaders();
 
@@ -132,6 +139,9 @@ namespace GraphicalDebugging
             loadersCS.Add(new PointContainer.LoaderCreator());
             loadersCS.Add(new ValuesContainer.LoaderCreator());
             loadersCS.Add(new GeometryContainer.LoaderCreator());
+
+            loadersDictCpp = new Dictionary<string, Loader>();
+            loadersDictCS = new Dictionary<string, Loader>();
         }
 
         // Expressions utilities
@@ -297,8 +307,6 @@ namespace GraphicalDebugging
             traits = null;
             result = null;
 
-            //name = "(" + name + ")";
-
             Expression[] exprs = GetExpressions(name);
             if (exprs.Length < 1 || ! AllValidValues(exprs))
                 return;
@@ -390,29 +398,46 @@ namespace GraphicalDebugging
             /// <returns>Loader object or null if not found</returns>
             public Loader FindByType(IKindConstraint kindConstraint, string name, string type)
             {
+                // Check if a Loader is cached for this type
+                string language = Instance.debugger.CurrentStackFrame.Language;
+                var loadersDict = language == "C#" ? Instance.loadersDictCS : Instance.loadersDictCpp;
+                Loader loader = null;
+                if (loadersDict.TryGetValue(type, out loader))
+                    return loader;
+
+                // Parse type for qualified identifier
                 string id = Util.TypeId(type);
 
+                // Look for loader creator on the list(s)
                 if (kindConstraint is KindConstraint)
                 {
+                    // Single kind required, check only one list
                     int kindIndex = (int)(kindConstraint as KindConstraint).Kind;
                     foreach (LoaderCreator creator in lists[kindIndex])
                     {
-                        Loader l = creator.Create(this, Debugger, name, type, id);
-                        if (l != null)
-                            return l;
+                        loader = creator.Create(this, Debugger, name, type, id);
+                        if (loader != null)
+                        {
+                            loadersDict.Add(type, loader);
+                            return loader;
+                        }
                     }
                 }
                 else
                 {
+                    // Multiple kinds may be required, check all of the lists
                     for (int i = 0; i < lists.Length; ++i)
                     {
                         if (kindConstraint.Check((Kind)i))
                         {
                             foreach (LoaderCreator creator in lists[i])
                             {
-                                Loader l = creator.Create(this, Debugger, name, type, id);
-                                if (l != null)
-                                    return l;
+                                loader = creator.Create(this, Debugger, name, type, id);
+                                if (loader != null)
+                                {
+                                    loadersDict.Add(type, loader);
+                                    return loader;
+                                }
                             }
                         }
                     }
