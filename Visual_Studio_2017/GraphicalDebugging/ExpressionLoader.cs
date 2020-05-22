@@ -667,12 +667,28 @@ namespace GraphicalDebugging
         {
         }
 
+        // Or ArrayPoint
         abstract class BXPoint : PointLoader
         {
-            protected ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type, string ptrName, int count)
+            // memberArraySuffix has to start with '.'
+            protected BXPoint(string memberArraySuffix, string coordType, Geometry.Traits traits)
+            {
+                this.memberArraySuffix = memberArraySuffix;
+                this.coordType = coordType;
+                this.traits = traits;
+                this.count = Math.Min(traits.Dimension, 2);
+            }
+
+            public override Geometry.Traits LoadTraits(string type)
+            {
+                return traits;
+            }
+
+            protected override ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type)
             {
                 bool okx = true, oky = true;
                 double x = 0, y = 0;
+                string ptrName = name + memberArraySuffix;
                 if (count > 0)
                     okx = ExpressionParser.TryLoadDouble(debugger, ptrName + "[0]", out x);
                 if (count > 1)
@@ -682,9 +698,10 @@ namespace GraphicalDebugging
                      : null;
             }
 
-            protected ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, Debugger debugger,
-                                                             string name, string type, string ptrName, int count)
+            protected override ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, Debugger debugger,
+                                                                      string name, string type)
             {
+                string ptrName = name + memberArraySuffix;
                 VariableInfo info = new VariableInfo(debugger, ptrName + "[0]");
                 if (! info.IsValid)
                     return null;
@@ -703,14 +720,17 @@ namespace GraphicalDebugging
                 return null;
             }
 
-            protected MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader,
-                                                                        Debugger debugger,
-                                                                        string name, string memberArray, string elemType, int count)
+            public override MemoryReader.Converter<double> GetMemoryConverter(Loaders loaders,
+                                                                              MemoryReader mreader,
+                                                                              Debugger debugger, // TODO - remove
+                                                                              string name, string type)
             {
-                string elemName = memberArray + "[0]";
-                int elemSize = ExpressionParser.GetTypeSizeof(debugger, elemType);
+                // TODO: byteSize and byteOffset could be created in LoaderCreator
+                string ptrName = name + memberArraySuffix;
+                string elemName = ptrName + "[0]";
+                int elemSize = ExpressionParser.GetTypeSizeof(debugger, coordType);
                 MemoryReader.Converter<double> arrayConverter
-                    = mreader.GetNumericArrayConverter(elemType, elemSize, count);
+                    = mreader.GetNumericArrayConverter(coordType, elemSize, count);
                 int byteSize = (new ExpressionParser(debugger)).GetValueSizeof(name);
                 if (byteSize == 0)
                     return null;
@@ -720,6 +740,11 @@ namespace GraphicalDebugging
                 return new MemoryReader.StructConverter<double>(byteSize,
                             new MemoryReader.Member<double>(arrayConverter, (int)byteOffset));
             }
+
+            string memberArraySuffix;
+            string coordType;
+            Geometry.Traits traits;
+            int count;
         }
 
         class BGPoint : BXPoint
@@ -747,36 +772,9 @@ namespace GraphicalDebugging
                 }
             }
 
-            public BGPoint(string coordType, Geometry.Traits traits)
-            {
-                this.coordType = coordType;
-                this.traits = traits;
-                count = Math.Min(traits.Dimension, 2);
-            }
-
-            public override Geometry.Traits LoadTraits(string type)
-            {
-                return traits;
-            }
-
-            protected override ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type)
-            {
-                return LoadPointParsed(debugger, name, type, name + ".m_values", count);
-            }
-
-            protected override ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, Debugger debugger,
-                                                                      string name, string type)
-            {
-                return LoadPointMemory(mreader, debugger, name, type, name + ".m_values", count);
-            }
-
-            public override MemoryReader.Converter<double> GetMemoryConverter(Loaders loaders,
-                                                                              MemoryReader mreader,
-                                                                              Debugger debugger, // TODO - remove
-                                                                              string name, string type)
-            {
-                return GetMemoryConverter(mreader, debugger, name, name + ".m_values", coordType, count);
-            }
+            protected BGPoint(string coordType, Geometry.Traits traits)
+                : base(".m_values", coordType, traits)
+            { }
 
             protected static void ParseCSAndUnit(string cs_type, out Geometry.CoordinateSystem cs, out Geometry.Unit unit)
             {
@@ -899,8 +897,6 @@ namespace GraphicalDebugging
                        : null;
             }
 
-            // TODO: LoadMemory
-
             public override MemoryReader.Converter<double> GetMemoryConverter(Loaders loaders,
                                                                               MemoryReader mreader,
                                                                               Debugger debugger, // TODO - remove
@@ -989,7 +985,6 @@ namespace GraphicalDebugging
                         : null;
             }
 
-            // TODO: LoadMemory
             // TODO: GetMemoryConverter
 
             PointLoader pointLoader;
@@ -2164,34 +2159,10 @@ namespace GraphicalDebugging
             }
 
             private BPPoint(string coordType)
-            {
-                this.coordType = coordType;
-            }
-
-            public override Geometry.Traits LoadTraits(string type)
-            {
-                return new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
-            }
-
-            protected override ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type)
-            {
-                return LoadPointParsed(debugger, name, type, name + ".coords_", 2);
-            }
-
-            protected override ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, Debugger debugger, string name, string type)
-            {
-                return LoadPointMemory(mreader, debugger, name, type, name + ".coords_", 2);
-            }
-
-            public override MemoryReader.Converter<double> GetMemoryConverter(Loaders loaders,
-                                                                              MemoryReader mreader,
-                                                                              Debugger debugger, // TODO - remove
-                                                                              string name, string type)
-            {
-                return GetMemoryConverter(mreader, debugger, name, name + ".coords_", coordType, 2);
-            }
-
-            string coordType;
+                : base(".coords_",
+                       coordType,
+                       new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None))
+            { }
         }
 
         class BPSegment : SegmentLoader
@@ -2626,34 +2597,9 @@ namespace GraphicalDebugging
             }
 
             private StdComplexPoint(string coordType)
-            {
-                this.coordType = coordType;
-            }
-
-            public override Geometry.Traits LoadTraits(string type)
-            {
-                return new Geometry.Traits(2, Geometry.CoordinateSystem.Complex, Geometry.Unit.None);
-            }
-
-            protected override ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type)
-            {
-                return LoadPointParsed(debugger, name, type, name + "._Val", 2);
-            }
-
-            protected override ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, Debugger debugger, string name, string type)
-            {
-                return LoadPointMemory(mreader, debugger, name, type, name + "._Val", 2);
-            }
-
-            public override MemoryReader.Converter<double> GetMemoryConverter(Loaders loaders,
-                                                                              MemoryReader mreader,
-                                                                              Debugger debugger, // TODO - remove
-                                                                              string name, string type)
-            {
-                return GetMemoryConverter(mreader, debugger, name, name + "._Val", coordType, 2);
-            }
-
-            string coordType;
+                : base("._Val", coordType,
+                       new Geometry.Traits(2, Geometry.CoordinateSystem.Complex, Geometry.Unit.None))
+            { }
         }
 
         class BGTurn : GeometryLoader<ExpressionDrawer.Turn>
