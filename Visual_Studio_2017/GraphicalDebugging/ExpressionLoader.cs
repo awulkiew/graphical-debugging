@@ -1117,13 +1117,65 @@ namespace GraphicalDebugging
                              , Geometry.IContainer<Geometry.Point>
                              , new()
         {
-            protected BGRange(ExpressionLoader.Kind kind, string id,
-                              int pointTIndex, int containerTIndex, int allocatorTIndex)
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
-                this.id = id;
-                this.pointTIndex = pointTIndex;
-                this.containerTIndex = containerTIndex;
-                this.allocatorTIndex = allocatorTIndex;
+                public delegate Loader DerivedConstructor(ContainerLoader containerLoader, string containerType,
+                                                          PointLoader pointLoader, string pointType);
+                public LoaderCreator(Kind kind, string id,
+                                     int pointTIndex, int containerTIndex, int allocatorTIndex,
+                                     DerivedConstructor derivedConstructor)
+                {
+                    this.kind = kind;
+                    this.id = id;
+                    this.pointTIndex = pointTIndex;
+                    this.containerTIndex = containerTIndex;
+                    this.allocatorTIndex = allocatorTIndex;
+                    this.derivedConstructor = derivedConstructor;
+                }
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return kind; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    if (id != this.id)
+                        return null;
+
+                    string pointType, containerType;
+                    GetBGContainerInfo(type, pointTIndex, containerTIndex, allocatorTIndex,
+                                       out pointType, out containerType);
+
+                    ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
+                                                                         name,
+                                                                         containerType) as ContainerLoader;
+                    if (containerLoader == null)
+                        return null;
+
+                    string pointName, dummyType;
+                    containerLoader.ElementInfo(name, containerType, out pointName, out dummyType);
+
+                    PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
+                                                                 pointName,
+                                                                 pointType) as PointLoader;
+                    if (pointLoader == null)
+                        return null;
+
+                    return derivedConstructor(containerLoader, containerType, pointLoader, pointType);
+                }
+
+                Kind kind;
+                string id;
+                int pointTIndex;
+                int containerTIndex;
+                int allocatorTIndex;
+                DerivedConstructor derivedConstructor;
+            }
+
+            protected BGRange(ContainerLoader containerLoader, string containerType,
+                              PointLoader pointLoader, string pointType)
+            {
+                this.containerLoader = containerLoader;
+                this.containerType = containerType;
+                this.pointLoader = pointLoader;
+                this.pointType = pointType;
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -1135,31 +1187,15 @@ namespace GraphicalDebugging
                 traits = null;
                 result = null;
 
-                string pointType, containerType;
-                GetBGContainerInfo(type, pointTIndex, containerTIndex, allocatorTIndex,
-                                   out pointType, out containerType);
-
-                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
-                                                                     name,
-                                                                     containerType) as ContainerLoader;
-                if (containerLoader == null)
-                    return;
-
-                string pointName, dummyType;
-                containerLoader.ElementInfo(name, containerType, out pointName, out dummyType);
-
-                PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
-                                                             pointName,
-                                                             pointType) as PointLoader;
-                if (pointLoader == null)
-                    return;
-
                 traits = pointLoader.LoadTraits(pointType);
                 if (traits == null)
                     return;
 
                 if (mreader != null)
                 {
+                    string pointName, dummyType;
+                    containerLoader.ElementInfo(name, containerType, out pointName, out dummyType);
+
                     result = LoadMemory(loaders, mreader, debugger, name, type,
                                         pointName, pointType, pointLoader,
                                         containerLoader, callback);
@@ -1173,28 +1209,32 @@ namespace GraphicalDebugging
                 }
             }
 
-            string id;
-            int pointTIndex;
-            int containerTIndex;
-            int allocatorTIndex;
+            ContainerLoader containerLoader;
+            string containerType;
+            PointLoader pointLoader;
+            string pointType;
         }
 
         class BGLinestring : BGRange<ExpressionDrawer.Linestring>
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public new class LoaderCreator : BGRange<ExpressionDrawer.Linestring>.LoaderCreator
             {
-                public bool IsUserDefined() { return false; }
-                public Kind Kind() { return ExpressionLoader.Kind.Linestring; }
-                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
-                {
-                    return id == "boost::geometry::model::linestring"
-                         ? new BGLinestring()
-                         : null;
-                }
+                public LoaderCreator()
+                    : base(ExpressionLoader.Kind.Linestring,
+                           "boost::geometry::model::linestring",
+                           0, 1, 2,
+                           delegate (ContainerLoader containerLoader, string containerType,
+                                     PointLoader pointLoader, string pointType)
+                                     {
+                                         return new BGLinestring(containerLoader, containerType,
+                                                                 pointLoader, pointType);
+                                     })
+                { }
             }
 
-            public BGLinestring()
-                : base(ExpressionLoader.Kind.Linestring, "boost::geometry::model::linestring", 0, 1, 2)
+            private BGLinestring(ContainerLoader containerLoader, string containerType,
+                                 PointLoader pointLoader, string pointType)
+                : base(containerLoader, containerType, pointLoader, pointType)
             { }
         }
 
@@ -1206,10 +1246,41 @@ namespace GraphicalDebugging
                 public Kind Kind() { return ExpressionLoader.Kind.MultiLinestring; }
                 public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
                 {
-                    return id == "boost::geometry::model::multi_linestring"
-                         ? new BGMultiLinestring()
-                         : null;
+                    if (id != "boost::geometry::model::multi_linestring")
+                        return null;
+
+                    string lsType, containerType;
+                    GetBGContainerInfo(type, 0, 1, 2, out lsType, out containerType);
+
+                    ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
+                                                                         name,
+                                                                         containerType) as ContainerLoader;
+                    if (containerLoader == null)
+                        return null;
+
+                    string lsName, dummyType;
+                    containerLoader.ElementInfo(name, containerType, out lsName, out dummyType);
+
+                    RangeLoader<ExpressionDrawer.Linestring>
+                        lsLoader = loaders.FindByType(ExpressionLoader.Kind.Linestring,
+                                                      lsName,
+                                                      lsType) as RangeLoader<ExpressionDrawer.Linestring>;
+                    if (lsLoader == null)
+                        return null;
+
+                    return new BGMultiLinestring(containerLoader, containerType, lsLoader, lsType);
                 }
+            }
+
+            private BGMultiLinestring(ContainerLoader containerLoader,
+                                      string containerType,
+                                      RangeLoader<ExpressionDrawer.Linestring> lsLoader,
+                                      string lsType)
+            {
+                this.containerLoader = containerLoader;
+                this.containerType = containerType;
+                this.lsLoader = lsLoader;
+                this.lsType = lsType;
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -1220,25 +1291,6 @@ namespace GraphicalDebugging
             {
                 traits = null;
                 result = null;
-
-                string lsType, containerType;
-                GetBGContainerInfo(type, 0, 1, 2, out lsType, out containerType);
-
-                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
-                                                                     name,
-                                                                     containerType) as ContainerLoader;
-                if (containerLoader == null)
-                    return;
-
-                string lsName, dummyType;
-                containerLoader.ElementInfo(name, containerType, out lsName, out dummyType);
-
-                RangeLoader<ExpressionDrawer.Linestring>
-                    lsLoader = loaders.FindByType(ExpressionLoader.Kind.Linestring,
-                                                  lsName,
-                                                  lsType) as RangeLoader<ExpressionDrawer.Linestring>;
-                if (lsLoader == null)
-                    return;
 
                 Geometry.Traits t = null;
                 ExpressionDrawer.MultiLinestring mls = new ExpressionDrawer.MultiLinestring();
@@ -1258,43 +1310,56 @@ namespace GraphicalDebugging
                     result = mls;
                 }
             }
+
+            ContainerLoader containerLoader;
+            string containerType;
+            RangeLoader<ExpressionDrawer.Linestring> lsLoader;
+            string lsType;
         }
 
         class BGRing : BGRange<ExpressionDrawer.Ring>
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public new class LoaderCreator : BGRange<ExpressionDrawer.Ring>.LoaderCreator
             {
-                public bool IsUserDefined() { return false; }
-                public Kind Kind() { return ExpressionLoader.Kind.Ring; }
-                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
-                {
-                    return id == "boost::geometry::model::ring"
-                         ? new BGRing()
-                         : null;
-                }
+                public LoaderCreator()
+                    : base(ExpressionLoader.Kind.Ring,
+                           "boost::geometry::model::ring",
+                           0, 3, 4,
+                           delegate (ContainerLoader containerLoader, string containerType,
+                                     PointLoader pointLoader, string pointType)
+                                     {
+                                         return new BGRing(containerLoader, containerType,
+                                                           pointLoader, pointType);
+                                     })
+                { }
             }
 
-            public BGRing()
-                : base(ExpressionLoader.Kind.Ring, "boost::geometry::model::ring", 0, 3, 4)
+            private BGRing(ContainerLoader containerLoader, string containerType,
+                           PointLoader pointLoader, string pointType)
+                : base(containerLoader, containerType, pointLoader, pointType)
             { }
         }
 
         class BGMultiPoint : BGRange<ExpressionDrawer.MultiPoint>
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public new class LoaderCreator : BGRange<ExpressionDrawer.MultiPoint>.LoaderCreator
             {
-                public bool IsUserDefined() { return false; }
-                public Kind Kind() { return ExpressionLoader.Kind.MultiPoint; }
-                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
-                {
-                    return id == "boost::geometry::model::multi_point"
-                         ? new BGMultiPoint()
-                         : null;
-                }
+                public LoaderCreator()
+                    : base(ExpressionLoader.Kind.MultiPoint,
+                           "boost::geometry::model::multi_point",
+                           0, 1, 2,
+                           delegate (ContainerLoader containerLoader, string containerType,
+                                     PointLoader pointLoader, string pointType)
+                                     {
+                                         return new BGMultiPoint(containerLoader, containerType,
+                                                                 pointLoader, pointType);
+                                     })
+                { }
             }
 
-            public BGMultiPoint()
-                : base(ExpressionLoader.Kind.MultiPoint, "boost::geometry::model::multi_point", 0, 1, 2)
+            private BGMultiPoint(ContainerLoader containerLoader, string containerType,
+                                 PointLoader pointLoader, string pointType)
+                : base(containerLoader, containerType, pointLoader, pointType)
             { }
         }
 
@@ -1306,10 +1371,39 @@ namespace GraphicalDebugging
                 public Kind Kind() { return ExpressionLoader.Kind.Polygon; }
                 public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
                 {
-                    return id == "boost::geometry::model::polygon"
-                         ? new BGPolygon()
-                         : null;
+                    if (id != "boost::geometry::model::polygon")
+                        return null;
+
+                    string outerName = name + ".m_outer";
+                    string innersName = name + ".m_inners";
+
+                    Expression outerExpr = debugger.GetExpression(outerName);
+                    Expression innersExpr = debugger.GetExpression(innersName);
+
+                    string outerType = outerExpr.Type;
+                    BGRing outerLoader = loaders.FindByType(ExpressionLoader.Kind.Ring,
+                                                            outerName, outerType) as BGRing;
+                    if (outerLoader == null)
+                        return null;
+
+                    string innersType = innersExpr.Type;
+                    ContainerLoader innersLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
+                                                                      innersName, innersType) as ContainerLoader;
+                    if (innersLoader == null)
+                        return null;
+
+                    return new BGPolygon(outerLoader, outerType, innersLoader, innersType);
                 }
+            }
+
+            // TODO: Should this be BGRing or a generic ring Loader?
+            private BGPolygon(BGRing outerLoader, string outerType,
+                              ContainerLoader innersLoader, string innersType)
+            {
+                this.outerLoader = outerLoader;
+                this.outerType = outerType;
+                this.innersLoader = innersLoader;
+                this.innersType = innersType;
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -1324,23 +1418,8 @@ namespace GraphicalDebugging
                 string outerName = name + ".m_outer";
                 string innersName = name + ".m_inners";
 
-                Expression outerExpr = debugger.GetExpression(outerName);
-                Expression innersExpr = debugger.GetExpression(innersName);
-
-                string outerType = outerExpr.Type;
-                BGRing outerLoader = loaders.FindByType(ExpressionLoader.Kind.Ring,
-                                                        outerName, outerType) as BGRing;
-                if (outerLoader == null)
-                    return;
-
-                string innersType = innersExpr.Type;
-                ContainerLoader innersLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
-                                                                  innersName, innersType) as ContainerLoader;
-                if (innersLoader == null)
-                    return;
-
                 ExpressionDrawer.Ring outer = null;
-                outerLoader.Load(loaders, mreader, debugger, outerName, outerExpr.Type,
+                outerLoader.Load(loaders, mreader, debugger, outerName, outerType,
                                  out traits, out outer,
                                  callback);
                 if (outer == null)
@@ -1351,7 +1430,7 @@ namespace GraphicalDebugging
                 bool ok = innersLoader.ForEachElement(debugger, innersName, delegate (string elName)
                 {
                     ExpressionDrawer.Ring inner = null;
-                    outerLoader.Load(loaders, mreader, debugger, elName, outerExpr.Type,
+                    outerLoader.Load(loaders, mreader, debugger, elName, outerType,
                                      out t, out inner,
                                      callback);
                     if (inner == null)
@@ -1367,6 +1446,11 @@ namespace GraphicalDebugging
                         traits = t;
                 }
             }
+
+            BGRing outerLoader;
+            string outerType;
+            ContainerLoader innersLoader;
+            string innersType;
         }
 
         class BGMultiPolygon : RangeLoader<ExpressionDrawer.MultiPolygon>
@@ -1377,10 +1461,41 @@ namespace GraphicalDebugging
                 public Kind Kind() { return ExpressionLoader.Kind.MultiPolygon; }
                 public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
                 {
-                    return id == "boost::geometry::model::multi_polygon"
-                         ? new BGMultiPolygon()
-                         : null;
+                    if (id != "boost::geometry::model::multi_polygon")
+                        return null;
+
+                    string polyType, containerType;
+                    GetBGContainerInfo(type, 0, 1, 2, out polyType, out containerType);
+
+                    ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
+                                                                         name,
+                                                                         containerType) as ContainerLoader;
+                    if (containerLoader == null)
+                        return null;
+
+                    string polyName, dummyType;
+                    containerLoader.ElementInfo(name, containerType, out polyName, out dummyType);
+
+                    PolygonLoader polyLoader = loaders.FindByType(ExpressionLoader.Kind.Polygon,
+                                                                  polyName,
+                                                                  polyType) as PolygonLoader;
+                    if (polyLoader == null)
+                        return null;
+
+                    return new BGMultiPolygon(containerLoader, containerType,
+                                              polyLoader, polyType);
                 }
+            }
+
+            private BGMultiPolygon(ContainerLoader containerLoader,
+                                   string containerType,
+                                   PolygonLoader polyLoader,
+                                   string polyType)
+            {
+                this.containerLoader = containerLoader;
+                this.containerType = containerType;
+                this.polyLoader = polyLoader;
+                this.polyType = polyType;
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -1391,24 +1506,6 @@ namespace GraphicalDebugging
             {
                 traits = null;
                 result = null;
-
-                string polyType, containerType;
-                GetBGContainerInfo(type, 0, 1, 2, out polyType, out containerType);
-
-                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
-                                                                     name,
-                                                                     containerType) as ContainerLoader;
-                if (containerLoader == null)
-                    return;
-
-                string polyName, dummyType;
-                containerLoader.ElementInfo(name, containerType, out polyName, out dummyType);
-
-                PolygonLoader polyLoader = loaders.FindByType(ExpressionLoader.Kind.Polygon,
-                                                              polyName,
-                                                              polyType) as PolygonLoader;
-                if (polyLoader == null)
-                    return;
 
                 Geometry.Traits t = null;
                 ExpressionDrawer.MultiPolygon mpoly = new ExpressionDrawer.MultiPolygon();
@@ -1430,6 +1527,11 @@ namespace GraphicalDebugging
                     result = mpoly;
                 }
             }
+
+            ContainerLoader containerLoader;
+            string containerType;
+            PolygonLoader polyLoader;
+            string polyType;
         }
 
         class BGBufferedRing : RangeLoader<ExpressionDrawer.Ring>
@@ -1440,10 +1542,30 @@ namespace GraphicalDebugging
                 public Kind Kind() { return ExpressionLoader.Kind.Ring; }
                 public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
                 {
-                    return id == "boost::geometry::detail::buffer::buffered_ring"
-                         ? new BGBufferedRing()
-                         : null;
+                    if (id != "boost::geometry::detail::buffer::buffered_ring")
+                        return null;
+
+                    List<string> tparams = Util.Tparams(type);
+                    if (tparams.Count < 1)
+                        return null;
+
+                    string ringType = tparams[0];
+                    RangeLoader<ExpressionDrawer.Ring>
+                        ringLoader = loaders.FindByType(ExpressionLoader.Kind.Ring,
+                                                        name,
+                                                        ringType) as RangeLoader<ExpressionDrawer.Ring>;
+                    if (ringLoader == null)
+                        return null;
+
+                    return new BGBufferedRing(ringLoader, ringType);
                 }
+            }
+
+            private BGBufferedRing(RangeLoader<ExpressionDrawer.Ring> ringLoader,
+                                   string ringType)
+            {
+                this.ringLoader = ringLoader;
+                this.ringType = ringType;
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -1455,22 +1577,13 @@ namespace GraphicalDebugging
                 traits = null;
                 result = null;
 
-                List<string> tparams = Util.Tparams(type);
-                if (tparams.Count < 1)
-                    return;
-
-                string ringType = tparams[0];
-                RangeLoader<ExpressionDrawer.Ring>
-                    ringLoader = loaders.FindByType(ExpressionLoader.Kind.Ring,
-                                                    name,
-                                                    ringType) as RangeLoader<ExpressionDrawer.Ring>;
-                if (ringLoader == null)
-                    return;
-
                 ringLoader.Load(loaders, mreader, debugger, name, ringType,
                                 out traits, out result,
                                 callback);
             }
+
+            RangeLoader<ExpressionDrawer.Ring> ringLoader;
+            string ringType;
         }
 
         // NOTE: There is no MultiRing concept so use MultiPolygon for now
@@ -1482,10 +1595,44 @@ namespace GraphicalDebugging
                 public Kind Kind() { return ExpressionLoader.Kind.MultiPolygon; } // Or MultiGeometry
                 public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
                 {
-                    return id == "boost::geometry::detail::buffer::buffered_ring_collection"
-                         ? new BGBufferedRingCollection()
-                         : null;
+                    if (id != "boost::geometry::detail::buffer::buffered_ring_collection")
+                        return null;
+
+                    List<string> tparams = Util.Tparams(type);
+                    if (tparams.Count < 1)
+                        return null;
+
+                    string ringType = tparams[0];
+                    string containerType = StdContainerType("std::vector", ringType, "std::allocator");
+
+                    ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
+                                                                         name,
+                                                                         containerType) as ContainerLoader;
+                    if (containerLoader == null)
+                        return null;
+
+                    string ringName, dummyType;
+                    containerLoader.ElementInfo(name, containerType, out ringName, out dummyType);
+
+                    RangeLoader<ExpressionDrawer.Ring>
+                        ringLoader = loaders.FindByType(ExpressionLoader.Kind.Ring,
+                                                        ringName,
+                                                        ringType) as RangeLoader<ExpressionDrawer.Ring>;
+                    if (ringLoader == null)
+                        return null;
+
+                    return new BGBufferedRingCollection(containerLoader, containerType,
+                                                        ringLoader, ringType);
                 }
+            }
+
+            private BGBufferedRingCollection(ContainerLoader containerLoader, string containerType,
+                                             RangeLoader<ExpressionDrawer.Ring> ringLoader, string ringType)
+            {
+                this.containerLoader = containerLoader;
+                this.containerType = containerType;
+                this.ringLoader = ringLoader;
+                this.ringType = ringType;
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -1497,29 +1644,6 @@ namespace GraphicalDebugging
                 traits = null;
                 result = null;
 
-                List<string> tparams = Util.Tparams(type);
-                if (tparams.Count < 1)
-                    return;
-
-                string ringType = tparams[0];
-                string containerType = StdContainerType("std::vector", ringType, "std::allocator");
-
-                ContainerLoader containerLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
-                                                                     name,
-                                                                     containerType) as ContainerLoader;
-                if (containerLoader == null)
-                    return;
-
-                string ringName, dummyType;
-                containerLoader.ElementInfo(name, containerType, out ringName, out dummyType);
-
-                RangeLoader<ExpressionDrawer.Ring>
-                    ringLoader = loaders.FindByType(ExpressionLoader.Kind.Ring,
-                                                    ringName,
-                                                    ringType) as RangeLoader<ExpressionDrawer.Ring>;
-                if (ringLoader == null)
-                    return;
-                
                 Geometry.Traits t = null;
                 ExpressionDrawer.MultiPolygon mpoly = new ExpressionDrawer.MultiPolygon();
                 bool ok = containerLoader.ForEachElement(debugger, name, delegate (string elName)
@@ -1540,6 +1664,11 @@ namespace GraphicalDebugging
                     result = mpoly;
                 }
             }
+
+            ContainerLoader containerLoader;
+            string containerType;
+            RangeLoader<ExpressionDrawer.Ring> ringLoader;
+            string ringType;
         }
 
         // NOTE: Technically R-tree could be treated as a Container of Points or MultiPoint
