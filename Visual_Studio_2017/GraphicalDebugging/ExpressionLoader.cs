@@ -23,8 +23,8 @@ namespace GraphicalDebugging
         private DebuggerEvents debuggerEvents; // debuggerEvents member is needed for the events to fire properly
         private Loaders loadersCpp;
         private Loaders loadersCS;
-        private Dictionary<string, Loader> loadersDictCpp;
-        private Dictionary<string, Loader> loadersDictCS;
+        private LoadersCache loadersCacheCpp;
+        private LoadersCache loadersCacheCS;
 
         // TODO: It's not clear what to do with Variant
         // At the initial stage it's not known what is stored in Variant
@@ -43,8 +43,8 @@ namespace GraphicalDebugging
 
         private void DebuggerEvents_OnEnterBreakMode(dbgEventReason Reason, ref dbgExecutionAction ExecutionAction)
         {
-            loadersDictCpp.Clear();
-            loadersDictCS.Clear();
+            loadersCacheCpp.Clear();
+            loadersCacheCS.Clear();
 
             BreakModeEntered?.Invoke();
         }
@@ -140,8 +140,8 @@ namespace GraphicalDebugging
             loadersCS.Add(new ValuesContainer.LoaderCreator());
             loadersCS.Add(new GeometryContainer.LoaderCreator());
 
-            loadersDictCpp = new Dictionary<string, Loader>();
-            loadersDictCS = new Dictionary<string, Loader>();
+            loadersCacheCpp = new LoadersCache();
+            loadersCacheCS = new LoadersCache();
         }
 
         // Expressions utilities
@@ -353,7 +353,59 @@ namespace GraphicalDebugging
             }
         }
 
-        // Loaders container
+        class LoadersCache
+        {
+            private class Entry
+            {
+                public Entry(Kind kind, Loader loader)
+                {
+                    Kind = kind;
+                    Loader = loader;
+                }
+
+                public Kind Kind;
+                public Loader Loader;
+            }
+
+            public LoadersCache()
+            {
+                dict = new Dictionary<string, List<Entry>>();
+            }
+
+            public void Add(string type, Kind kind, Loader loader)
+            {
+                List<Entry> list;
+                if (!dict.TryGetValue(type, out list))
+                {
+                    list = new List<Entry>();
+                    dict.Add(type, list);
+                }
+                // TODO: check if the type/kind is already stored and throw an exception
+                //   to detect duplication?
+                list.Add(new Entry(kind, loader));
+            }
+
+            public Loader Find(string type, IKindConstraint kindConstraint)
+            {
+                List<Entry> list;
+                if (dict.TryGetValue(type, out list))
+                {
+                    foreach (Entry e in list)
+                    {
+                        if (kindConstraint.Check(e.Kind))
+                            return e.Loader;
+                    }
+                }
+                return null;
+            }
+
+            public void Clear()
+            {
+                dict.Clear();
+            }
+
+            private Dictionary<string, List<Entry>> dict;
+        }
 
         /// <summary>
         /// The container of Loaders providing utilities to add and find
@@ -400,9 +452,9 @@ namespace GraphicalDebugging
             {
                 // Check if a Loader is cached for this type
                 string language = Instance.debugger.CurrentStackFrame.Language;
-                var loadersDict = language == "C#" ? Instance.loadersDictCS : Instance.loadersDictCpp;
-                Loader loader = null;
-                if (loadersDict.TryGetValue(type, out loader))
+                var loadersCache = language == "C#" ? Instance.loadersCacheCS : Instance.loadersCacheCpp;
+                Loader loader = loadersCache.Find(type, kindConstraint);
+                if (loader != null)
                     return loader;
 
                 // Parse type for qualified identifier
@@ -412,14 +464,14 @@ namespace GraphicalDebugging
                 if (kindConstraint is KindConstraint)
                 {
                     // Single kind required, check only one list
-                    int kindIndex = (int)(kindConstraint as KindConstraint).Kind;
+                    Kind kind = (kindConstraint as KindConstraint).Kind;
+                    int kindIndex = (int)kind;
                     foreach (LoaderCreator creator in lists[kindIndex])
                     {
                         loader = creator.Create(this, Debugger, name, type, id);
                         if (loader != null)
                         {
-                            // Caching disabled for now because multiple loaders can be created for the same type
-                            //loadersDict.Add(type, loader);
+                            loadersCache.Add(type, kind, loader);
                             return loader;
                         }
                     }
@@ -429,15 +481,15 @@ namespace GraphicalDebugging
                     // Multiple kinds may be required, check all of the lists
                     for (int i = 0; i < lists.Length; ++i)
                     {
-                        if (kindConstraint.Check((Kind)i))
+                        Kind kind = (Kind)i;
+                        if (kindConstraint.Check(kind))
                         {
                             foreach (LoaderCreator creator in lists[i])
                             {
                                 loader = creator.Create(this, Debugger, name, type, id);
                                 if (loader != null)
                                 {
-                                    // Caching disabled for now because multiple loaders can be created for the same type
-                                    //loadersDict.Add(type, loader);
+                                    loadersCache.Add(type, kind, loader);
                                     return loader;
                                 }
                             }
@@ -2933,15 +2985,6 @@ namespace GraphicalDebugging
             PointLoader pointLoader;
             string pointType;
         }
-
-        // BAD! The type may be the same for multiple Loaders
-        //   e.g. std::vector<double> for ContainerLoader and Valuescontainer
-        //   basically probably all XxxContainers
-        //   which prevents them from being cached.
-        // Store containers separately?
-        // Store multiple Loaders per type?
-        // Other?
-        // Disable caching for now.
 
         class ValuesContainer : LoaderR<ExpressionDrawer.ValuesContainer>
         {

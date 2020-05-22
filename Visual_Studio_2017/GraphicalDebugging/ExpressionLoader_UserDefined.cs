@@ -1088,7 +1088,7 @@ namespace GraphicalDebugging
         }
 
         private static bool ReloadUserTypes(Loaders loaders,
-                                            Dictionary<string, Loader> loadersDict,
+                                            LoadersCache loadersCache,
                                             string userTypesPath,
                                             bool isChanged,
                                             DateTime lastWriteTime,
@@ -1108,8 +1108,7 @@ namespace GraphicalDebugging
             if (update)
             {
                 loaders.RemoveUserDefined();
-                // Clear cache
-                loadersDict.Clear();
+                loadersCache.Clear();
             }
 
             if (update && fileExists)
@@ -1360,7 +1359,7 @@ namespace GraphicalDebugging
 
             DateTime wtCpp;
             if (ReloadUserTypes(Instance.loadersCpp,
-                                Instance.loadersDictCpp,
+                                Instance.loadersCacheCpp,
                                 options.UserTypesPathCpp,
                                 options.isUserTypesPathCppChanged,
                                 options.userTypesCppWriteTime,
@@ -1372,7 +1371,7 @@ namespace GraphicalDebugging
 
             DateTime wtCS;
             if (ReloadUserTypes(Instance.loadersCS,
-                                Instance.loadersDictCS,
+                                Instance.loadersCacheCS,
                                 options.UserTypesPathCS,
                                 options.isUserTypesPathCSChanged,
                                 options.userTypesCSWriteTime,
