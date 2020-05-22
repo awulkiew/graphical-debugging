@@ -573,6 +573,44 @@ namespace GraphicalDebugging
                              , Geometry.IContainer<Geometry.Point>
                              , new()
         {
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            {
+                public delegate Loader DerivedConstructor(UserContainerLoaders<PointLoader> containerLoaders);
+
+                public LoaderCreator(ExpressionLoader.Kind kind,
+                                     ITypeMatcher typeMatcher,
+                                     IUserContainerEntry containerEntry,
+                                     DerivedConstructor derivedConstructor)
+                {
+                    this.kind = kind;
+                    this.typeMatcher = typeMatcher;
+                    this.containerEntry = containerEntry;
+                    this.derivedConstructor = derivedConstructor;
+                }
+
+                public bool IsUserDefined() { return true; }
+                public Kind Kind() { return kind; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    if (!typeMatcher.MatchType(type, id))
+                        return null;
+
+                    UserContainerLoaders<PointLoader> containerLoaders
+                        = containerEntry.Create<PointLoader>(
+                                new KindConstraint(ExpressionLoader.Kind.Point),
+                                loaders, debugger, name, type, id);
+                    if (containerLoaders == null)
+                        return null;
+
+                    return derivedConstructor(containerLoaders);
+                }
+
+                ExpressionLoader.Kind kind;
+                ITypeMatcher typeMatcher;
+                IUserContainerEntry containerEntry;
+                DerivedConstructor derivedConstructor;
+            }
+
             protected UserPointRange(UserContainerLoaders<PointLoader> containerLoaders)
             {
                 this.containerLoaders = containerLoaders;
@@ -626,34 +664,16 @@ namespace GraphicalDebugging
 
         class UserLinestring : UserPointRange<ExpressionDrawer.Linestring>
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public new class LoaderCreator : UserPointRange<ExpressionDrawer.Linestring>.LoaderCreator
             {
                 public LoaderCreator(ITypeMatcher typeMatcher,
                                      IUserContainerEntry containerEntry)
-                {
-                    this.typeMatcher = typeMatcher;
-                    this.containerEntry = containerEntry;
-                }
-
-                public bool IsUserDefined() { return true; }
-                public Kind Kind() { return ExpressionLoader.Kind.Linestring; }
-                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
-                {
-                    if (!typeMatcher.MatchType(type, id))
-                        return null;
-
-                    UserContainerLoaders<PointLoader> containerLoaders
-                        = containerEntry.Create<PointLoader>(
-                                new KindConstraint(ExpressionLoader.Kind.Point),
-                                loaders, debugger, name, type, id);
-                    if (containerLoaders == null)
-                        return null;
-
-                    return new UserLinestring(containerLoaders);
-                }
-
-                ITypeMatcher typeMatcher;
-                IUserContainerEntry containerEntry;
+                    : base(ExpressionLoader.Kind.Linestring, typeMatcher, containerEntry,
+                           delegate (UserContainerLoaders<PointLoader> containerLoaders)
+                           {
+                               return new UserLinestring(containerLoaders);
+                           })
+                { }
             }
 
             private UserLinestring(UserContainerLoaders<PointLoader> containerLoaders)
@@ -663,34 +683,16 @@ namespace GraphicalDebugging
 
         class UserRing : UserPointRange<ExpressionDrawer.Ring>
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public new class LoaderCreator : UserPointRange<ExpressionDrawer.Ring>.LoaderCreator
             {
                 public LoaderCreator(ITypeMatcher typeMatcher,
                                      IUserContainerEntry containerEntry)
-                {
-                    this.typeMatcher = typeMatcher;
-                    this.containerEntry = containerEntry;
-                }
-
-                public bool IsUserDefined() { return true; }
-                public Kind Kind() { return ExpressionLoader.Kind.Ring; }
-                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
-                {
-                    if (!typeMatcher.MatchType(type, id))
-                        return null;
-
-                    UserContainerLoaders<PointLoader> containerLoaders
-                        = containerEntry.Create<PointLoader>(
-                                new KindConstraint(ExpressionLoader.Kind.Point),
-                                loaders, debugger, name, type, id);
-                    if (containerLoaders == null)
-                        return null;
-
-                    return new UserRing(containerLoaders);
-                }
-
-                ITypeMatcher typeMatcher;
-                IUserContainerEntry containerEntry;
+                    : base(ExpressionLoader.Kind.Ring, typeMatcher, containerEntry,
+                           delegate (UserContainerLoaders<PointLoader> containerLoaders)
+                           {
+                               return new UserRing(containerLoaders);
+                           })
+                { }
             }
 
             private UserRing(UserContainerLoaders<PointLoader> containerLoaders)
@@ -700,34 +702,16 @@ namespace GraphicalDebugging
 
         class UserMultiPoint : UserPointRange<ExpressionDrawer.MultiPoint>
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public new class LoaderCreator : UserPointRange<ExpressionDrawer.MultiPoint>.LoaderCreator
             {
                 public LoaderCreator(ITypeMatcher typeMatcher,
                                      IUserContainerEntry containerEntry)
-                {
-                    this.typeMatcher = typeMatcher;
-                    this.containerEntry = containerEntry;
-                }
-
-                public bool IsUserDefined() { return true; }
-                public Kind Kind() { return ExpressionLoader.Kind.MultiPoint; }
-                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
-                {
-                    if (!typeMatcher.MatchType(type, id))
-                        return null;
-
-                    UserContainerLoaders<PointLoader> containerLoaders
-                        = containerEntry.Create<PointLoader>(
-                                new KindConstraint(ExpressionLoader.Kind.Point),
-                                loaders, debugger, name, type, id);
-                    if (containerLoaders == null)
-                        return null;
-
-                    return new UserMultiPoint(containerLoaders);
-                }
-
-                ITypeMatcher typeMatcher;
-                IUserContainerEntry containerEntry;
+                    : base(ExpressionLoader.Kind.MultiPoint, typeMatcher, containerEntry,
+                           delegate (UserContainerLoaders<PointLoader> containerLoaders)
+                           {
+                               return new UserMultiPoint(containerLoaders);
+                           })
+                { }
             }
 
             private UserMultiPoint(UserContainerLoaders<PointLoader> containerLoaders)

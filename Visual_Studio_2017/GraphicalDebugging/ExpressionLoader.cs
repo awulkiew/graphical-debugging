@@ -1175,6 +1175,7 @@ namespace GraphicalDebugging
             {
                 public delegate Loader DerivedConstructor(ContainerLoader containerLoader, string containerType,
                                                           PointLoader pointLoader, string pointType);
+
                 public LoaderCreator(Kind kind, string id,
                                      int pointTIndex, int containerTIndex, int allocatorTIndex,
                                      DerivedConstructor derivedConstructor)
