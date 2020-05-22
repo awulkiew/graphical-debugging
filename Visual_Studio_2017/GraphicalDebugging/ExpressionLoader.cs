@@ -804,10 +804,6 @@ namespace GraphicalDebugging
                         unit = Geometry.Unit.Degree;
                 }
             }
-
-            string coordType;
-            Geometry.Traits traits;
-            int count;            
         }
 
         class BGPointXY : BGPoint
