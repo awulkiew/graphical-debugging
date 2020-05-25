@@ -105,36 +105,28 @@ namespace GraphicalDebugging
             }
 
             public override bool ForEachMemoryBlock<T>(MemoryReader mreader, Debugger debugger,
-                                                       string name, string type, ulong address,
+                                                       string name, string type, ulong dummyAddress,
                                                        MemoryReader.Converter<T> elementConverter,
                                                        MemoryBlockPredicate<T> memoryBlockPredicate)
             {
-                // TODO: Non-parsed size and address
+                if (mreader == null)
+                    return false;
 
                 int size = LoadSize(debugger, name);
                 if (size <= 0)
                     return true;
 
-                address = ExpressionParser.GetValueAddress(debugger, exprPointer.GetString(name) + "[0]");
-                if (address == 0)
-                    return false;
-
-                if (mreader == null)
+                string elemName, elemType;
+                ElementInfo(name, type, out elemName, out elemType);
+                ulong beginAddress = ExpressionParser.GetValueAddress(debugger, elemName);
+                if (beginAddress == 0)
                     return false;
 
                 var blockConverter = new MemoryReader.ArrayConverter<T>(elementConverter, size);
                 T[] values = new T[blockConverter.ValueCount()];
-                if (!mreader.Read(address, values, blockConverter))
+                if (!mreader.Read(beginAddress, values, blockConverter))
                     return false;
                 return memoryBlockPredicate(values);
-            }
-
-            public override bool ForEachMemoryBlock<T>(MemoryReader mreader, ulong address, int size,
-                                                       MemoryReader.Converter<T> elementConverter,
-                                                       MemoryBlockPredicate<T> memoryBlockPredicate)
-            {
-                // TODO
-                return false;
             }
 
             ClassScopeExpression exprPointer;
@@ -222,6 +214,7 @@ namespace GraphicalDebugging
 
             public override Size LoadSize(MemoryReader mreader, ulong address)
             {
+                // TODO
                 return new Size();
             }
 
@@ -230,6 +223,9 @@ namespace GraphicalDebugging
                                                        MemoryReader.Converter<T> elementConverter,
                                                        MemoryBlockPredicate<T> memoryBlockPredicate)
             {
+                if (mreader == null)
+                    return false;
+
                 int size = LoadSize(debugger, name);
                 if (size <= 0)
                     return true;
@@ -254,32 +250,25 @@ namespace GraphicalDebugging
                  || nextDiff < 0 || valDiff < 0)
                     return false;
 
-                ulong address = ExpressionParser.GetValueAddress(debugger, headName);
-                if (address == 0)
+                ulong nodeAddress = ExpressionParser.GetValueAddress(debugger, headName);
+                if (nodeAddress == 0)
                     return false;
 
                 for (int i = 0; i < size; ++i)
                 {
                     T[] values = new T[elementConverter.ValueCount()];
-                    if (!mreader.Read(address + (ulong)valDiff, values, elementConverter))
+                    if (!mreader.Read(nodeAddress + (ulong)valDiff, values, elementConverter))
                         return false;
 
                     if (!memoryBlockPredicate(values))
                         return false;
 
                     ulong[] nextTmp = new ulong[1];
-                    if (!mreader.Read(address + (ulong)nextDiff, nextTmp, nextConverter))
+                    if (!mreader.Read(nodeAddress + (ulong)nextDiff, nextTmp, nextConverter))
                         return false;
-                    address = nextTmp[0];
+                    nodeAddress = nextTmp[0];
                 }
                 return true;
-            }
-
-            public override bool ForEachMemoryBlock<T>(MemoryReader mreader, ulong address, int size,
-                                                       MemoryReader.Converter<T> elementConverter,
-                                                       MemoryBlockPredicate<T> memoryBlockPredicate)
-            {
-                return false;
             }
 
             public override bool ForEachElement(Debugger debugger, string name, ElementPredicate elementPredicate)

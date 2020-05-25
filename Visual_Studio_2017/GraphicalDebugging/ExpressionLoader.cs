@@ -1956,7 +1956,7 @@ namespace GraphicalDebugging
                 }
 
                 ExpressionDrawer.DrawablesContainer res = new ExpressionDrawer.DrawablesContainer();
-                if (LoadMemoryRecursive(mreader,
+                if (LoadMemoryRecursive(mreader, debugger,
                                         rootAddr,
                                         nodeVariantConverter,
                                         valueConverter,
@@ -1968,7 +1968,7 @@ namespace GraphicalDebugging
                 }
             }
 
-            private bool LoadMemoryRecursive(MemoryReader mreader,
+            private bool LoadMemoryRecursive(MemoryReader mreader, Debugger debugger,
                                              ulong nodeAddr,
                                              MemoryReader.StructConverter<int> nodeVariantConverter,
                                              MemoryReader.Converter<double> valueConverter,
@@ -1983,10 +1983,9 @@ namespace GraphicalDebugging
                 if (which[0] == 0) // leaf
                 {
                     ulong leafElemsAddress = nodeAddr + (ulong)leafElemsDiff;
-                    int size = leafElementsLoader.LoadSize(mreader, leafElemsAddress);
-                    if (!leafElementsLoader.ForEachMemoryBlock(mreader,
+                    if (!leafElementsLoader.ForEachMemoryBlock(mreader, debugger,
+                            "", "",
                             leafElemsAddress,
-                            size,
                             valueConverter,
                             delegate (double[] values)
                             {
@@ -2029,15 +2028,15 @@ namespace GraphicalDebugging
                 else if (which[0] == 1) // internal node
                 {
                     ulong internalNodeElemsAddress = nodeAddr + (ulong)internalNodeElemsDiff;
-                    int size = leafElementsLoader.LoadSize(mreader, internalNodeElemsAddress);
-
-                    if (!internalNodeElementsLoader.ForEachMemoryBlock(mreader,
-                            internalNodeElemsAddress, size, nodePtrPairConverter,
+                    if (!internalNodeElementsLoader.ForEachMemoryBlock(mreader, debugger,
+                            "", "",
+                            internalNodeElemsAddress, nodePtrPairConverter,
                             delegate (ulong[] ptrs)
                             {
                                 foreach (ulong addr in ptrs)
                                 {
-                                    if (!LoadMemoryRecursive(mreader, addr,
+                                    if (!LoadMemoryRecursive(mreader, debugger,
+                                                             addr,
                                                              nodeVariantConverter,
                                                              valueConverter,
                                                              nodePtrPairConverter,
