@@ -134,7 +134,7 @@ namespace GraphicalDebugging
             loadersCS.Add(new CSLinkedList.LoaderCreator());
             loadersCS.Add(new CSList.LoaderCreator());
             loadersCS.Add(new CSArray.LoaderCreator());
-            loadersCS.Add(new CSIList.LoaderCreator());
+            loadersCS.Add(new CSContainerBase.LoaderCreator());
 
             loadersCS.Add(new PointContainer.LoaderCreator());
             loadersCS.Add(new ValuesContainer.LoaderCreator());

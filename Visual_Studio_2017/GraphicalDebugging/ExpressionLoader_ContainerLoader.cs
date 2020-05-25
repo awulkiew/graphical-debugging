@@ -54,27 +54,6 @@ namespace GraphicalDebugging
                                                        MemoryBlockPredicate<T> memoryBlockPredicate)
                 where T : struct;
 
-            /*
-            virtual public int LoadSize(MemoryReader mreader, Debugger debugger,
-                                        string name, string type, ulong address)
-            {
-                if (mreader != null)
-                {
-                    if (address == 0)
-                        address = ExpressionParser.GetValueAddress(debugger, name);
-
-                    if (address != 0)
-                    {
-                        Size size = LoadSize(mreader, address);
-                        if (size.IsValid)
-                            return size;
-                    }
-                }
-
-                return LoadSize(debugger, name);
-            }
-            */
-            
             protected void CalcAddressSize(MemoryReader mreader, Debugger debugger,
                                            string name, string type, ulong address,
                                            out ulong outAddress, out int outSize)
@@ -83,16 +62,21 @@ namespace GraphicalDebugging
                 outSize = 0;
 
                 if (outAddress == 0)
-                {
                     outAddress = ExpressionParser.GetValueAddress(debugger, name);
-                    if (outAddress == 0)
-                        return;
+
+                bool ok = false;
+                if (outAddress != 0)
+                {
+                    Size s = LoadSize(mreader, outAddress);
+                    if (s.IsValid)
+                    {
+                        outSize = s;
+                        ok = true;
+                    }
                 }
 
-                Size s = LoadSize(mreader, outAddress);
-                outSize = s.IsValid
-                        ? s
-                        : LoadSize(debugger, name);
+                if (!ok)
+                    outSize = LoadSize(debugger, name);
             }
         }
 
@@ -137,26 +121,31 @@ namespace GraphicalDebugging
                 ulong address = 0;
                 int size = 0;
                 CalcAddressSize(mreader, debugger, name, type, inAddress, out address, out size);
-                if (address == 0)
-                    return false;
                 if (size <= 0)
                     return true;
 
-                ulong beginAddress = MemoryBegin(mreader, address);
-                if (beginAddress == 0)
-                {
-                    string elemName, elemType;
-                    ElementInfo(name, type, out elemName, out elemType);
-                    beginAddress = ExpressionParser.GetValueAddress(debugger, elemName);
-                    if (beginAddress == 0)
-                        return false;
-                }
+                ulong beginAddress = MemoryBegin(mreader, debugger, name, type, address);
 
                 var blockConverter = new MemoryReader.ArrayConverter<T>(elementConverter, size);
                 T[] values = new T[blockConverter.ValueCount()];
                 if (! mreader.Read(beginAddress, values, blockConverter))
                     return false;
                 return memoryBlockPredicate(values);
+            }
+
+            protected ulong MemoryBegin(MemoryReader mreader, Debugger debugger,
+                                        string name, string type, ulong address)
+            {
+                ulong beginAddress = 0;
+                if (address != 0)
+                    beginAddress = MemoryBegin(mreader, address);
+                if (beginAddress == 0)
+                {
+                    string elemName, elemType;
+                    ElementInfo(name, type, out elemName, out elemType);
+                    beginAddress = ExpressionParser.GetValueAddress(debugger, elemName);
+                }
+                return beginAddress;
             }
         }
 
@@ -1446,100 +1435,6 @@ namespace GraphicalDebugging
             }
         }
 
-        // This approach would work for any C# base class
-        class CSIList : ContiguousContainer
-        {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
-            {
-                public bool IsUserDefined() { return false; }
-                public Kind Kind() { return ExpressionLoader.Kind.Container; }
-                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
-                {
-                    if (id != "System.Collections.Generic.IList")
-                        return null;
-
-                    string derivedType = Util.CSDerivedType(type);
-
-                    if (Util.Empty(derivedType))
-                        return null;
-
-                    ContainerLoader loader = loaders.FindByType(ExpressionLoader.Kind.Container,
-                                                                DerivedName(derivedType, name),
-                                                                derivedType) as ContainerLoader;
-                    return loader != null
-                         ? new CSIList(loader, derivedType)
-                         : null;
-                }
-            }
-
-            private CSIList(ContainerLoader loader, string derivedType)
-            {
-                this.loader = loader;
-                this.derivedType = derivedType;
-            }
-
-            public override int LoadSize(Debugger debugger, string name)
-            {
-                return loader.LoadSize(debugger, DerivedName(derivedType, name));
-            }
-
-            public override ulong MemoryBegin(MemoryReader mreader, ulong address)
-            {
-                ContiguousContainer l = loader as ContiguousContainer;
-                return l != null
-                     ? l.MemoryBegin(mreader, address)
-                     : 0;
-            }
-
-            public override Size LoadSize(MemoryReader mreader, ulong address)
-            {
-                return loader.LoadSize(mreader, address);
-            }
-
-            public override string RandomAccessElementName(string rawName, int i)
-            {
-                // TODO: derived name?
-                // TODO: What to do with other kinds of containers?
-                RandomAccessContainer l = loader as RandomAccessContainer;
-                return l != null
-                     ? l.RandomAccessElementName(DerivedName(derivedType, rawName), i)
-                     : "";
-            }
-
-            public override void ElementInfo(string name, string type,
-                                             out string elemName, out string elemType)
-            {
-                loader.ElementInfo(DerivedName(derivedType, name),
-                                   derivedType,
-                                   out elemName, out elemType);
-            }
-
-            public override bool ForEachMemoryBlock<T>(MemoryReader mreader, Debugger debugger,
-                                                       string name, string type, ulong address,
-                                                       MemoryReader.Converter<T> elementConverter,
-                                                       MemoryBlockPredicate<T> memoryBlockPredicate)
-            {
-                // TODO: What to do with other kinds of containers?
-                ContiguousContainer l = loader as ContiguousContainer;
-                return l != null
-                     ? l.ForEachMemoryBlock(mreader, debugger,
-                                            // TODO: is the name and type ok below?
-                                            DerivedName(derivedType, name), derivedType,
-                                            // TODO: what about the address?
-                                            0,
-                                            elementConverter, memoryBlockPredicate)
-                     : false;
-            }
-
-            static string DerivedName(string derivedType, string name)
-            {
-                return "((" + derivedType + ")" + name + ")";
-            }
-
-            string derivedType = "";
-            ContainerLoader loader = null;
-        }
-
         class CSLinkedList : ContainerLoader
         {
             public class LoaderCreator : ExpressionLoader.LoaderCreator
@@ -1651,6 +1546,86 @@ namespace GraphicalDebugging
                 }
                 return true;
             }
+        }
+
+        class CSContainerBase : ContainerLoader
+        {
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            {
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Container; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    // Match any id
+
+                    // Has to be a base class or interface
+                    string derivedType = Util.CSDerivedType(type);
+                    if (Util.Empty(derivedType))
+                        return null;
+
+                    // The derived type has to be a container
+                    ContainerLoader loader = loaders.FindByType(ExpressionLoader.Kind.Container,
+                                                                DerivedName(derivedType, name),
+                                                                derivedType) as ContainerLoader;
+
+                    return loader != null
+                         ? new CSContainerBase(loader, derivedType)
+                         : null;
+                }
+            }
+
+            private CSContainerBase(ContainerLoader loader, string derivedType)
+            {
+                this.loader = loader;
+                this.derivedType = derivedType;
+            }
+
+            public override void ElementInfo(string name, string type,
+                                             out string elemName, out string elemType)
+            {
+                loader.ElementInfo(DerivedName(derivedType, name),
+                                   derivedType,
+                                   out elemName, out elemType);
+            }
+
+            public override int LoadSize(Debugger debugger, string name)
+            {
+                return loader.LoadSize(debugger, DerivedName(derivedType, name));
+            }
+
+            public override bool ForEachElement(Debugger debugger, string name, ElementPredicate elementPredicate)
+            {
+                return loader.ForEachElement(debugger, DerivedName(derivedType, name), elementPredicate);
+            }
+
+            public override Size LoadSize(MemoryReader mreader, ulong address)
+            {
+                // TODO
+                //return loader.LoadSize(mreader, address);
+                return new Size();
+            }
+
+            public override bool ForEachMemoryBlock<T>(MemoryReader mreader, Debugger debugger,
+                                                       string name, string type, ulong address,
+                                                       MemoryReader.Converter<T> elementConverter,
+                                                       MemoryBlockPredicate<T> memoryBlockPredicate)
+            {
+                return loader.ForEachMemoryBlock(mreader, debugger,
+                                                 // TODO: is the name and type ok below?
+                                                 DerivedName(derivedType, name),
+                                                 derivedType,
+                                                 // TODO: what about the address?
+                                                 0,
+                                                 elementConverter, memoryBlockPredicate);
+            }
+
+            static string DerivedName(string derivedType, string name)
+            {
+                return "((" + derivedType + ")" + name + ")";
+            }
+
+            string derivedType = "";
+            ContainerLoader loader = null;
         }
     }
 }
