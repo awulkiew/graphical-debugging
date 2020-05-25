@@ -428,6 +428,8 @@ namespace GraphicalDebugging
                 this.lastMember = lastMember;
                 this.first = new PointerMember(debugger, name, firstMember);
                 this.last = new PointerMember(debugger, name , lastMember);
+                string type = ExpressionParser.GetValueType(debugger, "*(" + name + firstMember + ")");
+                sizeOf = ExpressionParser.GetTypeSizeof(debugger, type);
             }
 
             public int LoadParsed(Debugger debugger, string name)
@@ -441,15 +443,20 @@ namespace GraphicalDebugging
             {
                 ulong first = this.first.LoadMemory(mreader, address);
                 ulong last = this.last.LoadMemory(mreader, address);
-                return first != 0 && last != 0 && first <= last
-                     ? new Size((int)(last - first))
-                     : new Size();
+                if (first != 0 && last != 0 && first <= last && sizeOf > 0)
+                {
+                    int byteSize = (int)(last - first);
+                    if (byteSize % sizeOf == 0)
+                        return new Size(byteSize / sizeOf);
+                }
+                return new Size();
             }
 
             string firstMember;
             string lastMember;
             PointerMember first;
             PointerMember last;
+            int sizeOf;
         }
 
         class BoostContainerVector : ContiguousContainer
@@ -748,9 +755,16 @@ namespace GraphicalDebugging
                 if (debugger.GetExpression(name12).IsValidValue)
                     version = Version.Msvc12;
 
-                this.firstLastDist = version == Version.Msvc12
-                    ? new PointerMembersDistance(debugger, name, "._Myfirst", "._Mylast")
-                    : new PointerMembersDistance(debugger, name, "._Mypair._Myval2._Myfirst", "._Mypair._Myval2._Mylast");
+                if (version == Version.Msvc12)
+                {
+                    first = new PointerMember(debugger, name, "._Myfirst");
+                    firstLastDist = new PointerMembersDistance(debugger, name, "._Myfirst", "._Mylast");
+                }
+                else
+                {
+                    first = new PointerMember(debugger, name, "._Mypair._Myval2._Myfirst");
+                    firstLastDist = new PointerMembersDistance(debugger, name, "._Mypair._Myval2._Myfirst", "._Mypair._Myval2._Mylast");
+                }
             }
 
             public override string RandomAccessElementName(string rawName, int i)
@@ -772,8 +786,7 @@ namespace GraphicalDebugging
 
             public override ulong MemoryBegin(MemoryReader mreader, ulong address)
             {
-                // TODO
-                return 0;
+                return first.LoadMemory(mreader, address);
             }
 
             public override Size LoadSize(MemoryReader mreader, ulong address)
@@ -791,6 +804,7 @@ namespace GraphicalDebugging
             private enum Version { Unknown, Msvc12, Msvc14_15 };
             private Version version = Version.Msvc14_15;
 
+            PointerMember first;
             PointerMembersDistance firstLastDist;
         }
 
