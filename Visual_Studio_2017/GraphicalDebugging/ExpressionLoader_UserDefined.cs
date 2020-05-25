@@ -92,6 +92,51 @@ namespace GraphicalDebugging
                 return ExpressionParser.LoadSize(debugger, exprSize.GetString(name));
             }
 
+            public override ulong MemoryBegin(MemoryReader mreader, ulong address)
+            {
+                // TODO
+                return 0;
+            }
+
+            public override Size LoadSize(MemoryReader mreader, ulong address)
+            {
+                // TODO
+                return new Size();
+            }
+
+            public override bool ForEachMemoryBlock<T>(MemoryReader mreader, Debugger debugger,
+                                                       string name, string type, ulong address,
+                                                       MemoryReader.Converter<T> elementConverter,
+                                                       MemoryBlockPredicate<T> memoryBlockPredicate)
+            {
+                // TODO: Non-parsed size and address
+
+                int size = LoadSize(debugger, name);
+                if (size <= 0)
+                    return true;
+
+                address = ExpressionParser.GetValueAddress(debugger, exprPointer.GetString(name) + "[0]");
+                if (address == 0)
+                    return false;
+
+                if (mreader == null)
+                    return false;
+
+                var blockConverter = new MemoryReader.ArrayConverter<T>(elementConverter, size);
+                T[] values = new T[blockConverter.ValueCount()];
+                if (!mreader.Read(address, values, blockConverter))
+                    return false;
+                return memoryBlockPredicate(values);
+            }
+
+            public override bool ForEachMemoryBlock<T>(MemoryReader mreader, ulong address, int size,
+                                                       MemoryReader.Converter<T> elementConverter,
+                                                       MemoryBlockPredicate<T> memoryBlockPredicate)
+            {
+                // TODO
+                return false;
+            }
+
             ClassScopeExpression exprPointer;
             ClassScopeExpression exprSize;
             string elemType;
@@ -175,10 +220,15 @@ namespace GraphicalDebugging
                 return ExpressionParser.LoadSize(debugger, exprSize.GetString(name));
             }
 
-            public override bool ForEachMemoryBlock(MemoryReader mreader, Debugger debugger,
-                                                    string name, string type,
-                                                    MemoryReader.Converter<double> elementConverter,
-                                                    MemoryBlockPredicate memoryBlockPredicate)
+            public override Size LoadSize(MemoryReader mreader, ulong address)
+            {
+                return new Size();
+            }
+
+            public override bool ForEachMemoryBlock<T>(MemoryReader mreader, Debugger debugger,
+                                                       string name, string type, ulong dummyAddress,
+                                                       MemoryReader.Converter<T> elementConverter,
+                                                       MemoryBlockPredicate<T> memoryBlockPredicate)
             {
                 int size = LoadSize(debugger, name);
                 if (size <= 0)
@@ -210,7 +260,7 @@ namespace GraphicalDebugging
 
                 for (int i = 0; i < size; ++i)
                 {
-                    double[] values = new double[elementConverter.ValueCount()];
+                    T[] values = new T[elementConverter.ValueCount()];
                     if (!mreader.Read(address + (ulong)valDiff, values, elementConverter))
                         return false;
 
@@ -223,6 +273,13 @@ namespace GraphicalDebugging
                     address = nextTmp[0];
                 }
                 return true;
+            }
+
+            public override bool ForEachMemoryBlock<T>(MemoryReader mreader, ulong address, int size,
+                                                       MemoryReader.Converter<T> elementConverter,
+                                                       MemoryBlockPredicate<T> memoryBlockPredicate)
+            {
+                return false;
             }
 
             public override bool ForEachElement(Debugger debugger, string name, ElementPredicate elementPredicate)
@@ -369,16 +426,9 @@ namespace GraphicalDebugging
                 return new ExpressionDrawer.Point(values[0], values[1]);
             }
 
-            public override MemoryReader.Converter<double> GetMemoryConverter(Loaders loaders,
-                                                                              MemoryReader mreader,
+            public override MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader,
                                                                               Debugger debugger,
                                                                               string name, string type)
-            {
-                return GetMemoryConverter(mreader, debugger, name, type);
-            }
-
-            protected MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader, Debugger debugger,
-                                                                        string name, string type)
             {
                 if (sizeOf == 0)
                     return null;

@@ -95,6 +95,11 @@ namespace GraphicalDebugging
                  : -(long)(addr1 - addr2);
         }
 
+        public static long InvalidAddressDifference()
+        {
+            return long.MinValue;
+        }
+
         public static bool IsInvalidAddressDifference(long diff)
         {
             return diff == long.MinValue;

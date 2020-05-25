@@ -573,8 +573,7 @@ namespace GraphicalDebugging
             /// This object then can be used to convert blocks of memory
             /// while e.g. loading variables of a given type from a container.
             /// </summary>
-            virtual public MemoryReader.Converter<double> GetMemoryConverter(Loaders loaders,
-                                                                             MemoryReader mreader,
+            virtual public MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader,
                                                                              Debugger debugger, // TODO - remove
                                                                              string name,
                                                                              string type)
@@ -720,8 +719,7 @@ namespace GraphicalDebugging
                 return null;
             }
 
-            public override MemoryReader.Converter<double> GetMemoryConverter(Loaders loaders,
-                                                                              MemoryReader mreader,
+            public override MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader,
                                                                               Debugger debugger, // TODO - remove
                                                                               string name, string type)
             {
@@ -893,8 +891,7 @@ namespace GraphicalDebugging
                        : null;
             }
 
-            public override MemoryReader.Converter<double> GetMemoryConverter(Loaders loaders,
-                                                                              MemoryReader mreader,
+            public override MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader,
                                                                               Debugger debugger, // TODO - remove
                                                                               string name, string type)
             {
@@ -903,7 +900,7 @@ namespace GraphicalDebugging
 
                 // TODO: All of the values here could be calculated once in Create
 
-                MemoryReader.Converter<double> pointConverter = pointLoader.GetMemoryConverter(loaders, mreader, debugger, m_min_corner, pointType);
+                MemoryReader.Converter<double> pointConverter = pointLoader.GetMemoryConverter(mreader, debugger, m_min_corner, pointType);
 
                 int size = (new ExpressionParser(debugger)).GetValueSizeof(name);
                 if (ExpressionParser.IsInvalidSize(size))
@@ -1124,13 +1121,13 @@ namespace GraphicalDebugging
             {
                 ResultType result = null;
 
-                MemoryReader.Converter<double> pointConverter = pointLoader.GetMemoryConverter(loaders, mreader, debugger,
-                                                                                                pointName, pointType);
+                MemoryReader.Converter<double> pointConverter = pointLoader.GetMemoryConverter(mreader, debugger,
+                                                                                               pointName, pointType);
                 if (pointConverter != null)
                 {
                     int dimension = pointConverter.ValueCount();
                     result = new ResultType();
-                    bool ok = containerLoader.ForEachMemoryBlock(mreader, debugger, name, type, pointConverter,
+                    bool ok = containerLoader.ForEachMemoryBlock(mreader, debugger, name, type, 0, pointConverter,
                         delegate (double[] values)
                         {
                             if (dimension == 0 || values.Length % dimension != 0)
@@ -1729,11 +1726,130 @@ namespace GraphicalDebugging
                 public Kind Kind() { return ExpressionLoader.Kind.OtherGeometry; }
                 public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
                 {
-                    return id == "boost::geometry::index::rtree"
-                         ? new BGIRtree()
-                         : null;
+                    if (id != "boost::geometry::index::rtree")
+                        return null;
+
+                    try
+                    {
+                        return new BGIRtree(loaders, debugger, name, type, id);
+                    }
+                    catch(CreationException)
+                    {
+                        return null;
+                    }
                 }
             }
+
+            private class CreationException : Exception
+            { }
+
+            private BGIRtree(Loaders loaders, Debugger debugger, string name, string type, string id)
+            {
+                string valueType;
+                indexableLoader = IndexableLoader(loaders, name, type,
+                                                  out valueType,
+                                                  out indexableMember,
+                                                  out indexableType);
+                if (indexableLoader == null)
+                    throw new CreationException();
+
+                traits = null;
+                ExpressionDrawer.IDrawable dummy;
+                indexableLoader.Load(loaders, null, debugger,
+                                     "(*((" + indexableType + "*)((void*)0)))",
+                                     indexableType,
+                                     out traits,
+                                     out dummy,
+                                     delegate () { return true; });
+                if (traits == null)
+                    throw new CreationException();
+
+                ExpressionParser exprParser = new ExpressionParser(debugger);
+
+                string nodePtrName = RootNodePtr(name);
+                string nodeVariantName = "*" + nodePtrName;
+                string nodeVariantType = exprParser.GetValueType(nodeVariantName);
+                if (Util.Empty(nodeVariantType))
+                    throw new CreationException();
+
+                if (!Util.Tparams(nodeVariantType, out leafType, out internalNodeType))
+                    throw new CreationException();
+
+                string leafElemsName;
+                leafElementsLoader = ElementsLoader(loaders, debugger,
+                                                    nodePtrName, leafType,
+                                                    out leafElemsName, out leafElemsType);
+                if (leafElementsLoader == null)
+                    throw new CreationException();
+
+                string internalNodeElemsName;
+                internalNodeElementsLoader = ElementsLoader(loaders, debugger,
+                                                            nodePtrName, internalNodeType,
+                                                            out internalNodeElemsName, out internalNodeElemsType);
+                if (internalNodeElementsLoader == null)
+                    throw new CreationException();
+
+                // For Memory Loading
+
+                nodePtrType = exprParser.GetValueType(nodePtrName);
+                nodePtrSizeOf = exprParser.GetTypeSizeof(nodePtrType);
+
+                leafElemsDiff = exprParser.GetAddressDifference(nodeVariantName,
+                                                                NodeElements(nodePtrName, leafType));
+                internalNodeElemsDiff = exprParser.GetAddressDifference(nodeVariantName,
+                                                                        NodeElements(nodePtrName, internalNodeType));
+                string leafElemName;
+                leafElementsLoader.ElementInfo(leafElemsName, leafElemsType,
+                                               out leafElemName, out leafElemType);
+                string internalNodeElemName;
+                internalNodeElementsLoader.ElementInfo(internalNodeElemsName, internalNodeElemsType,
+                                                       out internalNodeElemName, out internalNodeElemType);
+
+                indexableDiff = exprParser.GetAddressDifference(leafElemName,
+                                                                leafElemName + indexableMember);
+                nodePtrDiff = exprParser.GetAddressDifference(internalNodeElemName,
+                                                              internalNodeElemName + ".second");
+
+                string whichName = "(" + nodeVariantName + ").which_";
+                whichType = exprParser.GetValueType(whichName);
+                whichSizeOf = exprParser.GetTypeSizeof(whichType);
+                whichDiff = exprParser.GetAddressDifference(nodeVariantName,
+                                                            whichName);
+
+                nodeVariantSizeof = exprParser.GetValueSizeof(nodeVariantName);
+                nodePtrPairSizeof = exprParser.GetValueSizeof(internalNodeElemName);
+                valueSizeof = exprParser.GetValueSizeof(leafElemName);
+            }
+
+            ContainerLoader leafElementsLoader;
+            ContainerLoader internalNodeElementsLoader;
+            DrawableLoader indexableLoader;
+
+            Geometry.Traits traits;
+
+            string leafType;
+            string internalNodeType;
+            string indexableMember;
+            string indexableType;
+            string nodePtrType; // pointer to root or a node in internal node
+            string leafElemsType; // type of container of values
+            string internalNodeElemsType; // type of container of ptr_pair<box, node_ptr>
+            string leafElemType; // type of value
+            string internalNodeElemType; // type of ptr_pair<box, node_ptr>
+            string whichType; // type of which_ member
+
+            long leafElemsDiff; // offset of container of values in variant node which is a leaf
+            long internalNodeElemsDiff; // offset of container of ptr_pair<box, node_ptr> in variant node which is internal node
+            long indexableDiff; // offset of indexable in value
+            long nodePtrDiff; // offset of node_ptr in ptr_pair<box, node_ptr>
+            long whichDiff; // offset of which_ member of variant node
+
+            int nodePtrSizeOf; // size of pointer (4 or 8)
+            int whichSizeOf; // size of which_ member            
+            int nodeVariantSizeof; // size of variant node
+            int nodePtrPairSizeof; // size of ptr_pair<box, node_ptr>
+            int valueSizeof; // size of value
+            
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
                                       string name, string type,
@@ -1748,245 +1864,204 @@ namespace GraphicalDebugging
                 if (size <= 0)
                     return;
 
-                string valueType, indexableMember, indexableType;
-                DrawableLoader indexableLoader = IndexableLoader(loaders, name, type,
-                                                                 out valueType,
-                                                                 out indexableMember,
-                                                                 out indexableType);
-                if (indexableLoader == null)
-                    return;
-
                 string nodePtrName = RootNodePtr(name);
+
+                LoadMemory(mreader, debugger, nodePtrName, out result, callback);
+
+                if (result == null)
+                {
+                    ExpressionDrawer.DrawablesContainer res = new ExpressionDrawer.DrawablesContainer();
+                    if (LoadParsedRecursive(loaders, mreader, debugger,
+                                            nodePtrName,
+                                            res,
+                                            callback))
+                    {
+                        result = res;
+                    }
+                }
+
+                if (result != null)
+                    traits = this.traits;
+            }
+
+            private void LoadMemory(MemoryReader mreader, Debugger debugger,
+                                    string nodePtrName,
+                                    out ExpressionDrawer.DrawablesContainer result,
+                                    LoadCallback callback)
+            {
+                result = null;
+
                 string nodeVariantName = "*" + nodePtrName;
-                Expression rootExpr = debugger.GetExpression(nodeVariantName);
-                if (!rootExpr.IsValidValue)
-                    return;
-                string nodeVariantType = rootExpr.Type;
+                string whichName = "(" + nodeVariantName + ").which_";
 
-                string leafType, internalNodeType;
-                if (!Util.Tparams(nodeVariantType, out leafType, out internalNodeType))
+                if (mreader == null)
                     return;
 
-                string leafElemsName, leafElemsType;
-                ContainerLoader leafElementsLoader = ElementsLoader(loaders, debugger,
-                                                                    nodePtrName, leafType,
-                                                                    out leafElemsName, out leafElemsType);
-                if (leafElementsLoader == null)
+                if (ExpressionParser.IsInvalidAddressDifference(leafElemsDiff)
+                    || ExpressionParser.IsInvalidAddressDifference(internalNodeElemsDiff)
+                    || ExpressionParser.IsInvalidAddressDifference(indexableDiff)
+                    || ExpressionParser.IsInvalidAddressDifference(nodePtrDiff)
+                    || ExpressionParser.IsInvalidAddressDifference(whichDiff))
                     return;
 
-                string internalNodeElemsName, internalNodeElemsType;
-                ContainerLoader internalNodeElementsLoader = ElementsLoader(loaders, debugger,
-                                                                            nodePtrName, internalNodeType,
-                                                                            out internalNodeElemsName, out internalNodeElemsType);
-                if (internalNodeElementsLoader == null)
+                ulong rootAddr = ExpressionParser.GetValueAddress(debugger, nodeVariantName);
+                if (rootAddr == 0)
                     return;
 
-                //if (mreader != null)
-                //{
-                //    long leafElemsDiff = mreader.GetAddressDifference(nodeVariantName,
-                //                                                      NodeElements(nodePtrName, leafType));
-                //    long internalNodeElemsDiff = mreader.GetAddressDifference(nodeVariantName,
-                //                                                              NodeElements(nodePtrName, internalNodeType));
+                MemoryReader.Converter<int> whichConverter = mreader.GetValueConverter<int>(whichType, whichSizeOf);
+                if (whichConverter == null)
+                    return;
 
-                //    if (MemoryReader.IsInvalidAddressDifference(leafElemsDiff)
-                //        || MemoryReader.IsInvalidAddressDifference(internalNodeElemsDiff))
-                //        return;
+                if (nodeVariantSizeof <= 0)
+                    return;
 
-                //    string leafElemName = internalNodeElementsLoader.ElementName(leafElemsName,
-                //                                                                 leafElementsLoader.ElementType(leafElemsType));
-                //    string internalElemName = internalNodeElementsLoader.ElementName(internalNodeElemsName,
-                //                                                                     internalNodeElementsLoader.ElementType(internalNodeElemsType));
+                MemoryReader.StructConverter<int> nodeVariantConverter =
+                    new MemoryReader.StructConverter<int>(
+                        nodeVariantSizeof,
+                        new MemoryReader.Member<int>(whichConverter, (int)whichDiff));
 
-                //    long indexableDiff = mreader.GetAddressDifference(leafElemName,
-                //                                                      leafElemName + indexableMember);
-                //    long nodePtrDiff = mreader.GetAddressDifference(internalElemName,
-                //                                                    internalElemName + ".second");
+                MemoryReader.ValueConverter<ulong> nodePtrConverter =
+                    mreader.GetPointerConverter(nodePtrType, nodePtrSizeOf);
+                if (nodePtrConverter == null)
+                    return;
 
-                //    string whichName = "(" + nodeVariantName + ").which_";
-                //    long whichDiff = mreader.GetAddressDifference(nodeVariantName,
-                //                                                  whichName);
+                MemoryReader.Converter<ulong> nodePtrPairConverter =
+                    new MemoryReader.StructConverter<ulong>(
+                        nodePtrPairSizeof,
+                        new MemoryReader.Member<ulong>(nodePtrConverter, (int)nodePtrDiff));
 
-                //    if (MemoryReader.IsInvalidAddressDifference(indexableDiff)
-                //        || MemoryReader.IsInvalidAddressDifference(nodePtrDiff)
-                //        || MemoryReader.IsInvalidAddressDifference(whichDiff))
-                //        return;
+                string leafElemsName = NodeElements(nodePtrName, leafType);
+                string leafElemName, leafElemType;
+                leafElementsLoader.ElementInfo(leafElemsName, leafElemsType,
+                                                out leafElemName, out leafElemType);
+                string indexableName = leafElemName + indexableMember;
 
-                //    MemoryReader.Converter<int> whichConverter = mreader.GetNumericConverter<int>(whichName);
-                    
-                //    if (whichConverter == null)
-                //        return; // TODO
+                string internalNodeElemsName = NodeElements(nodePtrName, internalNodeType);
+                string internalNodeElemName;
+                internalNodeElementsLoader.ElementInfo(internalNodeElemsName, internalNodeElemsType,
+                                                        out internalNodeElemName, out internalNodeElemType);
 
-                //    int nodeVariantSizeof = mreader.GetValueSizeof(nodeVariantName);
+                MemoryReader.Converter<double> indexableConverter =
+                    indexableLoader.GetMemoryConverter(mreader, debugger, indexableName, indexableType);
+                if (indexableConverter == null)
+                    return;
 
-                //    if (nodeVariantSizeof <= 0)
-                //        return; // TODO
+                MemoryReader.Converter<double> valueConverter = indexableConverter;
 
-                //    MemoryReader.StructConverter<int> nodeVariantConverter = new MemoryReader.StructConverter<int>(
-                //        nodeVariantSizeof,
-                //        new MemoryReader.Member<int>(whichConverter, (int)whichDiff));
+                if (indexableMember != "" /*&& indexableDiff > 0*/)
+                {
+                    valueConverter = new MemoryReader.StructConverter<double>(
+                        valueSizeof,
+                        new MemoryReader.Member<double>(indexableConverter, (int)indexableDiff));
+                }
 
-                //    ulong rootAddr = mreader.GetValueAddress(nodeVariantName);
-
-                //    MemoryReader.ValueConverter<ulong> nodePtrConverter = mreader.GetPointerConverter(nodePtrName);
-
-                //    if (nodePtrConverter == null)
-                //        return; // TODO
-
-                //    int nodePtrPairSizeof = mreader.GetValueSizeof(internalElemName);
-                //    MemoryReader.Converter<ulong> nodePtrPairConverter = new MemoryReader.StructConverter<ulong>(
-                //                                nodePtrPairSizeof,
-                //                                new MemoryReader.Member<ulong>(nodePtrConverter, (int)nodePtrDiff));
-
-                //    MemoryReader.Converter<double> indexableConverter = indexableLoader.GetMemoryConverter(loaders,
-                //                                                                                           mreader,
-                //                                                                                           leafElemName + indexableMember,
-                //                                                                                           indexableType);
-                //    if (indexableConverter == null)
-                //        return; // TODO
-
-                //    MemoryReader.Converter<double> valueConverter = indexableConverter;
-
-                //    if (indexableMember != "" /*&& indexableDiff > 0*/)
-                //    {
-                //        int valueSizeof = mreader.GetValueSizeof(leafElemName);
-
-                //        valueConverter = new MemoryReader.StructConverter<double>(
-                //                                valueSizeof,
-                //                                new MemoryReader.Member<double>(indexableConverter, (int)indexableDiff));
-                //    }
-
-                //    ExpressionDrawer.DrawablesContainer resMem = new ExpressionDrawer.DrawablesContainer();
-                //    if (LoadMemoryRecursive(mreader, rootAddr,
-                //                            nodeVariantConverter,
-                //                            indexableLoader,
-                //                            leafElementsLoader,
-                //                            leafElemsName,
-                //                            leafElemsType,
-                //                            valueConverter,
-                //                            internalNodeElementsLoader,
-                //                            internalNodeElemsName,
-                //                            internalNodeElemsType,
-                //                            nodePtrPairConverter,
-                //                            resMem))
-                //    {
-                //        // TODO traits
-                //        //result = resMem;
-                //        int a = 10;
-                //    }
-                //}
-
-                Geometry.Traits tr = null;
                 ExpressionDrawer.DrawablesContainer res = new ExpressionDrawer.DrawablesContainer();
-                if (LoadParsedRecursive(loaders, mreader, debugger,
-                                        nodePtrName,
-                                        leafElementsLoader, internalNodeElementsLoader, indexableLoader,
-                                        leafType, internalNodeType, indexableMember, indexableType,
-                                        out tr, res,
+                if (LoadMemoryRecursive(mreader,
+                                        rootAddr,
+                                        nodeVariantConverter,
+                                        valueConverter,
+                                        nodePtrPairConverter,
+                                        res,
                                         callback))
                 {
-                    traits = tr;
-                    result = res;
+                    result = res;                      
                 }
             }
 
-            //private bool LoadMemoryRecursive(MemoryReader mreader,
-            //                                 ulong nodeAddr,
-            //                                 MemoryReader.StructConverter<int> nodeVariantConverter,
-            //                                 DrawableLoader indexableLoader,
-            //                                 ContainerLoader leafElementsLoader,
-            //                                 MemoryReader.Converter<double> valueConverter,
-            //                                 ContainerLoader internalNodeElementsLoader,
-            //                                 MemoryReader.Converter<ulong> nodePtrPairConverter,
-            //                                 ExpressionDrawer.DrawablesContainer result,
-            //                                 Callback callback) // TODO: handle callback
-            //{
-            //    int[] which = new int[1];
-            //    if (!mreader.Read(nodeAddr, which, nodeVariantConverter))
-            //        return false;
-
-            //    bool isLeaf = (which[0] == 0);
-            //    if (isLeaf)
-            //    {
-            //        string leafElementsName = NodeElements(nodePtrName, leafType);
-
-            //        // TODO: currently this method may still use Dubugger and parse size
-            //        if (! leafElementsLoader.ForEachMemoryBlock(mreader,
-            //                                                    leafElementsName, // THIS
-            //                                                    leafElementsType,
-            //                                                    valueConverter,
-            //                delegate (double[] values)
-            //                {
-            //                    if (indexableLoader is PointLoader)
-            //                    {
-            //                        result.Add(new ExpressionDrawer.Point(values[0], values[1]));
-            //                        return true;
-            //                    }
-            //                    else if (indexableLoader is BoxLoader)
-            //                    {
-            //                        result.Add(new ExpressionDrawer.Box(
-            //                                    new ExpressionDrawer.Point(values[0], values[1]),
-            //                                    new ExpressionDrawer.Point(values[2], values[3])));
-            //                        return true;
-            //                    }
-            //                    else if (indexableLoader is SegmentLoader)
-            //                    {
-            //                        result.Add(new ExpressionDrawer.Segment(
-            //                                    new ExpressionDrawer.Point(values[0], values[1]),
-            //                                    new ExpressionDrawer.Point(values[2], values[3])));
-            //                        return true;
-            //                    }
-            //                    else
-            //                        return false;
-            //                }))
-            //            return false;
-            //    }
-            //    else
-            //    {
-            //        string internalNodeElementsName = NodeElements(nodePtrName, internalNodeType);
-
-            //        // TODO: currently this method may still use Dubugger and parse size
-            //        if (! internalNodeElementsLoader.ForEachMemoryBlock(mreader,
-            //                internalNodeElementsName, internalNodeElementsType, nodePtrPairConverter,
-            //                delegate (ulong[] ptrs)
-            //                {
-            //                    foreach(ulong addr in ptrs)
-            //                    {
-            //                        if (!LoadMemoryRecursive(mreader, addr,
-            //                                                 nodeVariantConverter,
-            //                                                 indexableLoader,
-            //                                                 leafElementsLoader,
-            //                                                 valueConverter,
-            //                                                 internalNodeElementsLoader,
-            //                                                 nodePtrPairConverter,                                                             
-            //                                                 result,
-            //                                                 callback))
-            //                        {
-            //                            return false;
-            //                        }
-            //                    }
-            //                    return true;
-            //                }))
-            //            return false;
-            //    }
-
-            //    return true;
-            //}
-
-            private bool LoadParsedRecursive(Loaders loaders, MemoryReader mreader, Debugger debugger,
-                                             string nodePtrName,
-                                             ContainerLoader leafElementsLoader,
-                                             ContainerLoader internalNodeElementsLoader,
-                                             DrawableLoader indexableLoader,
-                                             string leafType,
-                                             string internalNodeType,
-                                             string indexableMember,
-                                             string indexableType,
-                                             out Geometry.Traits traits,
+            private bool LoadMemoryRecursive(MemoryReader mreader,
+                                             ulong nodeAddr,
+                                             MemoryReader.StructConverter<int> nodeVariantConverter,
+                                             MemoryReader.Converter<double> valueConverter,
+                                             MemoryReader.Converter<ulong> nodePtrPairConverter,
                                              ExpressionDrawer.DrawablesContainer result,
                                              LoadCallback callback)
             {
-                traits = null;
+                int[] which = new int[1];
+                if (!mreader.Read(nodeAddr, which, nodeVariantConverter))
+                    return false;
 
+                if (which[0] == 0) // leaf
+                {
+                    ulong leafElemsAddress = nodeAddr + (ulong)leafElemsDiff;
+                    int size = leafElementsLoader.LoadSize(mreader, leafElemsAddress);
+                    if (!leafElementsLoader.ForEachMemoryBlock(mreader,
+                            leafElemsAddress,
+                            size,
+                            valueConverter,
+                            delegate (double[] values)
+                            {
+                                if (indexableLoader is PointLoader)
+                                {
+                                    if (values.Length % 2 != 0)
+                                        return false;
+                                    for (int i = 0; i < values.Length / 2; ++i)
+                                        result.Add(new ExpressionDrawer.Point(values[i * 2],
+                                                                              values[i * 2 + 1]));
+                                }
+                                else if (indexableLoader is BoxLoader)
+                                {
+                                    if (values.Length % 4 != 0)
+                                        return false;
+                                    for (int i = 0; i < values.Length / 4; ++i)
+                                        result.Add(new ExpressionDrawer.Box(
+                                            new ExpressionDrawer.Point(values[i * 4],
+                                                                       values[i * 4 + 1]),
+                                            new ExpressionDrawer.Point(values[i * 4 + 2],
+                                                                       values[i * 4 + 3])));
+                                }
+                                else if (indexableLoader is SegmentLoader)
+                                {
+                                    if (values.Length % 4 != 0)
+                                        return false;
+                                    for (int i = 0; i < values.Length / 4; ++i)
+                                        result.Add(new ExpressionDrawer.Segment(
+                                            new ExpressionDrawer.Point(values[i * 4],
+                                                                       values[i * 4 + 1]),
+                                            new ExpressionDrawer.Point(values[i * 4 + 2],
+                                                                       values[i * 4 + 3])));
+                                }
+                                else
+                                    return false;
+                                return true;
+                            }))
+                        return false;
+                }
+                else if (which[0] == 1) // internal node
+                {
+                    ulong internalNodeElemsAddress = nodeAddr + (ulong)internalNodeElemsDiff;
+                    int size = leafElementsLoader.LoadSize(mreader, internalNodeElemsAddress);
+
+                    if (!internalNodeElementsLoader.ForEachMemoryBlock(mreader,
+                            internalNodeElemsAddress, size, nodePtrPairConverter,
+                            delegate (ulong[] ptrs)
+                            {
+                                foreach (ulong addr in ptrs)
+                                {
+                                    if (!LoadMemoryRecursive(mreader, addr,
+                                                             nodeVariantConverter,
+                                                             valueConverter,
+                                                             nodePtrPairConverter,
+                                                             result,
+                                                             callback))
+                                    {
+                                        return false;
+                                    }
+                                }
+                                return true;
+                            }))
+                        return false;
+                }
+                else
+                    return false;
+
+                return callback();
+            }
+            
+            private bool LoadParsedRecursive(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                             string nodePtrName,
+                                             ExpressionDrawer.DrawablesContainer result,
+                                             LoadCallback callback)
+            {
                 bool isLeaf;
                 if (!IsLeaf(debugger, nodePtrName, out isLeaf))
                     return false;
@@ -2000,11 +2075,11 @@ namespace GraphicalDebugging
                 }
                 string elementsName = NodeElements(nodePtrName, nodeType);
 
-                Geometry.Traits tr = null;
                 bool ok = elementsLoader.ForEachElement(debugger, elementsName, delegate (string elName)
                 {
                     if (isLeaf)
                     {
+                        Geometry.Traits tr = null;
                         ExpressionDrawer.IDrawable indexable = null;
 
                         indexableLoader.Load(loaders, mreader, debugger,
@@ -2022,9 +2097,7 @@ namespace GraphicalDebugging
                         string nextNodePtrName = elName + ".second";
                         if (!LoadParsedRecursive(loaders, mreader, debugger,
                                                  nextNodePtrName,
-                                                 leafElementsLoader, internalNodeElementsLoader, indexableLoader,
-                                                 leafType, internalNodeType, indexableMember, indexableType,
-                                                 out tr, result,
+                                                 result,
                                                  callback))
                             return false;
                     }
@@ -2032,15 +2105,13 @@ namespace GraphicalDebugging
                     return callback();
                 });
 
-                traits = tr;
-
                 return ok;
             }
 
-            DrawableLoader IndexableLoader(Loaders loaders, string name, string type,
-                                           out string valueType,
-                                           out string indexableMember,
-                                           out string indexableType)
+            static DrawableLoader IndexableLoader(Loaders loaders, string name, string type,
+                                                  out string valueType,
+                                                  out string indexableMember,
+                                                  out string indexableType)
             {
                 indexableMember = "";
                 indexableType = "";
@@ -2088,9 +2159,9 @@ namespace GraphicalDebugging
                 return indexableLoader;
             }
 
-            ContainerLoader ElementsLoader(Loaders loaders, Debugger debugger,
-                                           string nodePtrName, string castedNodeType,
-                                           out string elementsName, out string containerType)
+            static ContainerLoader ElementsLoader(Loaders loaders, Debugger debugger,
+                                                  string nodePtrName, string castedNodeType,
+                                                  out string elementsName, out string containerType)
             {
                 elementsName = NodeElements(nodePtrName, castedNodeType);
                 containerType = "";
@@ -2111,17 +2182,17 @@ namespace GraphicalDebugging
                 return ExpressionParser.LoadSize(debugger, name + ".m_members.values_count");
             }
 
-            string RootNodePtr(string name)
+            static string RootNodePtr(string name)
             {
                 return name + ".m_members.root";
             }
 
-            string NodeElements(string nodePtrName, string castedNodeType)
+            static string NodeElements(string nodePtrName, string castedNodeType)
             {
                 return "((" + castedNodeType + "*)" + nodePtrName + "->storage_.data_.buf)->elements";
             }
 
-            bool IsLeaf(Debugger debugger, string nodePtrName, out bool result)
+            static bool IsLeaf(Debugger debugger, string nodePtrName, out bool result)
             {
                 result = false;
 
@@ -2534,16 +2605,9 @@ namespace GraphicalDebugging
                 return null;
             }
 
-            public override MemoryReader.Converter<double> GetMemoryConverter(Loaders loaders,
-                                                                              MemoryReader mreader,
+            public override MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader,
                                                                               Debugger debugger, // TODO - remove
                                                                               string name, string type)
-            {
-                return GetMemoryConverter(mreader, debugger, name, type);
-            }
-
-            protected MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader, Debugger debugger,
-                                                                        string name, string type)
             {
                 string first = name + ".first";
                 string second = name + ".second";
@@ -3013,7 +3077,7 @@ namespace GraphicalDebugging
                     return;
 
                 List<double> list = new List<double>();
-                bool ok = loader.ForEachMemoryBlock(mreader, debugger, name, type, valueConverter,
+                bool ok = loader.ForEachMemoryBlock(mreader, debugger, name, type, 0, valueConverter,
                     delegate (double[] values)
                     {
                         foreach (double v in values)
@@ -3031,7 +3095,6 @@ namespace GraphicalDebugging
                                     LoadCallback callback)
             {                
                 result = null;
-                int size = loader.LoadSize(debugger, name);
                 List<double> values = new List<double>();
                 bool ok = loader.ForEachElement(debugger, name, delegate (string elName)
                 {

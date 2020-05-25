@@ -555,25 +555,25 @@ namespace GraphicalDebugging
         // bool  -> v != false
         public static bool IsOk<T1>(T1 v1)
         {
-            return !v1.Equals(default(T1));
+            return !EqualityComparer<T1>.Default.Equals(v1, default(T1));
         }
         public static bool IsOk<T1, T2>(T1 v1, T2 v2)
         {
-            return !v1.Equals(default(T1))
-                && !v2.Equals(default(T2));
+            return !EqualityComparer<T1>.Default.Equals(v1, default(T1))
+                && !EqualityComparer<T2>.Default.Equals(v2, default(T2));
         }
         public static bool IsOk<T1, T2, T3>(T1 v1, T2 v2, T3 v3)
         {
-            return !v1.Equals(default(T1))
-                && !v2.Equals(default(T2))
-                && !v3.Equals(default(T3));
+            return !EqualityComparer<T1>.Default.Equals(v1, default(T1))
+                && !EqualityComparer<T2>.Default.Equals(v2, default(T2))
+                && !EqualityComparer<T3>.Default.Equals(v3, default(T3));
         }
         public static bool IsOk<T1, T2, T3, T4>(T1 v1, T2 v2, T3 v3, T4 v4)
         {
-            return !v1.Equals(default(T1))
-                && !v2.Equals(default(T2))
-                && !v3.Equals(default(T3))
-                && !v4.Equals(default(T4));
+            return !EqualityComparer<T1>.Default.Equals(v1, default(T1))
+                && !EqualityComparer<T2>.Default.Equals(v2, default(T2))
+                && !EqualityComparer<T3>.Default.Equals(v3, default(T3))
+                && !EqualityComparer<T4>.Default.Equals(v4, default(T4));
         }
 
         public static bool Assign<T>(ref T v, T v2)

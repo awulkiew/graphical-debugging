@@ -19,8 +19,22 @@ namespace GraphicalDebugging
 {
     partial class ExpressionLoader
     {
+        // TODO: The size should probably be stored as ulong
+        class Size
+        {
+            public Size() { }
+            public Size(int value) { this.value = value; IsValid = true; }
+            public static implicit operator int(Size s) { return s.value; }
+
+            public bool IsValid { get; } = false;
+            private int value = 0;
+        }
+
         abstract class ContainerLoader : Loader
         {
+            abstract public void ElementInfo(string name, string type,
+                                             out string elemName, out string elemType);
+
             // TODO: This method should probably return ulong
             abstract public int LoadSize(Debugger debugger, string name);
 
@@ -31,14 +45,58 @@ namespace GraphicalDebugging
             // With ReadArray knowing which memory copying optimizations can be made based on ElementLoader's type
             // Or not
 
-            abstract public void ElementInfo(string name, string type,
-                                             out string elemName, out string elemType);
+            abstract public Size LoadSize(MemoryReader mreader, ulong address);
 
-            public delegate bool MemoryBlockPredicate(double[] values);
-            abstract public bool ForEachMemoryBlock(MemoryReader mreader, Debugger debugger,
-                                                    string name, string type,
-                                                    MemoryReader.Converter<double> elementConverter,
-                                                    MemoryBlockPredicate memoryBlockPredicate);
+            public delegate bool MemoryBlockPredicate<T>(T[] values);
+            abstract public bool ForEachMemoryBlock<T>(MemoryReader mreader, ulong address, int size,
+                                                       MemoryReader.Converter<T> elementConverter,
+                                                       MemoryBlockPredicate<T> memoryBlockPredicate)
+                where T : struct;
+
+            // TEMP helpers
+
+            virtual public int LoadSize(MemoryReader mreader, Debugger debugger,
+                                        string name, string type, ulong address)
+            {
+                if (mreader != null)
+                {
+                    if (address == 0)
+                        address = ExpressionParser.GetValueAddress(debugger, name);
+
+                    if (address != 0)
+                    {
+                        Size size = LoadSize(mreader, address);
+                        if (size.IsValid)
+                            return size;
+                    }
+                }
+
+                return LoadSize(debugger, name);
+            }
+
+            virtual public bool ForEachMemoryBlock<T>(MemoryReader mreader, Debugger debugger,
+                                                      string name, string type, ulong address,
+                                                      MemoryReader.Converter<T> elementConverter,
+                                                      MemoryBlockPredicate<T> memoryBlockPredicate)
+                where T : struct
+            {
+                if (mreader == null)
+                    return false;
+
+                if (address == 0)
+                {
+                    address = ExpressionParser.GetValueAddress(debugger, name);
+                    if (address == 0)
+                        return false;
+                }
+
+                Size s = LoadSize(mreader, address);
+                int size = s.IsValid
+                         ? s
+                         : LoadSize(debugger, name);
+
+                return ForEachMemoryBlock(mreader, address, size, elementConverter, memoryBlockPredicate);
+            }
         }
 
         abstract class RandomAccessContainer : ContainerLoader
@@ -69,35 +127,26 @@ namespace GraphicalDebugging
 
         abstract class ContiguousContainer : RandomAccessContainer
         {
-            public override bool ForEachMemoryBlock(MemoryReader mreader, Debugger debugger,
-                                                    string name, string type,
-                                                    MemoryReader.Converter<double> elementConverter,
-                                                    MemoryBlockPredicate memoryBlockPredicate)
+            abstract public ulong MemoryBegin(MemoryReader mreader, ulong address);
+
+            public override bool ForEachMemoryBlock<T>(MemoryReader mreader, ulong address, int sizeExt,
+                                                       MemoryReader.Converter<T> elementConverter,
+                                                       MemoryBlockPredicate<T> memoryBlockPredicate)
             {
-                string elemName, elemType;
-                ElementInfo(name, type, out elemName, out elemType);
-                ulong address = ExpressionParser.GetValueAddress(debugger, elemName);
-                if (address == 0)
-                    return false;
-                int size = LoadSize(debugger, name);
+                // TODO: This is second call of LoadSize
+                /*Size s = LoadSize(mreader, address);
+                int size = s.IsValid ? s : sizeExt;*/
+                int size = sizeExt;
                 if (size <= 0)
                     return true;
-                return ForEachMemoryBlock(mreader, address, size,
-                                          elementConverter, memoryBlockPredicate);
-            }
 
-            protected bool ForEachMemoryBlock(MemoryReader mreader,
-                                              ulong address, int elementsCount,
-                                              MemoryReader.Converter<double> elementConverter,
-                                              MemoryBlockPredicate memoryBlockPredicate)
-            {
-                if (address == 0 || elementConverter == null)
+                ulong beginAddress = MemoryBegin(mreader, address);
+                if (beginAddress == 0)
                     return false;
-                if (elementsCount <= 0)
-                    return true;
-                var blockConverter = new MemoryReader.ArrayConverter<double>(elementConverter, elementsCount);
-                double[] values = new double[blockConverter.ValueCount()];
-                if (! mreader.Read(address, values, blockConverter))
+
+                var blockConverter = new MemoryReader.ArrayConverter<T>(elementConverter, size);
+                T[] values = new T[blockConverter.ValueCount()];
+                if (! mreader.Read(beginAddress, values, blockConverter))
                     return false;
                 return memoryBlockPredicate(values);
             }
@@ -111,20 +160,26 @@ namespace GraphicalDebugging
                 public Kind Kind() { return ExpressionLoader.Kind.Container; }
                 public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
                 {
-                    string foo;
-                    int bar;
-                    return NameSizeFromType(type, out foo, out bar)
-                         ? new CArray()
-                         : null;
+                    string elemType;
+                    int size;
+                    if (!NameSizeFromType(type, out elemType, out size))
+                        return null;
+
+                    return new CArray(elemType, size);
                 }
+            }
+
+            private CArray(string elemType, int size)
+            {
+                this.elemType = elemType;
+                this.size = size;
             }
 
             public override void ElementInfo(string name, string type,
                                              out string elemName, out string elemType)
             {
                 elemName = RawNameFromName(name) + "[0]";
-                int size;
-                NameSizeFromType(type, out elemType, out size);
+                elemType = this.elemType;
             }
 
             public override string RandomAccessName(string name)
@@ -134,13 +189,17 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                Expression expr = debugger.GetExpression(name);
-                if (!expr.IsValidValue)
-                    return 0;
-                string dummy;
-                int size = 0;
-                NameSizeFromType(expr.Type, out dummy, out size);
                 return size;
+            }
+
+            public override ulong MemoryBegin(MemoryReader mreader, ulong address)
+            {
+                return address;
+            }
+
+            public override Size LoadSize(MemoryReader mreader, ulong address)
+            {
+                return new Size(size);
             }
 
             // T[N]
@@ -176,6 +235,9 @@ namespace GraphicalDebugging
                 }
                 return result;
             }
+
+            string elemType;
+            int size;
         }
 
         class StdArray : ContiguousContainer
@@ -186,26 +248,54 @@ namespace GraphicalDebugging
                 public Kind Kind() { return ExpressionLoader.Kind.Container; }
                 public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
                 {
-                    return id == "std::array"
-                         ? new StdArray()
-                         : null;
+                    if (id != "std::array")
+                        return null;
+                    // TODO: 1 call to Util.Tparam
+                    string elemType = Util.Tparam(type, 0);
+                    int size = Math.Max(int.Parse(Util.Tparam(type, 1)), 0);
+
+                    long elemOffset = ExpressionParser.GetAddressDifference(debugger, name, name + "._Elems[0]");
+                    if (elemOffset < 0)
+                        return null;
+
+                    return new StdArray(elemType, elemOffset, size);
                 }
+            }
+
+            protected StdArray(string elemType, long elemOffset, int size)
+            {
+                this.elemType = elemType;
+                this.elemOffset = elemOffset;
+                this.size = size;
             }
 
             public override void ElementInfo(string name, string type,
                                              out string elemName, out string elemType)
             {
                 elemName = name + "._Elems[0]";
-                elemType = Util.Tparam(type, 0);
+                elemType = this.elemType;
             }
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                Expression expr = debugger.GetExpression(name);
-                return expr.IsValidValue
-                     ? Math.Max(int.Parse(Util.Tparams(expr.Type)[1]), 0)
+                return size;
+            }
+
+            public override ulong MemoryBegin(MemoryReader mreader, ulong address)
+            {
+                return address != 0
+                     ? address + (ulong)elemOffset
                      : 0;
             }
+
+            public override Size LoadSize(MemoryReader mreader, ulong address)
+            {
+                return new Size(size);
+            }
+
+            protected string elemType;
+            protected long elemOffset;
+            protected int size;
         }
 
         class BoostArray : StdArray
@@ -216,18 +306,150 @@ namespace GraphicalDebugging
                 public Kind Kind() { return ExpressionLoader.Kind.Container; }
                 public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
                 {
-                    return id == "boost::array"
-                         ? new BoostArray()
-                         : null;
+                    if (id != "boost::array")
+                        return null;
+                    // TODO: 1 call to Util.Tparam
+                    string elemType = Util.Tparam(type, 0);
+                    int size = Math.Max(int.Parse(Util.Tparam(type, 1)), 0);
+
+                    long elemOffset = ExpressionParser.GetAddressDifference(debugger, name, name + ".elems[0]");
+                    if (elemOffset < 0)
+                        return null;
+
+                    return new BoostArray(elemType, elemOffset, size);
                 }
             }
+
+            private BoostArray(string elemType, long elemOffset, int size)
+                : base(elemType, elemOffset, size)
+            { }
 
             public override void ElementInfo(string name, string type,
                                              out string elemName, out string elemType)
             {
                 elemName = name + ".elems[0]";
-                elemType = Util.Tparam(type, 0);
+                elemType = base.elemType;
             }
+        }
+
+        // TODO: Instead of loading one member at a time the whole object could be loaded at once
+        //   and all members extracted afterwards from the memory block
+
+        class SizeMember
+        {
+            // sizeMember has to start with '.', e.g. ".m_size"
+            public SizeMember(Debugger debugger, string name, string sizeMember)
+            {
+                this.sizeMember = sizeMember;
+                this.sizeType = ExpressionParser.GetValueType(debugger, name + sizeMember);
+                this.sizeSizeOf = ExpressionParser.GetTypeSizeof(debugger, sizeType);
+                long sizeOffset = ExpressionParser.GetAddressDifference(debugger, name, name + sizeMember);
+                this.sizeOffset = (ulong)sizeOffset;
+                this.memoryOk = !Util.Empty(sizeType)
+                             && !ExpressionParser.IsInvalidSize(sizeSizeOf)
+                             && !ExpressionParser.IsInvalidAddressDifference(sizeOffset)
+                             && sizeOffset >= 0;
+            }
+
+            public int LoadParsed(Debugger debugger, string name)
+            {
+                return ExpressionParser.LoadSize(debugger, name + sizeMember);
+            }
+
+            // TODO: Return -1 or int.Min on failure
+            // TODO: Use ulong instead of int?
+            public Size LoadMemory(MemoryReader mreader, ulong address)
+            {
+                if (!memoryOk)
+                    return new Size();
+                var converter = mreader.GetValueConverter<ulong>(sizeType, sizeSizeOf);
+                if (converter == null)
+                    return new Size();
+                ulong[] size = new ulong[1];
+                return mreader.Read(address + sizeOffset, size, converter)
+                     ? new Size((int)size[0])
+                     : new Size();
+            }
+
+            string sizeMember;
+            string sizeType;
+            int sizeSizeOf;
+            ulong sizeOffset;
+            bool memoryOk;
+        }
+
+        class PointerMember
+        {
+            public PointerMember(Debugger debugger, string name, string ptrMember)
+            {
+                this.ptrMember = ptrMember;
+                this.ptrMemberType = ExpressionParser.GetValueType(debugger, name + ptrMember);
+                this.ptrMemberSizeOf = ExpressionParser.GetTypeSizeof(debugger, ptrMemberType);
+                long ptrMemberOffset = ExpressionParser.GetAddressDifference(debugger, name, name + ptrMember);
+                this.ptrMemberOffset = (ulong)ptrMemberOffset;
+
+                this.memoryOk = !Util.Empty(ptrMemberType)
+                             && !ExpressionParser.IsInvalidSize(ptrMemberSizeOf)
+                             && !ExpressionParser.IsInvalidAddressDifference(ptrMemberOffset)
+                             && ptrMemberOffset >= 0;
+            }
+
+            public ulong LoadParsed(Debugger debugger, string name)
+            {
+                return ExpressionParser.GetPointer(debugger, '(' + name + ptrMember + ')');
+            }
+
+            public ulong LoadMemory(MemoryReader mreader, ulong address)
+            {
+                if (!memoryOk)
+                    return 0;
+                var converter = mreader.GetPointerConverter(ptrMemberType, ptrMemberSizeOf);
+                if (converter == null)
+                    return 0;
+                ulong[] addr = new ulong[1];
+                return mreader.Read(address + ptrMemberOffset, addr, converter)
+                     ? addr[0]
+                     : 0;
+            }
+
+            string ptrMember;
+            string ptrMemberType;
+            ulong ptrMemberOffset;
+            int ptrMemberSizeOf;
+            bool memoryOk;
+        }
+
+        class PointerMembersDistance
+        {
+            public PointerMembersDistance(Debugger debugger, string name,
+                                          string firstMember, string lastMember)
+            {
+                this.firstMember = firstMember;
+                this.lastMember = lastMember;
+                this.first = new PointerMember(debugger, name, firstMember);
+                this.last = new PointerMember(debugger, name , lastMember);
+            }
+
+            public int LoadParsed(Debugger debugger, string name)
+            {
+                return ExpressionParser.LoadSize(debugger, '(' + name + lastMember + '-' + name + firstMember + ')');
+            }
+
+            // TODO: Return ulong?
+            // TODO: Return -1 or int.Min on failure
+            public Size LoadMemory(MemoryReader mreader, ulong address)
+            {
+                ulong first = this.first.LoadMemory(mreader, address);
+                ulong last = this.last.LoadMemory(mreader, address);
+                return first != 0 && last != 0 && first <= last
+                     ? new Size((int)(last - first))
+                     : new Size();
+            }
+
+            string firstMember;
+            string lastMember;
+            PointerMember first;
+            PointerMember last;
         }
 
         class BoostContainerVector : ContiguousContainer
@@ -238,23 +460,47 @@ namespace GraphicalDebugging
                 public Kind Kind() { return ExpressionLoader.Kind.Container; }
                 public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
                 {
-                    return id == "boost::container::vector"
-                         ? new BoostContainerVector()
-                         : null;
+                    if (id != "boost::container::vector")
+                        return null;
+
+                    return new BoostContainerVector(Util.Tparam(type, 0),
+                                                    new PointerMember(debugger, name, ".m_holder.m_start"),
+                                                    new SizeMember(debugger, name, ".m_holder.m_size"));
                 }
+            }
+
+            protected BoostContainerVector(string elemType, PointerMember start, SizeMember size)
+            {
+                this.elemType = elemType;
+                this.start = start;
+                this.size = size;
             }
 
             public override void ElementInfo(string name, string type,
                                              out string elemName, out string elemType)
             {
                 elemName = name + ".m_holder.m_start[0]";
-                elemType = Util.Tparam(type, 0);
+                elemType = this.elemType;
             }
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSize(debugger, name + ".m_holder.m_size");
+                return size.LoadParsed(debugger, name);
             }
+
+            public override ulong MemoryBegin(MemoryReader mreader, ulong address)
+            {
+                return start.LoadMemory(mreader, address);
+            }
+
+            public override Size LoadSize(MemoryReader mreader, ulong address)
+            {
+                return size.LoadMemory(mreader, address);
+            }
+
+            protected string elemType;
+            protected PointerMember start;
+            protected SizeMember size;
         }
 
         class BoostContainerStaticVector : BoostContainerVector
@@ -265,16 +511,23 @@ namespace GraphicalDebugging
                 public Kind Kind() { return ExpressionLoader.Kind.Container; }
                 public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
                 {
-                    return id == "boost::container::static_vector"
-                         ? new BoostContainerStaticVector()
-                         : null;
+                    if (id != "boost::container::static_vector")
+                        return null;
+
+                    return new BoostContainerStaticVector(Util.Tparam(type, 0),
+                                                          new PointerMember(debugger, name, ".m_holder.storage.data"),
+                                                          new SizeMember(debugger, name, ".m_holder.m_size"));
                 }
             }
+
+            private BoostContainerStaticVector(string elemType, PointerMember start, SizeMember size)
+                : base(elemType, start, size)
+            { }
 
             public override void ElementInfo(string name, string type,
                                              out string elemName, out string elemType)
             {
-                elemType = Util.Tparam(type, 0);
+                elemType = base.elemType;
                 // TODO: The type-cast is needed here!!!
                 // Although it's possible it will be ok since this is used only to pass a value starting the memory block
                 // into the memory reader and type is not really important
@@ -293,24 +546,54 @@ namespace GraphicalDebugging
                 public Kind Kind() { return ExpressionLoader.Kind.Container; }
                 public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
                 {
-                    return id == "boost::geometry::index::detail::varray"
-                         ? new BGVarray()
-                         : null;
+                    if (id != "boost::geometry::index::detail::varray")
+                        return null;
+
+                    string elemType = Util.Tparam(type, 0);
+
+                    long elemOffset = ExpressionParser.GetAddressDifference(debugger, name, name + ".m_storage.data_.buf[0]");
+                    if (elemOffset < 0)
+                        return null;
+
+                    return new BGVarray(elemType, elemOffset, new SizeMember(debugger, name, ".m_size"));
                 }
+            }
+
+            private BGVarray(string elemType, long elemOffset, SizeMember sizeMember)
+            {
+                this.elemType = elemType;
+                this.elemOffset = elemOffset;
+                this.sizeMember = sizeMember;
             }
 
             public override void ElementInfo(string name, string type,
                                              out string elemName, out string elemType)
             {
-                elemType = Util.Tparam(type, 0);
+                elemType = this.elemType;
                 // TODO: Check if type-cast is needed here
                 elemName = "((" + elemType + "*)" + name + ".m_storage.data_.buf)[0]";
             }
 
+            public override Size LoadSize(MemoryReader mreader, ulong address)
+            {
+                return sizeMember.LoadMemory(mreader, address);
+            }
+
+            public override ulong MemoryBegin(MemoryReader mreader, ulong address)
+            {
+                return address != 0
+                     ? address + (ulong)elemOffset
+                     : 0;
+            }
+
             public override int LoadSize(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSize(debugger, name + ".m_size");
+                return sizeMember.LoadParsed(debugger, name);
             }
+
+            string elemType;
+            long elemOffset;
+            SizeMember sizeMember;
         }
 
         class BoostCircularBuffer : RandomAccessContainer
@@ -322,14 +605,33 @@ namespace GraphicalDebugging
                 public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
                 {
                     return id == "boost::circular_buffer"
-                         ? new BoostCircularBuffer()
+                         ? new BoostCircularBuffer(new SizeMember(debugger, name, ".m_size"),
+                                                   new PointerMember(debugger, name, ".m_first"),
+                                                   new PointerMember(debugger, name, ".m_buff"),
+                                                   new PointerMembersDistance(debugger, name, ".m_first", ".m_end"))
                          : null;
                 }
             }
 
+            private BoostCircularBuffer(SizeMember sizeMember,
+                                        PointerMember firstMember,
+                                        PointerMember buffMember,
+                                        PointerMembersDistance firstEndDistance)
+            {
+                this.sizeMember = sizeMember;
+                this.firstMember = firstMember;
+                this.buffMember = buffMember;
+                this.firstEndDistance = firstEndDistance;
+            }
+
             public override int LoadSize(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSize(debugger, name + ".m_size");
+                return sizeMember.LoadParsed(debugger, name);
+            }
+
+            public override Size LoadSize(MemoryReader mreader, ulong address)
+            {
+                return sizeMember.LoadMemory(mreader, address);
             }
 
             public override void ElementInfo(string name, string type,
@@ -341,8 +643,10 @@ namespace GraphicalDebugging
 
             public override bool ForEachElement(Debugger debugger, string name, ElementPredicate elementPredicate)
             {
+                int size = sizeMember.LoadParsed(debugger, name);
+                int size_fe = firstEndDistance.LoadParsed(debugger, name);
                 int size1, size2;
-                LoadSizes(debugger, name, out size1, out size2);
+                CalculateSizes(size, size_fe, out size1, out size2);
                 
                 for (int i = 0; i < size1; ++i)
                 {
@@ -361,25 +665,28 @@ namespace GraphicalDebugging
                 return true;
             }
 
-            public override bool ForEachMemoryBlock(MemoryReader mreader, Debugger debugger,
-                                                    string name, string type,
-                                                    MemoryReader.Converter<double> elementConverter,
-                                                    MemoryBlockPredicate memoryBlockPredicate)
+            public override bool ForEachMemoryBlock<T>(MemoryReader mreader, ulong address, int sizeExt,
+                                                       MemoryReader.Converter<T> elementConverter,
+                                                       MemoryBlockPredicate<T> memoryBlockPredicate)
             {
-                if (elementConverter == null)
-                    return false;
+                Size s = this.sizeMember.LoadMemory(mreader, address);
+                int size = s.IsValid ? s : sizeExt;
+                if (size <= 0)
+                    return true;
 
+                int size_fe = firstEndDistance.LoadMemory(mreader, address);
+                // TODO: Check sizes at this point?
                 int size1, size2;
-                LoadSizes(debugger, name, out size1, out size2);
+                CalculateSizes(size, size_fe, out size1, out size2);
                 if (size1 <= 0)
                     return false;
 
                 {
-                    ulong firstAddress = ExpressionParser.GetValueAddress(debugger, "(*(" + name + ".m_first))");
+                    ulong firstAddress = firstMember.LoadMemory(mreader, address);
                     if (firstAddress == 0)
                         return false;
-                    var blockConverter = new MemoryReader.ArrayConverter<double>(elementConverter, size1);
-                    double[] values = new double[blockConverter.ValueCount()];
+                    var blockConverter = new MemoryReader.ArrayConverter<T>(elementConverter, size1);
+                    T[] values = new T[blockConverter.ValueCount()];
                     if (!mreader.Read(firstAddress, values, blockConverter))
                         return false;
                     if (!memoryBlockPredicate(values))
@@ -388,11 +695,11 @@ namespace GraphicalDebugging
 
                 if (size2 > 0)
                 {
-                    ulong buffAddress = ExpressionParser.GetValueAddress(debugger, "(*(" + name + ".m_buff))");
+                    ulong buffAddress = buffMember.LoadMemory(mreader, address);
                     if (buffAddress == 0)
                         return false;
-                    var blockConverter = new MemoryReader.ArrayConverter<double>(elementConverter, size2);
-                    double[] values = new double[blockConverter.ValueCount()];
+                    var blockConverter = new MemoryReader.ArrayConverter<T>(elementConverter, size2);
+                    T[] values = new T[blockConverter.ValueCount()];
                     if (!mreader.Read(buffAddress, values, blockConverter))
                         return false;
                     if (!memoryBlockPredicate(values))
@@ -402,11 +709,8 @@ namespace GraphicalDebugging
                 return true;
             }
 
-            private void LoadSizes(Debugger debugger, string name, out int size1, out int size2)
+            private void CalculateSizes(int size, int size_fe, out int size1, out int size2)
             {
-                int size = LoadSize(debugger, name);
-                int size_fe = ExpressionParser.LoadSize(debugger, "(" + name + ".m_end - " + name + ".m_first)");
-
                 size1 = size;
                 size2 = 0;
                 if (size > size_fe)
@@ -415,6 +719,11 @@ namespace GraphicalDebugging
                     size2 = size - size_fe;
                 }
             }
+
+            SizeMember sizeMember;
+            PointerMember firstMember;
+            PointerMember buffMember;
+            PointerMembersDistance firstEndDistance;
         }
 
         class StdVector : ContiguousContainer
@@ -431,13 +740,17 @@ namespace GraphicalDebugging
                 }
             }
 
-            public StdVector(Debugger debugger, string name)
+            private StdVector(Debugger debugger, string name)
             {
                 string name12 = name + "._Myfirst";
                 //string name14_15 = name + "._Mypair._Myval2._Myfirst";
 
                 if (debugger.GetExpression(name12).IsValidValue)
                     version = Version.Msvc12;
+
+                this.firstLastDist = version == Version.Msvc12
+                    ? new PointerMembersDistance(debugger, name, "._Myfirst", "._Mylast")
+                    : new PointerMembersDistance(debugger, name, "._Mypair._Myval2._Myfirst", "._Mypair._Myval2._Mylast");
             }
 
             public override string RandomAccessElementName(string rawName, int i)
@@ -454,7 +767,18 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSize(debugger, SizeStr(name));
+                return firstLastDist.LoadParsed(debugger, name);
+            }
+
+            public override ulong MemoryBegin(MemoryReader mreader, ulong address)
+            {
+                // TODO
+                return 0;
+            }
+
+            public override Size LoadSize(MemoryReader mreader, ulong address)
+            {
+                return firstLastDist.LoadMemory(mreader, address);
             }
 
             private string FirstStr(string name)
@@ -464,15 +788,10 @@ namespace GraphicalDebugging
                      : name + "._Mypair._Myval2._Myfirst";
             }
 
-            private string SizeStr(string name)
-            {
-                return version == Version.Msvc12
-                     ? name + "._Mylast-" + name + "._Myfirst"
-                     : name + "._Mypair._Myval2._Mylast-" + name + "._Mypair._Myval2._Myfirst";
-            }
-
             private enum Version { Unknown, Msvc12, Msvc14_15 };
             private Version version = Version.Msvc14_15;
+
+            PointerMembersDistance firstLastDist;
         }
 
         class StdDeque : RandomAccessContainer
@@ -496,6 +815,27 @@ namespace GraphicalDebugging
 
                 if (debugger.GetExpression(name12).IsValidValue)
                     version = Version.Msvc12;
+
+                // Block size
+                if (!ExpressionParser.TryLoadInt(debugger, "((int)" + name + "._EEN_DS)", out dequeSize))
+                    dequeSize = 0;
+
+                if (version == Version.Msvc12)
+                {
+                    mapInfo = new TypeInfo(debugger, "(*(" + name + "._Map" + "))");
+                    mapSize = new SizeMember(debugger, name, "._Mapsize");
+                    map = new PointerMember(debugger, name, "._Map");
+                    offset = new SizeMember(debugger, name, "._Myoff");
+                    size = new SizeMember(debugger, name, "._Mysize");
+                }
+                else
+                {
+                    mapInfo = new TypeInfo(debugger, "(*(" + name + "._Mypair._Myval2._Map" + "))");
+                    mapSize = new SizeMember(debugger, name, "._Mypair._Myval2._Mapsize");
+                    map = new PointerMember(debugger, name, "._Mypair._Myval2._Map");
+                    offset = new SizeMember(debugger, name, "._Mypair._Myval2._Myoff");
+                    size = new SizeMember(debugger, name, "._Mypair._Myval2._Mysize");
+                }
             }
 
             public override void ElementInfo(string name, string type,
@@ -505,37 +845,37 @@ namespace GraphicalDebugging
                 elemName = ElementStr(name, 0);
             }
 
-            public override bool ForEachMemoryBlock(MemoryReader mreader, Debugger debugger,
-                                                    string name, string type,
-                                                    MemoryReader.Converter<double> elementConverter,
-                                                    MemoryBlockPredicate memoryBlockPredicate)
+            public override bool ForEachMemoryBlock<T>(MemoryReader mreader, ulong address, int sizeExt,
+                                                    MemoryReader.Converter<T> elementConverter,
+                                                    MemoryBlockPredicate<T> memoryBlockPredicate)
             {
-                int size = LoadSize(debugger, name);
-                if (size == 0)
+                Size s = this.size.LoadMemory(mreader, address);
+                int size = s.IsValid ? s : sizeExt;
+                if (size <= 0)
                     return true;
 
-                // Map size
-                int mapSize = 0;
-                if (! ExpressionParser.TryLoadInt(debugger, MapSizeStr(name), out mapSize))
+                int mapSize = this.mapSize.LoadMemory(mreader, address);
+                if (mapSize == 0)
+                    return true; // false?
+
+                ulong mapAddress = this.map.LoadMemory(mreader, address);
+                if (mapAddress == 0)
                     return false;
 
-                VariableInfo mapInfo = new VariableInfo(debugger, MapStr(name) + "[0]");
-                if (! mapInfo.IsValid)
+                if (!mapInfo.IsValid)
                     return false;
 
                 // Map - array of pointers                
                 ulong[] pointers = new ulong[mapSize];
-                if (! mreader.ReadPointerArray(mapInfo.Address, mapInfo.Type, mapInfo.Size, pointers))
+                if (! mreader.ReadPointerArray(mapAddress, mapInfo.Type, mapInfo.Size, pointers))
                     return false;
 
-                // Block size
-                int dequeSize = 0;
-                if (! ExpressionParser.TryLoadInt(debugger, "((int)" + name + "._EEN_DS)", out dequeSize))
+                if (this.dequeSize == 0)
                     return false;
 
                 // Offset
-                int offset = 0;
-                if (! ExpressionParser.TryLoadInt(debugger, OffsetStr(name), out offset))
+                int offset = this.offset.LoadMemory(mreader, address);
+                if (offset < 0)
                     return false;
                     
                 // Initial indexes
@@ -551,8 +891,8 @@ namespace GraphicalDebugging
                 for (int i = 0; i < blocksCount; ++i)
                 {
                     int blockIndex = (firstBlock + i) % mapSize;
-                    ulong address = pointers[blockIndex];
-                    if (address != 0) // just in case
+                    ulong ptr = pointers[blockIndex];
+                    if (ptr != 0) // just in case
                     {
                         int elemIndex = (i == 0)
                                         ? firstElement
@@ -563,15 +903,15 @@ namespace GraphicalDebugging
                             
                         if (blockSize > 0) // just in case
                         {
-                            MemoryReader.ArrayConverter<double>
-                                arrayConverter = new MemoryReader.ArrayConverter<double>(elementConverter, blockSize);
+                            MemoryReader.ArrayConverter<T>
+                                arrayConverter = new MemoryReader.ArrayConverter<T>(elementConverter, blockSize);
                             if (arrayConverter == null)
                                 return false;
 
                             int valuesCount = elementConverter.ValueCount() * blockSize;
-                            ulong firstAddress = address + (ulong)(elemIndex * elementConverter.ByteSize());
+                            ulong firstAddress = ptr + (ulong)(elemIndex * elementConverter.ByteSize());
 
-                            double[] values = new double[valuesCount];
+                            T[] values = new T[valuesCount];
                             if (! mreader.Read(firstAddress, values, arrayConverter))
                                 return false;
 
@@ -588,28 +928,12 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSize(debugger, SizeStr(name));
+                return size.LoadParsed(debugger, name);
             }
 
-            private string MapSizeStr(string name)
+            public override Size LoadSize(MemoryReader mreader, ulong address)
             {
-                return version == Version.Msvc12
-                     ? name + "._Mapsize"
-                     : name + "._Mypair._Myval2._Mapsize";
-            }
-
-            private string MapStr(string name)
-            {
-                return version == Version.Msvc12
-                     ? name + "._Map"
-                     : name + "._Mypair._Myval2._Map";
-            }
-
-            private string OffsetStr(string name)
-            {
-                return version == Version.Msvc12
-                     ? name + "._Myoff"
-                     : name + "._Mypair._Myval2._Myoff";
+                return size.LoadMemory(mreader, address);
             }
 
             private string ElementStr(string name, int i)
@@ -619,12 +943,12 @@ namespace GraphicalDebugging
                      : name + "._Mypair._Myval2._Map[((" + i + " + " + name + "._Mypair._Myval2._Myoff) / " + name + "._EEN_DS) % " + name + "._Mypair._Myval2._Mapsize][(" + i + " + " + name + "._Mypair._Myval2._Myoff) % " + name + "._EEN_DS]";
             }
 
-            private string SizeStr(string name)
-            {
-                return version == Version.Msvc12
-                     ? name + "._Mysize"
-                     : name + "._Mypair._Myval2._Mysize";
-            }
+            TypeInfo mapInfo;
+            SizeMember mapSize;
+            PointerMember map;
+            SizeMember offset;
+            SizeMember size;
+            int dequeSize;
 
             private enum Version { Unknown, Msvc12, Msvc14_15 };
             private Version version = Version.Msvc14_15;
@@ -651,6 +975,28 @@ namespace GraphicalDebugging
 
                 if (debugger.GetExpression(name12).IsValidValue)
                     version = Version.Msvc12;
+
+                if (version == Version.Msvc12)
+                {
+                    size = new SizeMember(debugger, name, "._Mysize");
+                    head = new PointerMember(debugger, name, "._Myhead");
+                }
+                else
+                {
+                    size = new SizeMember(debugger, name, "._Mypair._Myval2._Mysize");
+                    head = new PointerMember(debugger, name, "._Mypair._Myval2._Myhead");
+                }
+
+                string headStr = HeadStr(name);
+                string headNodeName = "(*(" + headStr + "->_Next))";
+                next = new PointerMember(debugger, headNodeName, "._Next");
+                nextDiff = ExpressionParser.GetAddressDifference(debugger,
+                                                                 headNodeName,
+                                                                 headStr + "->_Next->_Next");
+                valDiff = ExpressionParser.GetAddressDifference(debugger,
+                                                                headNodeName,
+                                                                headStr + "->_Next->_Myval");
+
             }
 
             public override void ElementInfo(string name, string type,
@@ -660,56 +1006,36 @@ namespace GraphicalDebugging
                 elemName = HeadStr(name) + "->_Next->_Myval";
             }
 
-            public override bool ForEachMemoryBlock(MemoryReader mreader, Debugger debugger,
-                                                    string name, string type,
-                                                    MemoryReader.Converter<double> elementConverter,
-                                                    MemoryBlockPredicate memoryBlockPredicate)
+            public override bool ForEachMemoryBlock<T>(MemoryReader mreader, ulong address, int sizeExt,
+                                                       MemoryReader.Converter<T> elementConverter,
+                                                       MemoryBlockPredicate<T> memoryBlockPredicate)
             {
-                int size = LoadSize(debugger, name);
+                Size s = this.size.LoadMemory(mreader, address);
+                int size = s.IsValid ? s : sizeExt;
                 if (size <= 0)
                     return true;
 
-                string nextName = HeadStr(name) + "->_Next";
-                string nextNextName = HeadStr(name) + "->_Next->_Next";
-                string nextValName = HeadStr(name) + "->_Next->_Myval";
-
-                TypeInfo nextInfo = new TypeInfo(debugger, nextName);
-                if (! nextInfo.IsValid)
+                ulong headAddr = this.head.LoadMemory(mreader, address);
+                if (headAddr == 0)
                     return false;
 
-                MemoryReader.ValueConverter<ulong> nextConverter = mreader.GetPointerConverter(nextInfo.Type, nextInfo.Size);
-                if (nextConverter == null)
-                    return false;
-
-                long nextDiff = ExpressionParser.GetAddressDifference(debugger, "(*" + nextName + ")", nextNextName);
-                long valDiff = ExpressionParser.GetAddressDifference(debugger, "(*" + nextName + ")", nextValName);
                 if (ExpressionParser.IsInvalidAddressDifference(nextDiff)
                  || ExpressionParser.IsInvalidAddressDifference(valDiff)
-                 || nextDiff < 0 || valDiff < 0)
+                 || nextDiff < 0
+                 || valDiff < 0)
                     return false;
 
-                ulong[] nextTmp = new ulong[1];
                 ulong next = 0;
-
                 for (int i = 0; i < size; ++i)
                 {
-                    ulong address = 0;
+                    ulong ptr = next == 0
+                              ? headAddr
+                              : next + (ulong)nextDiff;
+                    next = this.next.LoadMemory(mreader, ptr);
                     if (next == 0)
-                    {
-                        address = ExpressionParser.GetValueAddress(debugger, nextName);
-                        if (address == 0)
-                            return false;
-                    }
-                    else
-                    {
-                        address = next + (ulong)nextDiff;
-                    }
-
-                    if (!mreader.Read(address, nextTmp, nextConverter))
                         return false;
-                    next = nextTmp[0];
 
-                    double[] values = new double[elementConverter.ValueCount()];
+                    T[] values = new T[elementConverter.ValueCount()];
                     if (!mreader.Read(next + (ulong)valDiff, values, elementConverter))
                         return false;
 
@@ -722,7 +1048,12 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSize(debugger, SizeStr(name));
+                return size.LoadParsed(debugger, name);
+            }
+
+            public override Size LoadSize(MemoryReader mreader, ulong address)
+            {
+                return size.LoadMemory(mreader, address);
             }
 
             public override bool ForEachElement(Debugger debugger, string name, ElementPredicate elementPredicate)
@@ -753,6 +1084,12 @@ namespace GraphicalDebugging
                      : name + "._Mypair._Myval2._Mysize";
             }
 
+            SizeMember size;
+            PointerMember head;
+            PointerMember next;
+            long nextDiff;
+            long valDiff;
+
             private enum Version { Unknown, Msvc12, Msvc14_15 };
             private Version version = Version.Msvc14_15;
         }
@@ -780,6 +1117,35 @@ namespace GraphicalDebugging
 
                 if (debugger.GetExpression(name12).IsValidValue)
                     version = Version.Msvc12;
+
+                string headStr;
+                if (version == Version.Msvc12)
+                {
+                    headStr = name + "._Myhead";
+                    size = new SizeMember(debugger, name, "._Mysize");
+                    head = new PointerMember(debugger, name, "._Myhead");
+                }
+                else
+                {
+                    headStr = name + "._Mypair._Myval2._Myval2._Myhead";
+                    size = new SizeMember(debugger, name, "._Mypair._Myval2._Myval2._Mysize");
+                    head = new PointerMember(debugger, name, "._Mypair._Myval2._Myval2._Myhead");
+                }
+
+                string nodeName = headStr + "->_Parent";
+                string leftName = nodeName + "->_Left";
+                string rightName = nodeName + "->_Right";
+                string isNilName = nodeName + "->_Isnil";
+                string valName = nodeName + "->_Myval";
+
+                nodePtrInfo = new TypeInfo(debugger, nodeName);
+
+                parentDiff = ExpressionParser.GetAddressDifference(debugger, "(*" + headStr + ")", nodeName);
+                leftDiff = ExpressionParser.GetAddressDifference(debugger, "(*" + nodeName + ")", leftName);
+                rightDiff = ExpressionParser.GetAddressDifference(debugger, "(*" + nodeName + ")", rightName);
+                isNilDiff = ExpressionParser.GetAddressDifference(debugger, "(*" + nodeName + ")", isNilName);
+                valDiff = ExpressionParser.GetAddressDifference(debugger, "(*" + nodeName + ")", valName);
+                
             }
 
             public override void ElementInfo(string name, string type,
@@ -789,62 +1155,53 @@ namespace GraphicalDebugging
                 elemName = HeadStr(name) + "->_Myval";
             }
 
-            public override bool ForEachMemoryBlock(MemoryReader mreader, Debugger debugger,
-                                                    string name, string type,
-                                                    MemoryReader.Converter<double> elementConverter,
-                                                    MemoryBlockPredicate memoryBlockPredicate)
+            public override bool ForEachMemoryBlock<T>(MemoryReader mreader, ulong address, int sizeExt,
+                                                       MemoryReader.Converter<T> elementConverter,
+                                                       MemoryBlockPredicate<T> memoryBlockPredicate)
             {
-                int size = LoadSize(debugger, name);
+                Size s = this.size.LoadMemory(mreader, address);
+                int size = s.IsValid ? s : sizeExt;
                 if (size <= 0)
                     return true;
 
-                string headName = HeadStr(name);
-                string leftName = headName + "->_Left";
-                string rightName = headName + "->_Right";
-                string isNilName = headName + "->_Isnil";
-                string valName = headName + "->_Myval";
-
-                TypeInfo headInfo = new TypeInfo(debugger, headName);
-                if (! headInfo.IsValid)
+                if (!nodePtrInfo.IsValid)
                     return false;
 
                 MemoryReader.ValueConverter<byte, byte> boolConverter = new MemoryReader.ValueConverter<byte, byte>();
-                MemoryReader.ValueConverter<ulong> ptrConverter = mreader.GetPointerConverter(headInfo.Type, headInfo.Size);
+                MemoryReader.ValueConverter<ulong> ptrConverter = mreader.GetPointerConverter(nodePtrInfo.Type, nodePtrInfo.Size);
                 if (ptrConverter == null)
                     return false;
 
-                long leftDiff = ExpressionParser.GetAddressDifference(debugger, "(*" + headName + ")", leftName);
-                long rightDiff = ExpressionParser.GetAddressDifference(debugger, "(*" + headName + ")", rightName);
-                long isNilDiff = ExpressionParser.GetAddressDifference(debugger, "(*" + headName + ")", isNilName);
-                long valDiff = ExpressionParser.GetAddressDifference(debugger, "(*" + headName + ")", valName);
-                if (ExpressionParser.IsInvalidAddressDifference(leftDiff)
+                if (ExpressionParser.IsInvalidAddressDifference(parentDiff)
+                 || ExpressionParser.IsInvalidAddressDifference(leftDiff)
                  || ExpressionParser.IsInvalidAddressDifference(rightDiff)
                  || ExpressionParser.IsInvalidAddressDifference(isNilDiff)
                  || ExpressionParser.IsInvalidAddressDifference(valDiff)
-                 || leftDiff < 0 || rightDiff < 0 || isNilDiff < 0 || valDiff < 0)
+                 || parentDiff < 0 || leftDiff < 0 || rightDiff < 0 || isNilDiff < 0 || valDiff < 0)
                     return false;
 
-                ulong address = ExpressionParser.GetValueAddress(debugger, headName);
-                if (address == 0)
+                ulong headAddr = this.head.LoadMemory(mreader, address);
+                if (headAddr == 0)
                     return false;
 
-                ulong[] headAddr = new ulong[1];
-                if (!mreader.Read(address, headAddr, ptrConverter))
+                ulong[] nodeAddr = new ulong[1];
+                if (!mreader.Read(headAddr + (ulong)parentDiff, nodeAddr, ptrConverter))
                     return false;
 
                 return ForEachMemoryBlockRecursive(mreader, elementConverter, memoryBlockPredicate,
                                                    boolConverter, ptrConverter,
-                                                   headAddr[0], leftDiff, rightDiff, isNilDiff, valDiff);
+                                                   nodeAddr[0], leftDiff, rightDiff, isNilDiff, valDiff);
             }
 
-            private bool ForEachMemoryBlockRecursive(MemoryReader mreader,
-                                                     MemoryReader.Converter<double> elementConverter,
-                                                     MemoryBlockPredicate memoryBlockPredicate,
-                                                     MemoryReader.ValueConverter<byte, byte> boolConverter,
-                                                     MemoryReader.ValueConverter<ulong> ptrConverter,
-                                                     ulong nodeAddr,
-                                                     long leftDiff, long rightDiff,
-                                                     long isNilDiff, long valDiff)
+            private bool ForEachMemoryBlockRecursive<T>(MemoryReader mreader,
+                                                        MemoryReader.Converter<T> elementConverter,
+                                                        MemoryBlockPredicate<T> memoryBlockPredicate,
+                                                        MemoryReader.ValueConverter<byte, byte> boolConverter,
+                                                        MemoryReader.ValueConverter<ulong> ptrConverter,
+                                                        ulong nodeAddr,
+                                                        long leftDiff, long rightDiff,
+                                                        long isNilDiff, long valDiff)
+                where T : struct
             {
                 byte[] isNil = new byte[1];
                 if (!mreader.Read(nodeAddr + (ulong)isNilDiff, isNil, boolConverter))
@@ -853,7 +1210,7 @@ namespace GraphicalDebugging
                 {
                     ulong[] leftAddr = new ulong[1];
                     ulong[] rightAddr = new ulong[1];
-                    double[] values = new double[elementConverter.ValueCount()];
+                    T[] values = new T[elementConverter.ValueCount()];
 
                     return mreader.Read(nodeAddr + (ulong)leftDiff, leftAddr, ptrConverter)
                         && mreader.Read(nodeAddr + (ulong)rightDiff, rightAddr, ptrConverter)
@@ -872,7 +1229,12 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSize(debugger, SizeStr(name));
+                return size.LoadParsed(debugger, name);
+            }
+
+            public override Size LoadSize(MemoryReader mreader, ulong address)
+            {
+                return size.LoadMemory(mreader, address);
             }
 
             public override bool ForEachElement(Debugger debugger, string name, ElementPredicate elementPredicate)
@@ -911,6 +1273,15 @@ namespace GraphicalDebugging
                      : name + "._Mypair._Myval2._Myval2._Mysize";
             }
 
+            SizeMember size;
+            PointerMember head;
+            TypeInfo nodePtrInfo;
+            long parentDiff;
+            long leftDiff;
+            long rightDiff;
+            long isNilDiff;
+            long valDiff;
+
             private enum Version { Unknown, Msvc12, Msvc14_15 };
             private Version version = Version.Msvc14_15;
         }
@@ -939,6 +1310,17 @@ namespace GraphicalDebugging
             public override int LoadSize(Debugger debugger, string name)
             {
                 return ExpressionParser.LoadSize(debugger, name + ".Length");
+            }
+
+            public override ulong MemoryBegin(MemoryReader mreader, ulong address)
+            {
+                // TODO
+                return 0;
+            }
+
+            public override Size LoadSize(MemoryReader mreader, ulong address)
+            {
+                return new Size();
             }
 
             static public bool IsCSArrayType(string type)
@@ -974,6 +1356,17 @@ namespace GraphicalDebugging
                 return ExpressionParser.LoadSize(debugger, name + ".Count");
             }
 
+            public override ulong MemoryBegin(MemoryReader mreader, ulong address)
+            {
+                // TODO
+                return 0;
+            }
+
+            public override Size LoadSize(MemoryReader mreader, ulong address)
+            {
+                return new Size();
+            }
+
             public override string RandomAccessElementName(string rawName, int i)
             {
                 return rawName + "._items[" + i + "]";
@@ -986,10 +1379,10 @@ namespace GraphicalDebugging
                 elemName = name + "._items[0]";
             }
 
-            public override bool ForEachMemoryBlock(MemoryReader mreader, Debugger debugger,
-                                                    string name, string type,
-                                                    MemoryReader.Converter<double> elementConverter,
-                                                    MemoryBlockPredicate memoryBlockPredicate)
+            public override bool ForEachMemoryBlock<T>(MemoryReader mreader, Debugger debugger,
+                                                       string name, string type, ulong address,
+                                                       MemoryReader.Converter<T> elementConverter,
+                                                       MemoryBlockPredicate<T> memoryBlockPredicate)
             {
                 Expression expr = debugger.GetExpression(name + "._items");
                 if (!expr.IsValidValue || !CSArray.IsCSArrayType(expr.Type))
@@ -998,7 +1391,7 @@ namespace GraphicalDebugging
                 }
 
                 return base.ForEachMemoryBlock(mreader, debugger,
-                                               name, type,
+                                               name, type, address,
                                                elementConverter, memoryBlockPredicate);
             }
         }
@@ -1040,6 +1433,19 @@ namespace GraphicalDebugging
                 return loader.LoadSize(debugger, DerivedName(derivedType, name));
             }
 
+            public override ulong MemoryBegin(MemoryReader mreader, ulong address)
+            {
+                ContiguousContainer l = loader as ContiguousContainer;
+                return l != null
+                     ? l.MemoryBegin(mreader, address)
+                     : 0;
+            }
+
+            public override Size LoadSize(MemoryReader mreader, ulong address)
+            {
+                return loader.LoadSize(mreader, address);
+            }
+
             public override string RandomAccessElementName(string rawName, int i)
             {
                 // TODO: derived name?
@@ -1058,10 +1464,10 @@ namespace GraphicalDebugging
                                    out elemName, out elemType);
             }
 
-            public override bool ForEachMemoryBlock(MemoryReader mreader, Debugger debugger,
-                                                    string name, string type,
-                                                    MemoryReader.Converter<double> elementConverter,
-                                                    MemoryBlockPredicate memoryBlockPredicate)
+            public override bool ForEachMemoryBlock<T>(MemoryReader mreader, Debugger debugger,
+                                                       string name, string type, ulong address,
+                                                       MemoryReader.Converter<T> elementConverter,
+                                                       MemoryBlockPredicate<T> memoryBlockPredicate)
             {
                 // TODO: What to do with other kinds of containers?
                 ContiguousContainer l = loader as ContiguousContainer;
@@ -1069,6 +1475,8 @@ namespace GraphicalDebugging
                      ? l.ForEachMemoryBlock(mreader, debugger,
                                             // TODO: is the name and type ok below?
                                             DerivedName(derivedType, name), derivedType,
+                                            // TODO: what about the address?
+                                            0,
                                             elementConverter, memoryBlockPredicate)
                      : false;
             }
@@ -1108,10 +1516,15 @@ namespace GraphicalDebugging
                 return ExpressionParser.LoadSize(debugger, name + ".count");
             }
 
-            public override bool ForEachMemoryBlock(MemoryReader mreader, Debugger debugger,
-                                                    string name, string type,
-                                                    MemoryReader.Converter<double> elementConverter,
-                                                    MemoryBlockPredicate memoryBlockPredicate)
+            public override Size LoadSize(MemoryReader mreader, ulong address)
+            {
+                return new Size();
+            }
+
+            public override bool ForEachMemoryBlock<T>(MemoryReader mreader, Debugger debugger,
+                                                       string name, string type, ulong dummyAddress,
+                                                       MemoryReader.Converter<T> elementConverter,
+                                                       MemoryBlockPredicate<T> memoryBlockPredicate)
             {
                 int size = LoadSize(debugger, name);
                 if (size <= 0)
@@ -1159,7 +1572,7 @@ namespace GraphicalDebugging
 
                 for (int i = 0; i < size; ++i)
                 {
-                    double[] values = new double[elementConverter.ValueCount()];
+                    T[] values = new T[elementConverter.ValueCount()];
                     if (!mreader.Read(address + (ulong)valDiff, values, elementConverter))
                         return false;
 
@@ -1172,6 +1585,14 @@ namespace GraphicalDebugging
                     address = nextTmp[0];
                 }
                 return true;
+            }
+
+            public override bool ForEachMemoryBlock<T>(MemoryReader mreader, ulong address, int size,
+                                                       MemoryReader.Converter<T> elementConverter,
+                                                       MemoryBlockPredicate<T> memoryBlockPredicate)
+            {
+                // TODO
+                return false;
             }
 
             public override bool ForEachElement(Debugger debugger, string name, ElementPredicate elementPredicate)
