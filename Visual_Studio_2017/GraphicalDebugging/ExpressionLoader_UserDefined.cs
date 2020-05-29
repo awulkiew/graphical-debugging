@@ -447,6 +447,322 @@ namespace GraphicalDebugging
             int sizeY;
         }
 
+        class UserBoxPoints : BoxLoader
+        {
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            {
+                public LoaderCreator(ITypeMatcher typeMatcher,
+                                     ClassScopeExpression exprMin,
+                                     ClassScopeExpression exprMax)
+                {
+                    this.typeMatcher = typeMatcher;
+                    this.exprMin = exprMin;
+                    this.exprMax = exprMax;
+                }
+
+                public bool IsUserDefined() { return true; }
+                public Kind Kind() { return ExpressionLoader.Kind.Point; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    if (!typeMatcher.MatchType(type, id))
+                        return null;
+
+                    exprMin.Reinitialize(debugger, name, type);
+                    exprMax.Reinitialize(debugger, name, type);
+
+                    UserBoxPoints res = new UserBoxPoints(exprMin.DeepCopy(),
+                                                          exprMax.DeepCopy());
+
+                    res.sizeOf = ExpressionParser.GetTypeSizeof(debugger, type);
+                    if (ExpressionParser.IsInvalidSize(res.sizeOf))
+                        //res.sizeOf = 0;
+                        return null;
+
+                    string nameMin = res.exprMin.GetString(name);
+                    string nameMax = res.exprMax.GetString(name);
+                    res.typeMin = ExpressionParser.GetValueType(debugger, nameMin);
+                    res.typeMax = ExpressionParser.GetValueType(debugger, nameMax);
+                    if (ExpressionParser.IsInvalidType(res.typeMin, res.typeMax))
+                        //res.sizeOf = 0;
+                        return null;
+
+                    res.loaderMin = loaders.FindByType(ExpressionLoader.Kind.Point, nameMin, res.typeMin) as PointLoader;
+                    res.loaderMax = loaders.FindByType(ExpressionLoader.Kind.Point, nameMax, res.typeMax) as PointLoader;
+                    if (res.loaderMin == null || res.loaderMax == null)
+                        return null;
+
+                    res.traits = res.loaderMin.LoadTraits(res.typeMin);
+                    if (res.traits == null)
+                        return null;
+
+                    res.offsetMin = ExpressionParser.GetAddressDifference(debugger, name, nameMin);
+                    res.offsetMax = ExpressionParser.GetAddressDifference(debugger, name, nameMax);
+                    // offsetX + sizeX > sizeOf
+                    // offsetY + sizeY > sizeOf
+                    if (ExpressionParser.IsInvalidOffset(res.sizeOf, res.offsetMin, res.offsetMax))
+                        //res.sizeOf = 0;
+                        return null;
+
+                    return res;
+                }
+
+                ITypeMatcher typeMatcher;
+                ClassScopeExpression exprMin;
+                ClassScopeExpression exprMax;
+            }
+
+            private UserBoxPoints(ClassScopeExpression exprMin,
+                                  ClassScopeExpression exprMax)
+            {
+                this.exprMin = exprMin;
+                this.exprMax = exprMax;
+
+                this.typeMin = null;
+                this.typeMax = null;
+                this.sizeOf = 0;
+            }
+
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
+                                      out Geometry.Traits traits,
+                                      out ExpressionDrawer.Box result,
+                                      LoadCallback callback) // dummy callback
+            {
+                traits = null;
+                result = null;
+
+                string nameMin = exprMin.GetString(name);
+                string nameMax = exprMax.GetString(name);
+
+                Geometry.Point fp = loaderMin.LoadPoint(mreader, debugger, nameMin, typeMin);
+                Geometry.Point sp = loaderMax.LoadPoint(mreader, debugger, nameMax, typeMax);
+
+                if (Util.IsOk(fp, sp))
+                {
+                    result = new ExpressionDrawer.Box(fp, sp);
+                    traits = this.traits;
+                }
+            }
+
+            public override MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader,
+                                                                              Debugger debugger, // TODO - remove
+                                                                              string name, string type)
+            {
+                string nameMin = exprMin.GetString(name);
+                string nameMax = exprMax.GetString(name);
+
+                MemoryReader.Converter<double> minConverter = loaderMin.GetMemoryConverter(mreader, debugger, nameMin, typeMin);
+                MemoryReader.Converter<double> maxConverter = loaderMax.GetMemoryConverter(mreader, debugger, nameMax, typeMax);
+                if (minConverter == null || maxConverter == null)
+                    return null;
+
+                return new MemoryReader.StructConverter<double>(sizeOf,
+                            new MemoryReader.Member<double>(minConverter, (int)offsetMin),
+                            new MemoryReader.Member<double>(maxConverter, (int)offsetMax));
+            }
+
+            ClassScopeExpression exprMin;
+            ClassScopeExpression exprMax;
+            Geometry.Traits traits;
+            PointLoader loaderMin;
+            PointLoader loaderMax;
+            // For memory loading:
+            string typeMin;
+            string typeMax;
+            long offsetMin;
+            long offsetMax;
+            int sizeOf;
+        }
+
+        class UserBoxCoords : BoxLoader
+        {
+            public enum CoordsX { LR, LW, WR };
+            public enum CoordsY { BT, BH, HT };
+
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            {
+                public LoaderCreator(ITypeMatcher typeMatcher,
+                                     ClassScopeExpression exprX1, // left  left  right
+                                     ClassScopeExpression exprX2, // right width width
+                                     CoordsX coordsX,
+                                     ClassScopeExpression exprY1, // bottom bottom top
+                                     ClassScopeExpression exprY2, // top    height height
+                                     CoordsY coordsY,
+                                     Geometry.CoordinateSystem cs,
+                                     Geometry.Unit unit)
+                {
+                    this.typeMatcher = typeMatcher;
+                    this.exprX1 = exprX1;
+                    this.exprX2 = exprX2;
+                    this.exprY1 = exprY1;
+                    this.exprY2 = exprY2;
+                    this.coordsX = coordsX;
+                    this.coordsY = coordsY;
+                    this.traits = new Geometry.Traits(2, cs, unit);
+                    
+                }
+
+                public bool IsUserDefined() { return true; }
+                public Kind Kind() { return ExpressionLoader.Kind.Point; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    if (!typeMatcher.MatchType(type, id))
+                        return null;
+
+                    exprX1.Reinitialize(debugger, name, type);
+                    exprX2.Reinitialize(debugger, name, type);
+                    exprY1.Reinitialize(debugger, name, type);
+                    exprY2.Reinitialize(debugger, name, type);
+
+                    UserBoxCoords res = new UserBoxCoords(exprX1.DeepCopy(),
+                                                          exprX2.DeepCopy(),
+                                                          coordsX,
+                                                          exprY1.DeepCopy(),
+                                                          exprY2.DeepCopy(),
+                                                          coordsY,
+                                                          traits);
+
+                    res.sizeOf = ExpressionParser.GetTypeSizeof(debugger, type);
+                    if (ExpressionParser.IsInvalidSize(res.sizeOf))
+                        //res.sizeOf = 0;
+                        return null;
+
+                    string nameX1 = res.exprX1.GetString(name);
+                    string nameX2 = res.exprX2.GetString(name);
+                    string nameY1 = res.exprY1.GetString(name);
+                    string nameY2 = res.exprY2.GetString(name);
+
+                    res.infoX1 = new MemberInfo(debugger, name, nameX1);
+                    res.infoX2 = new MemberInfo(debugger, name, nameX2);
+                    res.infoY1 = new MemberInfo(debugger, name, nameY1);
+                    res.infoY2 = new MemberInfo(debugger, name, nameY2);
+                    if (!res.infoX1.IsValid || !res.infoX2.IsValid
+                        || !res.infoY1.IsValid || !res.infoY2.IsValid)
+                        //res.sizeOf = 0;
+                        return null;
+
+                    return res;
+                }
+
+                ITypeMatcher typeMatcher;
+                ClassScopeExpression exprX1;
+                ClassScopeExpression exprX2;
+                ClassScopeExpression exprY1;
+                ClassScopeExpression exprY2;
+                CoordsX coordsX;
+                CoordsY coordsY;
+                Geometry.Traits traits;
+            }
+
+            private UserBoxCoords(ClassScopeExpression exprX1,
+                                  ClassScopeExpression exprX2,
+                                  CoordsX coordsX,
+                                  ClassScopeExpression exprY1,
+                                  ClassScopeExpression exprY2,
+                                  CoordsY coordsY,
+                                  Geometry.Traits traits)
+            {
+                this.exprX1 = exprX1;
+                this.exprX2 = exprX2;
+                this.exprY1 = exprY1;
+                this.exprY2 = exprY2;
+                this.coordsX = coordsX;
+                this.coordsY = coordsY;
+                this.traits = traits;
+
+                this.sizeOf = 0;
+            }
+
+            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
+                                      out Geometry.Traits traits,
+                                      out ExpressionDrawer.Box result,
+                                      LoadCallback callback) // dummy callback
+            {
+                traits = null;
+                result = null;
+
+                string nameX1 = exprX1.GetString(name);
+                string nameX2 = exprX2.GetString(name);
+                string nameY1 = exprY1.GetString(name);
+                string nameY2 = exprY2.GetString(name);
+
+                double x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+                bool ok = ExpressionParser.TryLoadDouble(debugger, nameX1, out x1)
+                       && ExpressionParser.TryLoadDouble(debugger, nameX2, out x2)
+                       && ExpressionParser.TryLoadDouble(debugger, nameY1, out y1)
+                       && ExpressionParser.TryLoadDouble(debugger, nameY2, out y2);
+                if (!ok)
+                    return;
+
+                ExpressionDrawer.Point minP = new ExpressionDrawer.Point(x1, y1); // LB
+                ExpressionDrawer.Point maxP = new ExpressionDrawer.Point(x2, y2); // RT
+                if (coordsX == CoordsX.LW)
+                    maxP[0] = x1 + x2; // r = l + w
+                else if (coordsX == CoordsX.WR)
+                    minP[0] = x2 - x1; // l = r - w
+                if (coordsY == CoordsY.BH)
+                    maxP[1] = y1 + y2; // t = b + h
+                else if (coordsY == CoordsY.HT)
+                    minP[1] = y2 - y1; // b = t - h
+
+                result = new ExpressionDrawer.Box(minP, maxP);
+                traits = this.traits;
+            }
+
+            public override MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader,
+                                                                              Debugger debugger, // TODO - remove
+                                                                              string name, string type)
+            {
+                if (sizeOf == 0)
+                    return null;
+
+                MemoryReader.ValueConverter<double> converterX1 = mreader.GetNumericConverter(infoX1.Type, infoX1.Size);
+                MemoryReader.ValueConverter<double> converterX2 = mreader.GetNumericConverter(infoX2.Type, infoX2.Size);
+                MemoryReader.ValueConverter<double> converterY1 = mreader.GetNumericConverter(infoY1.Type, infoY1.Size);
+                MemoryReader.ValueConverter<double> converterY2 = mreader.GetNumericConverter(infoY2.Type, infoY2.Size);
+                
+                if (converterX1 == null || converterX2 == null || converterY1 == null || converterY2 == null)
+                    return null;
+
+                return new MemoryReader.TransformingConverter<double>(
+                            new MemoryReader.StructConverter<double>(
+                                sizeOf,
+                                new MemoryReader.Member<double>(converterX1, (int)infoX1.Offset),
+                                new MemoryReader.Member<double>(converterY1, (int)infoY1.Offset),
+                                new MemoryReader.Member<double>(converterX2, (int)infoX2.Offset),
+                                new MemoryReader.Member<double>(converterY2, (int)infoY2.Offset)),
+                            delegate(double[] values)
+                            {
+                                if (values.Length != 4)
+                                    return;
+                                // convert to LBRT
+                                if (coordsX == CoordsX.LW) // LXWX
+                                    values[2] = values[0] + values[2]; // r = l + w
+                                else if (coordsX == CoordsX.WR) // WXRX
+                                    values[0] = values[2] - values[0]; // l = r - w
+                                if (coordsY == CoordsY.BH) // XBXH
+                                    values[3] = values[1] + values[3]; // t = b + h
+                                else if (coordsY == CoordsY.HT) // XHXT
+                                    values[1] = values[3] - values[1]; // b = t - h
+                            });
+            }
+
+            ClassScopeExpression exprX1;
+            ClassScopeExpression exprX2;
+            ClassScopeExpression exprY1;
+            ClassScopeExpression exprY2;
+            CoordsX coordsX;
+            CoordsY coordsY;
+            Geometry.Traits traits;
+            // For memory loading:
+            MemberInfo infoX1;
+            MemberInfo infoX2;
+            MemberInfo infoY1;
+            MemberInfo infoY2;
+            int sizeOf;
+        }
+
         class UserContainerLoaders<ElementLoaderT>
         {
             public ContainerLoader ContainerLoader;
@@ -1216,6 +1532,99 @@ namespace GraphicalDebugging
                                     ClassScopeExpression exprY = new ClassScopeExpression(elY.InnerText);
                                     loaders.Add(new UserPoint.LoaderCreator(
                                                     typeMatcher, exprX, exprY, cs, unit));
+                                }
+                            }
+                        }
+                        else if (elEntry.Name == "Box")
+                        {
+                            var elPoints = Util.GetXmlElementByTagName(elEntry, "Points");
+                            var elCoordinates = Util.GetXmlElementByTagName(elEntry, "Coordinates");
+                            if (elPoints != null)
+                            {
+                                var elMin = Util.GetXmlElementByTagName(elPoints, "Min");
+                                var elMax = Util.GetXmlElementByTagName(elPoints, "Max");
+                                if (elMin != null && elMax != null)
+                                {
+                                    ClassScopeExpression exprMin = new ClassScopeExpression(elMin.InnerText);
+                                    ClassScopeExpression exprMax = new ClassScopeExpression(elMax.InnerText);
+                                    loaders.Add(new UserBoxPoints.LoaderCreator(
+                                                    typeMatcher, exprMin, exprMax));
+                                }
+                            }
+                            else if (elCoordinates != null)
+                            {
+                                Geometry.CoordinateSystem cs = Geometry.CoordinateSystem.Cartesian;
+                                Geometry.Unit unit = Geometry.Unit.None;
+                                GetCSAndUnit(elEntry, out cs, out unit);
+
+                                var elLeft = Util.GetXmlElementByTagName(elCoordinates, "MinX");
+                                var elBottom = Util.GetXmlElementByTagName(elCoordinates, "MinY");
+                                var elRight = Util.GetXmlElementByTagName(elCoordinates, "MaxX");
+                                var elTop = Util.GetXmlElementByTagName(elCoordinates, "MaxY");
+                                if (elLeft == null)
+                                    elLeft = Util.GetXmlElementByTagName(elCoordinates, "Left");
+                                if (elBottom == null)
+                                    elBottom = Util.GetXmlElementByTagName(elCoordinates, "Bottom");
+                                if (elRight == null)
+                                    elRight = Util.GetXmlElementByTagName(elCoordinates, "Right");
+                                if (elTop == null)
+                                    elTop = Util.GetXmlElementByTagName(elCoordinates, "Top");
+                                var elWidth = Util.GetXmlElementByTagName(elCoordinates, "Width");
+                                var elHeight = Util.GetXmlElementByTagName(elCoordinates, "Height");
+                                string exprX1 = null;
+                                string exprX2 = null;
+                                string exprY1 = null;
+                                string exprY2 = null;
+                                UserBoxCoords.CoordsX coordsX = UserBoxCoords.CoordsX.LR;
+                                UserBoxCoords.CoordsY coordsY = UserBoxCoords.CoordsY.BT;
+                                if (elLeft != null && elRight != null)
+                                {
+                                    exprX1 = elLeft.InnerText;
+                                    exprX2 = elRight.InnerText;
+                                    coordsX = UserBoxCoords.CoordsX.LR;
+                                }
+                                else if (elLeft != null && elWidth != null)
+                                {
+                                    exprX1 = elLeft.InnerText;
+                                    exprX2 = elWidth.InnerText;
+                                    coordsX = UserBoxCoords.CoordsX.LW;
+                                }
+                                else if (elRight != null && elWidth != null)
+                                {
+                                    exprX1 = elWidth.InnerText;
+                                    exprX2 = elRight.InnerText;
+                                    coordsX = UserBoxCoords.CoordsX.WR;
+                                }
+                                if (elBottom != null && elTop != null)
+                                {
+                                    exprY1 = elBottom.InnerText;
+                                    exprY2 = elTop.InnerText;
+                                    coordsY = UserBoxCoords.CoordsY.BT;
+                                }
+                                else if (elBottom != null && elHeight != null)
+                                {
+                                    exprY1 = elBottom.InnerText;
+                                    exprY2 = elHeight.InnerText;
+                                    coordsY = UserBoxCoords.CoordsY.BH;
+                                }
+                                else if (elTop != null && elHeight != null)
+                                {
+                                    exprY1 = elHeight.InnerText;
+                                    exprY2 = elTop.InnerText;
+                                    coordsY = UserBoxCoords.CoordsY.HT;
+                                }
+                                if (exprX1 != null && exprX2 != null && exprY1 != null && exprY2 != null)
+                                {
+                                    loaders.Add(new UserBoxCoords.LoaderCreator(
+                                                    typeMatcher,
+                                                    new ClassScopeExpression(exprX1),
+                                                    new ClassScopeExpression(exprX2),
+                                                    coordsX,
+                                                    new ClassScopeExpression(exprY1),
+                                                    new ClassScopeExpression(exprY2),
+                                                    coordsY,
+                                                    cs,
+                                                    unit));
                                 }
                             }
                         }

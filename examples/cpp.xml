@@ -5,6 +5,7 @@
   Supported elements:
     - Container
     - Point
+    - Box
     - Linestring
     - Ring (polygon without holes)
     - Polygon (polygon with holes)
@@ -33,6 +34,8 @@
   
     The CoordinateSystem and Unit can be set in Point element and are
     "inherited" by all other geometries using this Point type.
+    They can also be set in Box element since it is possible to define
+    it using coordinates instead of points.
   
     By default the CoordinateSystem is Cartesian and Unit is None. The default
     Unit for Spherical and Geographic coordinate systems is Degree.
@@ -81,6 +84,49 @@
       <Y>y</Y>
     </Coordinates>
   </Point>
+
+  <!--
+  struct MyBox
+  {
+      MyPoint mi, ma;
+  };
+  -->
+  <Box Type="MyBox" Id="MyBox">
+    <Points>
+      <Min>mi</Min>
+      <Max>ma</Max>
+    </Points>
+  </Box>
+
+  <!--
+  struct MyBox1
+  {
+      double left, bottom, right, top;
+  };
+  -->
+  <Box Type="MyBox1" Id="MyBox1" CoordinateSystem="Cartesian" Unit="None">
+    <Coordinates>
+      <MinX>left</MinX> <!-- or <Left> -->
+      <MinY>bottom</MinY> <!-- or <Bottom> -->
+      <MaxX>right</MaxX> <!-- or <Right> -->
+      <MaxY>top</MaxY> <!-- or <Top> -->
+    </Coordinates>
+  </Box>
+
+  <!--
+  struct MyBox2
+  {
+      double left, bottom, width, height;
+  };
+  -->
+  <Box Type="MyBox2" Id="MyBox2" CoordinateSystem="Cartesian" Unit="None">
+    <Coordinates>
+      <MinX>left</MinX> <!-- or <Left> -->
+      <MinY>bottom</MinY> <!-- or <Bottom> -->
+      <Width>width</Width>
+      <Height>height</Height>
+    </Coordinates>
+  </Box>
 
   <!--
   struct MyLinestring

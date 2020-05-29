@@ -157,6 +157,20 @@ namespace GraphicalDebugging
                 initialize(byteSize);
             }
 
+            public StructConverter(int byteSize, Member<ValueType> member1, Member<ValueType> member2,
+                                   Member<ValueType> member3)
+            {
+                this.members = new[] { member1, member2, member3 };
+                initialize(byteSize);
+            }
+
+            public StructConverter(int byteSize, Member<ValueType> member1, Member<ValueType> member2,
+                                   Member<ValueType> member3, Member<ValueType> member4)
+            {
+                this.members = new[] { member1, member2, member3, member4 };
+                initialize(byteSize);
+            }
+
             public override int ValueCount()
             {
                 return internalValueCount;
@@ -196,6 +210,38 @@ namespace GraphicalDebugging
             int byteSize = 0;
 
             int internalValueCount = 0;
+        }
+
+        public class TransformingConverter<ValueType> : Converter<ValueType>
+            where ValueType : struct
+        {
+            public delegate void Transformer(ValueType[] values);
+
+            public TransformingConverter(Converter<ValueType> baseConverter,
+                                         Transformer transformer)
+            {
+                this.baseConverter = baseConverter;
+                this.transformer = transformer;
+            }
+
+            public override int ValueCount()
+            {
+                return baseConverter.ValueCount();
+            }
+
+            public override int ByteSize()
+            {
+                return baseConverter.ByteSize();
+            }
+
+            public override void Copy(byte[] bytes, int bytesOffset, ValueType[] result, int resultOffset)
+            {
+                baseConverter.Copy(bytes, bytesOffset, result, resultOffset);
+                transformer(result);
+            }
+
+            Converter<ValueType> baseConverter;
+            Transformer transformer;
         }
 
         private bool IsSignedIntegralType(string valType)

@@ -849,6 +849,8 @@ namespace GraphicalDebugging
                         return null;
 
                     string m_min_corner = name + ".m_min_corner";
+                    string m_max_corner = name + ".m_max_corner";
+
                     string pointType = tparams[0];
                     PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
                                                                  m_min_corner,
@@ -856,14 +858,26 @@ namespace GraphicalDebugging
                     if (pointLoader == null)
                         return null;
 
-                    return new BGBox(pointLoader, pointType);
+                    int sizeOf = ExpressionParser.GetTypeSizeof(debugger, type);
+                    if (ExpressionParser.IsInvalidSize(sizeOf))
+                        return null;
+
+                    long minDiff = ExpressionParser.GetAddressDifference(debugger, name, m_min_corner);
+                    long maxDiff = ExpressionParser.GetAddressDifference(debugger, name, m_max_corner);
+                    if (ExpressionParser.IsInvalidOffset(sizeOf, minDiff, maxDiff))
+                        return null;
+
+                    return new BGBox(pointLoader, pointType, sizeOf, minDiff, maxDiff);
                 }
             }
 
-            private BGBox(PointLoader pointLoader, string pointType)
+            private BGBox(PointLoader pointLoader, string pointType, int sizeOf, long minDiff, long maxDiff)
             {
                 this.pointLoader = pointLoader;
                 this.pointType = pointType;
+                this.sizeOf = sizeOf;
+                this.minDiff = minDiff;
+                this.maxDiff = maxDiff;
             }
 
             public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
@@ -898,26 +912,18 @@ namespace GraphicalDebugging
                 string m_min_corner = name + ".m_min_corner";
                 string m_max_corner = name + ".m_max_corner";
 
-                // TODO: All of the values here could be calculated once in Create
-
                 MemoryReader.Converter<double> pointConverter = pointLoader.GetMemoryConverter(mreader, debugger, m_min_corner, pointType);
 
-                int size = (new ExpressionParser(debugger)).GetValueSizeof(name);
-                if (ExpressionParser.IsInvalidSize(size))
-                    return null;
-
-                long minDiff = ExpressionParser.GetAddressDifference(debugger, name, m_min_corner);
-                long maxDiff = ExpressionParser.GetAddressDifference(debugger, name, m_max_corner);
-                if (ExpressionParser.IsInvalidOffset(size, minDiff, maxDiff))
-                    return null;
-
-                return new MemoryReader.StructConverter<double>(size,
+                return new MemoryReader.StructConverter<double>(sizeOf,
                             new MemoryReader.Member<double>(pointConverter, (int)minDiff),
                             new MemoryReader.Member<double>(pointConverter, (int)maxDiff));
             }
 
             PointLoader pointLoader;
             string pointType;
+            long minDiff;
+            long maxDiff;
+            int sizeOf;
         }
 
         class BGSegment : SegmentLoader

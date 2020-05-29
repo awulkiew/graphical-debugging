@@ -41,6 +41,58 @@
   <!--
   namespace WpfApp1
   {
+    struct MyBox
+    {
+      MyPoint mi, ma;
+    }
+  }
+  -->
+  <Box Id="WpfApp1.MyBox">
+    <Points>
+      <Min>mi</Min>
+      <Max>ma</Max>
+    </Points>
+  </Box>
+
+  <!--
+  namespace WpfApp1
+  {
+    struct MyBox1
+    {
+      double left, bottom, right, top;
+    }
+  }
+  -->
+  <Box Id="WpfApp1.MyBox1" CoordinateSystem="Cartesian" Unit="None">
+    <Coordinates>
+      <MinX>left</MinX> <!-- or <Left> -->
+      <MinY>bottom</MinY> <!-- or <Bottom> -->
+      <MaxX>right</MaxX> <!-- or <Right> -->
+      <MaxY>top</MaxY> <!-- or <Top> -->
+    </Coordinates>
+  </Box>
+
+  <!--
+  namespace WpfApp1
+  {
+    struct MyBox2
+    {
+      double left, bottom, width, height;
+    }
+  }
+  -->
+  <Box Id="WpfApp1.MyBox2" CoordinateSystem="Cartesian" Unit="None">
+    <Coordinates>
+      <MinX>left</MinX> <!-- or <Left> -->
+      <MinY>bottom</MinY> <!-- or <Bottom> -->
+      <Width>width</Width>
+      <Height>height</Height>
+    </Coordinates>
+  </Box>
+
+  <!--
+  namespace WpfApp1
+  {
     class MyLinestring
     {
       MyPoint[] points;

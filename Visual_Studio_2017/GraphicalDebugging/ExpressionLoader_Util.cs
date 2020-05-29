@@ -63,7 +63,7 @@ namespace GraphicalDebugging
                 if (Type == null)
                     return;
                 Size = ExpressionParser.GetTypeSizeof(debugger, Type);
-                if (Size == 0)
+                if (Size <= 0)
                     return;
                 IsValid = true;
             }
@@ -71,6 +71,21 @@ namespace GraphicalDebugging
             public string Type = null;
             public int Size = 0;
             public bool IsValid = false;
+        }
+
+        class MemberInfo : TypeInfo
+        {
+            public MemberInfo(Debugger debugger, string baseName, string memberName)
+                : base(debugger, memberName)
+            {
+                if (!IsValid)
+                    return;
+                Offset = ExpressionParser.GetAddressDifference(debugger, baseName, memberName);
+                if (ExpressionParser.IsInvalidAddressDifference(Offset))
+                    IsValid = false;
+            }
+
+            public long Offset;
         }
 
         class VariableInfo : TypeInfo
