@@ -525,23 +525,19 @@ namespace GraphicalDebugging
                 return loaderMin.GetTraits(mreader, debugger, name);
             }
 
-            public override void Load(MemoryReader mreader, Debugger debugger,
-                                      string name, string type,
-                                      out ExpressionDrawer.Box result,
-                                      LoadCallback callback) // dummy callback
+            public override ExpressionDrawer.IDrawable Load(MemoryReader mreader, Debugger debugger,
+                                                            string name, string type,
+                                                            LoadCallback callback) // dummy callback
             {
-                result = null;
-
                 string nameMin = exprMin.GetString(name);
                 string nameMax = exprMax.GetString(name);
 
                 Geometry.Point fp = loaderMin.LoadPoint(mreader, debugger, nameMin, typeMin);
                 Geometry.Point sp = loaderMax.LoadPoint(mreader, debugger, nameMax, typeMax);
 
-                if (Util.IsOk(fp, sp))
-                {
-                    result = new ExpressionDrawer.Box(fp, sp);
-                }
+                return Util.IsOk(fp, sp)
+                     ? new ExpressionDrawer.Box(fp, sp)
+                     : null;
             }
 
 
@@ -679,13 +675,10 @@ namespace GraphicalDebugging
                 return traits;
             }
 
-            public override void Load(MemoryReader mreader, Debugger debugger,
-                                      string name, string type,
-                                      out ExpressionDrawer.Box result,
-                                      LoadCallback callback) // dummy callback
+            public override ExpressionDrawer.IDrawable Load(MemoryReader mreader, Debugger debugger,
+                                                            string name, string type,
+                                                            LoadCallback callback) // dummy callback
             {
-                result = null;
-
                 string nameX1 = exprX1.GetString(name);
                 string nameX2 = exprX2.GetString(name);
                 string nameY1 = exprY1.GetString(name);
@@ -697,7 +690,7 @@ namespace GraphicalDebugging
                        && ExpressionParser.TryLoadDouble(debugger, nameY1, out y1)
                        && ExpressionParser.TryLoadDouble(debugger, nameY2, out y2);
                 if (!ok)
-                    return;
+                    return null;
 
                 ExpressionDrawer.Point minP = new ExpressionDrawer.Point(x1, y1); // LB
                 ExpressionDrawer.Point maxP = new ExpressionDrawer.Point(x2, y2); // RT
@@ -710,7 +703,7 @@ namespace GraphicalDebugging
                 else if (coordsY == CoordsY.HT)
                     minP[1] = y2 - y1; // b = t - h
 
-                result = new ExpressionDrawer.Box(minP, maxP);
+                return new ExpressionDrawer.Box(minP, maxP);
             }
 
             public override MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader,
@@ -980,12 +973,11 @@ namespace GraphicalDebugging
                 return containerLoaders.ElementLoader.GetTraits(mreader, debugger, name);
             }
 
-            public override void Load(MemoryReader mreader, Debugger debugger,
-                                      string name, string type,
-                                      out ResultType result,
-                                      LoadCallback callback)
+            public override ExpressionDrawer.IDrawable Load(MemoryReader mreader, Debugger debugger,
+                                                            string name, string type,
+                                                            LoadCallback callback)
             {
-                result = null;
+                ResultType result = null;
 
                 string containerName = containerLoaders.ContainerNameExpr.GetString(name);
                 if (mreader != null)
@@ -1015,6 +1007,8 @@ namespace GraphicalDebugging
                                         containerLoaders.ContainerLoader,
                                         callback);
                 }
+
+                return result;
             }
 
             UserContainerLoaders<PointLoader> containerLoaders;
@@ -1120,34 +1114,27 @@ namespace GraphicalDebugging
                 return containerLoaders.ElementLoader.GetTraits(mreader, debugger, name);
             }
 
-            public override void Load(MemoryReader mreader, Debugger debugger,
-                                      string name, string type,
-                                      out ExpressionDrawer.MultiLinestring result,
-                                      LoadCallback callback)
+            public override ExpressionDrawer.IDrawable Load(MemoryReader mreader, Debugger debugger,
+                                                            string name, string type,
+                                                            LoadCallback callback)
             {
-                result = null;
-
                 ExpressionDrawer.MultiLinestring mls = new ExpressionDrawer.MultiLinestring();
                 string containerName = containerLoaders.ContainerNameExpr.GetString(name);
                 bool ok = containerLoaders.ContainerLoader.ForEachElement(
                     debugger, containerName,
                     delegate (string elName)
                     {
-                        ExpressionDrawer.Linestring ls = null;
-                        containerLoaders.ElementLoader.Load(mreader,
-                                                            debugger, elName,
-                                                            containerLoaders.ElementType,
-                                                            out ls, callback);
+                        ExpressionDrawer.Linestring ls = containerLoaders.ElementLoader.Load(
+                                                            mreader, debugger,
+                                                            elName, containerLoaders.ElementType,
+                                                            callback) as ExpressionDrawer.Linestring;
                         if (ls == null)
                             return false;
                         mls.Add(ls);
                         //return callback();
                         return true;
                     });
-                if (ok)
-                {
-                    result = mls;
-                }
+                return ok ? mls : null;
             }
 
             UserContainerLoaders<RangeLoader<ExpressionDrawer.Linestring>> containerLoaders;
@@ -1223,27 +1210,24 @@ namespace GraphicalDebugging
                 return outerLoader.GetTraits(mreader, debugger, name);
             }
 
-            public override void Load(MemoryReader mreader, Debugger debugger,
-                                      string name, string type,
-                                      out ExpressionDrawer.Polygon result,
-                                      LoadCallback callback)
+            public override ExpressionDrawer.IDrawable Load(MemoryReader mreader, Debugger debugger,
+                                                            string name, string type,
+                                                            LoadCallback callback)
             {
-                result = null;
+                ExpressionDrawer.Polygon result = null;
 
                 string outerName = exprOuter.GetString(name);
                 //string outerType = ExpressionParser.GetValueType(debugger, outerName);
-                ExpressionDrawer.Ring outer = null;
-                outerLoader.Load(mreader, debugger, outerName, outerType,
-                                 out outer,
-                                 callback);
+                ExpressionDrawer.Ring outer = outerLoader.Load(mreader, debugger, outerName, outerType,
+                                                               callback) as ExpressionDrawer.Ring;
                 if (outer == null)
-                    return;
+                    return null;
 
                 // If there is no definition of inner rings, return
                 if (innersLoaders == null)
                 {
                     result = new ExpressionDrawer.Polygon(outer, new List<Geometry.Ring>());
-                    return;
+                    return null;
                 }
 
                 // However if inner rings are defined then load them and return
@@ -1258,21 +1242,19 @@ namespace GraphicalDebugging
                         if (i++ < innersOffset)
                             return true;
 
-                        ExpressionDrawer.Ring inner = null;
-                        innersLoaders.ElementLoader.Load(mreader, debugger,
+                        ExpressionDrawer.Ring inner = innersLoaders.ElementLoader.Load(
+                                                         mreader, debugger,
                                                          elName, innersLoaders.ElementType,
-                                                         out inner,
-                                                         callback);
+                                                         callback) as ExpressionDrawer.Ring;
                         if (inner == null)
                             return false;
                         inners.Add(inner);
                         //return callback();
                         return true;
                     });
-                if (ok)
-                {
-                    result = new ExpressionDrawer.Polygon(outer, inners);
-                }
+                return ok
+                     ? new ExpressionDrawer.Polygon(outer, inners)
+                     : null;
             }
 
             ClassScopeExpression exprOuter;
@@ -1325,35 +1307,27 @@ namespace GraphicalDebugging
                 return containerLoaders.ElementLoader.GetTraits(mreader, debugger, name);
             }
 
-            public override void Load(MemoryReader mreader, Debugger debugger,
-                                      string name, string type,
-                                      out ExpressionDrawer.MultiPolygon result,
-                                      LoadCallback callback)
+            public override ExpressionDrawer.IDrawable Load(MemoryReader mreader, Debugger debugger,
+                                                            string name, string type,
+                                                            LoadCallback callback)
             {
-                result = null;
-
                 ExpressionDrawer.MultiPolygon mpoly = new ExpressionDrawer.MultiPolygon();
                 string containerName = containerLoaders.ContainerNameExpr.GetString(name);
                 bool ok = containerLoaders.ContainerLoader.ForEachElement(
                     debugger, containerName,
                     delegate (string elName)
                     {
-                        ExpressionDrawer.Polygon poly = null;
-                        containerLoaders.ElementLoader.Load(mreader,
-                                                            debugger, elName,
-                                                            containerLoaders.ElementType,
-                                                            out poly,
-                                                            callback);
+                        ExpressionDrawer.Polygon poly = containerLoaders.ElementLoader.Load(
+                                                            mreader, debugger,
+                                                            elName, containerLoaders.ElementType,
+                                                            callback) as ExpressionDrawer.Polygon;
                         if (poly == null)
                             return false;
                         mpoly.Add(poly);
                         //return callback();
                         return true;
                     });
-                if (ok)
-                {
-                    result = mpoly;
-                }
+                return ok ? mpoly : null;
             }
 
             UserContainerLoaders<PolygonLoader> containerLoaders;
@@ -1402,35 +1376,27 @@ namespace GraphicalDebugging
                 return containerLoaders.ElementLoader.GetTraits(mreader, debugger, name);
             }
 
-            public override void Load(MemoryReader mreader, Debugger debugger,
-                                      string name, string type,
-                                      out ExpressionDrawer.DrawablesContainer result,
-                                      LoadCallback callback)
+            public override ExpressionDrawer.IDrawable Load(MemoryReader mreader, Debugger debugger,
+                                                            string name, string type,
+                                                            LoadCallback callback)
             {
-                result = null;
-
                 ExpressionDrawer.DrawablesContainer drawables = new ExpressionDrawer.DrawablesContainer();
                 string containerName = containerLoaders.ContainerNameExpr.GetString(name);
                 bool ok = containerLoaders.ContainerLoader.ForEachElement(
                     debugger, containerName,
                     delegate (string elName)
                     {
-                        ExpressionDrawer.IDrawable drawable = null;
-                        containerLoaders.ElementLoader.Load(mreader,
-                                                            debugger, elName,
-                                                            containerLoaders.ElementType,
-                                                            out drawable,
-                                                            callback);
+                        ExpressionDrawer.IDrawable drawable = containerLoaders.ElementLoader.Load(
+                                                                mreader, debugger,
+                                                                elName, containerLoaders.ElementType,
+                                                                callback);
                         if (drawable == null)
                             return false;
                         drawables.Add(drawable);
                         //return callback();
                         return true;
                     });
-                if (ok)
-                {
-                    result = drawables;
-                }
+                return ok ? drawables : null;
             }
 
             UserContainerLoaders<DrawableLoader> containerLoaders;

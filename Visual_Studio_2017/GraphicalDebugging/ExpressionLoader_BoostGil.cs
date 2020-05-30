@@ -39,13 +39,10 @@ namespace GraphicalDebugging
                 return null;
             }
 
-            public override void Load(MemoryReader mreader, Debugger debugger,
-                                      string name, string type,
-                                      out ExpressionDrawer.Image result,
-                                      LoadCallback callback)
+            public override ExpressionDrawer.IDrawable Load(MemoryReader mreader, Debugger debugger,
+                                                            string name, string type,
+                                                            LoadCallback callback)
             {
-                result = null;
-
                 // NOTE: If the image is not created at the point of debugging, so the variable is
                 // uninitialized, the size may be out of bounds of int32 range. In this case the
                 // exception is thrown here and this is ok. However if there is some garbage in
@@ -55,52 +52,52 @@ namespace GraphicalDebugging
                 int width = ExpressionParser.LoadSize(debugger, name + "._view._dimensions.x");
                 int height = ExpressionParser.LoadSize(debugger, name + "._view._dimensions.y");
                 if (width < 1 || height < 1)
-                    return;
+                    return null;
 
                 string pixelType, isPlanarStr;
                 if (! Util.Tparams(type, out pixelType, out isPlanarStr))
-                    return;
+                    return null;
 
                 string pixelId = Util.TypeId(pixelType);
                 if (pixelId != "boost::gil::pixel")
-                    return;
+                    return null;
 
                 bool isPlanar = (isPlanarStr == "1");
 
                 string channelValueType, layoutType;
                 if (! Util.Tparams(pixelType, out channelValueType, out layoutType))
-                    return;
+                    return null;
 
                 string layoutId = Util.TypeId(layoutType);
                 if (layoutId != "boost::gil::layout")
-                    return;
+                    return null;
 
                 string colorSpaceType, channelMappingType;
                 if (! Util.Tparams(layoutType, out colorSpaceType, out channelMappingType))
-                    return;
+                    return null;
 
                 ChannelValueKind channelValueKind = ChannelValueKind.Unknown;
                 int channelValueSize = 0;
                 ParseChannelValue(debugger, channelValueType, out channelValueKind, out channelValueSize);
                 if (channelValueKind == ChannelValueKind.Unknown || channelValueSize == 0)
-                    return;
+                    return null;
 
                 string colorSpaceId = Util.TypeId(colorSpaceType);
                 ColorSpace colorSpace = ParseColorSpace(colorSpaceType);
                 int colorSpaceSize = ColorSpaceSize(colorSpace);
 
                 if (colorSpace == ColorSpace.Unknown || colorSpaceSize == 0)
-                    return;
+                    return null;
 
                 Layout layout = ParseChannelMapping(colorSpace, channelMappingType);
                 if (layout == Layout.Unknown)
-                    return;
+                    return null;
 
                 if (channelValueSize != 1
                     && channelValueSize != 2
                     && channelValueSize != 4
                     && channelValueSize != 8)
-                    return;
+                    return null;
 
                 // TODO: size_t? ulong?
                 int bytesCount = width * height * colorSpaceSize * channelValueSize;
@@ -111,7 +108,7 @@ namespace GraphicalDebugging
                 {
                     ulong address = ExpressionParser.GetValueAddress(debugger, name + "._memory[0]");
                     if (address == 0)
-                        return;
+                        return null;
 
                     isLoaded = mreader.ReadBytes(address, memory);
                 }
@@ -120,12 +117,12 @@ namespace GraphicalDebugging
                 {
                     // Parsing the memory byte by byte may take very long time
                     // even for small images. So don't do it.
-                    return;
+                    return null;
                 }
 
                 LayoutMapper layoutMapper = GetLayoutMapper(layout);
                 if (layoutMapper == null)
-                    return;
+                    return null;
 
                 // Use Pixel format native to Gil Image?
                 System.Drawing.Bitmap bmp = new System.Drawing.Bitmap(width, height);
@@ -150,7 +147,7 @@ namespace GraphicalDebugging
                                                                  pixelIndex,
                                                                  channelValueKind, channelValueSize, colorSpaceSize);
                         if (channels == null)
-                            return;
+                            return null;
 
                         System.Drawing.Color c = layoutMapper.GetColor(channels);
                         bmp.SetPixel(i, j, c);
@@ -158,11 +155,11 @@ namespace GraphicalDebugging
                         // TODO: Checked per pixel. Too often?
                         //   But it's the same for geometries (ForEachMemoryBlock).
                         if (! callback())
-                            return;
+                            return null;
                     }
                 }
 
-                result = new ExpressionDrawer.Image(bmp);
+                return new ExpressionDrawer.Image(bmp);
             }
 
             private enum ChannelValueKind { Unknown, UnsignedIntegral, SignedIntegral, FloatingPoint, ScopedFloatingPoint };
