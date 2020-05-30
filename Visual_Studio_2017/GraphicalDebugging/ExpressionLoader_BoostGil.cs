@@ -33,13 +33,17 @@ namespace GraphicalDebugging
                 }
             }
 
-            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                return null;
+            }
+
+            public override void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ExpressionDrawer.Image result,
                                       LoadCallback callback)
             {
-                traits = null;
                 result = null;
 
                 // NOTE: If the image is not created at the point of debugging, so the variable is

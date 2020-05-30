@@ -330,9 +330,12 @@ namespace GraphicalDebugging
                 if (loader == null)
                     return;
 
-                loader.Load(loaders, mreader, Instance.debugger,
+                traits = loader.GetTraits(mreader, Instance.debugger,
+                                          exprs[0].Name);
+
+                loader.Load(mreader, Instance.debugger,
                             exprs[0].Name, exprs[0].Type,
-                            out traits, out result,
+                            out result,
                             delegate ()
                             {
                                 return timeGuard.CheckTimeAndDisplayMsg(name);
@@ -341,11 +344,14 @@ namespace GraphicalDebugging
             else //if (exprs.Length > 1)
             {
                 // For now there is only one loader which can handle this case
-                CoordinatesContainers loader = new CoordinatesContainers();
+                var creator = new CoordinatesContainers.LoaderCreator();
+                CoordinatesContainers loader = creator.Create(loaders, exprs);
 
-                loader.Load(loaders, mreader, Instance.debugger,
+                traits = loader.GetTraits();
+
+                loader.Load(mreader, Instance.debugger,
                             exprs,
-                            out traits, out result,
+                            out result,
                             delegate ()
                             {
                                 return timeGuard.CheckTimeAndDisplayMsg(name);
@@ -554,15 +560,19 @@ namespace GraphicalDebugging
             public delegate bool LoadCallback();
 
             /// <summary>
-            /// Loads debugged variable into ExpressionDrawer.IDrawable and additional
-            /// geometrical information into Geometry.Traits. These classes then
-            /// can be passed into ExpressionDrawer.Draw() in order to draw them
-            /// on Graphics surface.
+            /// Returns geometrical information of a Drawable.
+            /// It then can be passed into ExpressionDrawer.Draw().
             /// </summary>
-            abstract public void Load(Loaders loaders,
-                                      MemoryReader mreader, Debugger debugger,
+            abstract public Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name);
+
+            /// <summary>
+            /// Loads debugged variable into ExpressionDrawer.IDrawable.
+            /// It then can be passed into ExpressionDrawer.Draw()
+            /// in order to draw a Drawable on Graphics surface.
+            /// </summary>
+            abstract public void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ExpressionDrawer.IDrawable result,
                                       LoadCallback callback);
 
@@ -590,24 +600,20 @@ namespace GraphicalDebugging
         abstract class LoaderR<ResultType> : DrawableLoader
             where ResultType : ExpressionDrawer.IDrawable
         {
-            public override void Load(Loaders loaders,
-                                      MemoryReader mreader, Debugger debugger,
+            public override void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ExpressionDrawer.IDrawable result,
                                       LoadCallback callback)
             {
                 ResultType res = default(ResultType);
-                this.Load(loaders, mreader, debugger, name, type,
-                          out traits, out res,
+                this.Load(mreader, debugger, name, type,
+                          out res,
                           callback);
                 result = res;
             }
 
-            abstract public void Load(Loaders loaders,
-                                      MemoryReader mreader, Debugger debugger,
+            abstract public void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ResultType result,
                                       LoadCallback callback);
         }
@@ -618,20 +624,14 @@ namespace GraphicalDebugging
 
         abstract class PointLoader : GeometryLoader<ExpressionDrawer.Point>
         {
-            public override void Load(Loaders loaders, MemoryReader mreader,
-                                      Debugger debugger, string name, string type,
-                                      out Geometry.Traits traits,
+            public override void Load(MemoryReader mreader, Debugger debugger,
+                                      string name, string type,
                                       out ExpressionDrawer.Point point,
                                       LoadCallback callback) // dummy callback
             {
-                traits = LoadTraits(type);
-                point = traits != null
-                      ? LoadPoint(mreader, debugger, name, type)
-                      : null;
+                point = LoadPoint(mreader, debugger, name, type);
             }
-
-            abstract public Geometry.Traits LoadTraits(string type);
-
+            
             virtual public ExpressionDrawer.Point LoadPoint(MemoryReader mreader, Debugger debugger, string name, string type)
             {
                 ExpressionDrawer.Point result = null;
@@ -678,7 +678,8 @@ namespace GraphicalDebugging
                 this.count = Math.Min(traits.Dimension, 2);
             }
 
-            public override Geometry.Traits LoadTraits(string type)
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
             {
                 return traits;
             }
@@ -880,19 +881,18 @@ namespace GraphicalDebugging
                 this.maxDiff = maxDiff;
             }
 
-            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                return pointLoader.GetTraits(mreader, debugger, name);
+            }
+
+            public override void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ExpressionDrawer.Box result,
                                       LoadCallback callback) // dummy callback
             {
-                traits = null;
                 result = null;
-
-                // TODO: traits could be calculated once in Create
-                traits = pointLoader.LoadTraits(pointType);
-                if (traits == null)
-                    return;
 
                 string m_min_corner = name + ".m_min_corner";
                 string m_max_corner = name + ".m_max_corner";
@@ -959,22 +959,21 @@ namespace GraphicalDebugging
                 this.pointType = pointType;
             }
 
-            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                return pointLoader.GetTraits(mreader, debugger, name);
+            }
+
+            public override void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ExpressionDrawer.Segment segment,
                                       LoadCallback callback) // dummy callback
             {
-                traits = null;
                 segment = null;
 
                 string first = name + ".first";
                 string second = name + ".second";
-
-                // TODO: traits could be calculated once in Create
-                traits = pointLoader.LoadTraits(pointType);
-                if (traits == null)
-                    return;
 
                 Geometry.Point fp = pointLoader.LoadPoint(mreader, debugger, first, pointType);
                 Geometry.Point sp = pointLoader.LoadPoint(mreader, debugger, second, pointType);
@@ -1057,21 +1056,21 @@ namespace GraphicalDebugging
                 this.pointType = pointType;
             }
 
-            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                return pointLoader.GetTraits(mreader, debugger, name);
+            }
+
+            public override void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ExpressionDrawer.NSphere result,
                                       LoadCallback callback) // dummy callback
             {
-                traits = null;
                 result = null;
 
                 string m_center = name + ".m_center";
                 string m_radius = name + ".m_radius";
-
-                traits = pointLoader.LoadTraits(pointType);
-                if (traits == null)
-                    return;
 
                 Geometry.Point center = pointLoader.LoadPoint(mreader, debugger,
                                                               m_center, pointType);
@@ -1116,8 +1115,7 @@ namespace GraphicalDebugging
                 return result;
             }
 
-            protected ResultType LoadMemory(Loaders loaders,
-                                            MemoryReader mreader,
+            protected ResultType LoadMemory(MemoryReader mreader,
                                             Debugger debugger,
                                             string name, string type,
                                             string pointName, string pointType,
@@ -1227,25 +1225,25 @@ namespace GraphicalDebugging
                 this.pointType = pointType;
             }
 
-            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                return pointLoader.GetTraits(mreader, debugger, name);
+            }
+
+            public override void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ResultType result,
                                       LoadCallback callback)
             {
-                traits = null;
                 result = null;
-
-                traits = pointLoader.LoadTraits(pointType);
-                if (traits == null)
-                    return;
 
                 if (mreader != null)
                 {
                     string pointName, dummyType;
                     containerLoader.ElementInfo(name, containerType, out pointName, out dummyType);
 
-                    result = LoadMemory(loaders, mreader, debugger, name, type,
+                    result = LoadMemory(mreader, debugger, name, type,
                                         pointName, pointType, pointLoader,
                                         containerLoader, callback);
                 }
@@ -1332,21 +1330,24 @@ namespace GraphicalDebugging
                 this.lsType = lsType;
             }
 
-            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                return lsLoader.GetTraits(mreader, debugger, name);
+            }
+
+            public override void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ExpressionDrawer.MultiLinestring result,
                                       LoadCallback callback)
             {
-                traits = null;
                 result = null;
 
-                Geometry.Traits t = null;
                 ExpressionDrawer.MultiLinestring mls = new ExpressionDrawer.MultiLinestring();
                 bool ok = containerLoader.ForEachElement(debugger, name, delegate (string elName)
                 {
                     ExpressionDrawer.Linestring ls = null;
-                    lsLoader.Load(loaders, mreader, debugger, elName, lsType, out t, out ls, callback);
+                    lsLoader.Load(mreader, debugger, elName, lsType, out ls, callback);
                     if (ls == null)
                         return false;
                     mls.Add(ls);
@@ -1355,7 +1356,6 @@ namespace GraphicalDebugging
                 });
                 if (ok)
                 {
-                    traits = t;
                     result = mls;
                 }
             }
@@ -1455,32 +1455,35 @@ namespace GraphicalDebugging
                 this.innersType = innersType;
             }
 
-            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                return outerLoader.GetTraits(mreader, debugger, name);
+            }
+
+            public override void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ExpressionDrawer.Polygon result,
                                       LoadCallback callback)
             {
-                traits = null;
                 result = null;
 
                 string outerName = name + ".m_outer";
                 string innersName = name + ".m_inners";
 
                 ExpressionDrawer.Ring outer = null;
-                outerLoader.Load(loaders, mreader, debugger, outerName, outerType,
-                                 out traits, out outer,
+                outerLoader.Load(mreader, debugger, outerName, outerType,
+                                 out outer,
                                  callback);
                 if (outer == null)
                     return;
 
-                Geometry.Traits t = null;
                 List<Geometry.Ring> inners = new List<Geometry.Ring>();
                 bool ok = innersLoader.ForEachElement(debugger, innersName, delegate (string elName)
                 {
                     ExpressionDrawer.Ring inner = null;
-                    outerLoader.Load(loaders, mreader, debugger, elName, outerType,
-                                     out t, out inner,
+                    outerLoader.Load(mreader, debugger, elName, outerType,
+                                     out inner,
                                      callback);
                     if (inner == null)
                         return false;                    
@@ -1491,8 +1494,6 @@ namespace GraphicalDebugging
                 if (ok)
                 {
                     result = new ExpressionDrawer.Polygon(outer, inners);
-                    if (traits == null) // assign only if it was not set for outer ring
-                        traits = t;
                 }
             }
 
@@ -1547,22 +1548,25 @@ namespace GraphicalDebugging
                 this.polyType = polyType;
             }
 
-            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                return polyLoader.GetTraits(mreader, debugger, name);
+            }
+
+            public override void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ExpressionDrawer.MultiPolygon result,
                                       LoadCallback callback)
             {
-                traits = null;
                 result = null;
 
-                Geometry.Traits t = null;
                 ExpressionDrawer.MultiPolygon mpoly = new ExpressionDrawer.MultiPolygon();
                 bool ok = containerLoader.ForEachElement(debugger, name, delegate (string elName)
                 {
                     ExpressionDrawer.Polygon poly = null;
-                    polyLoader.Load(loaders, mreader, debugger, elName, polyType,
-                                    out t, out poly,
+                    polyLoader.Load(mreader, debugger, elName, polyType,
+                                    out poly,
                                     callback);
                     if (poly == null)
                         return false;
@@ -1572,7 +1576,6 @@ namespace GraphicalDebugging
                 });
                 if (ok)
                 {
-                    traits = t;
                     result = mpoly;
                 }
             }
@@ -1617,17 +1620,21 @@ namespace GraphicalDebugging
                 this.ringType = ringType;
             }
 
-            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                return ringLoader.GetTraits(mreader, debugger, name);
+            }
+
+            public override void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ExpressionDrawer.Ring result,
                                       LoadCallback callback)
             {
-                traits = null;
                 result = null;
 
-                ringLoader.Load(loaders, mreader, debugger, name, ringType,
-                                out traits, out result,
+                ringLoader.Load(mreader, debugger, name, ringType,
+                                out result,
                                 callback);
             }
 
@@ -1684,22 +1691,25 @@ namespace GraphicalDebugging
                 this.ringType = ringType;
             }
 
-            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                return ringLoader.GetTraits(mreader, debugger, name);
+            }
+
+            public override void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ExpressionDrawer.MultiPolygon result,
                                       LoadCallback callback)
             {
-                traits = null;
                 result = null;
 
-                Geometry.Traits t = null;
                 ExpressionDrawer.MultiPolygon mpoly = new ExpressionDrawer.MultiPolygon();
                 bool ok = containerLoader.ForEachElement(debugger, name, delegate (string elName)
                 {
                     ExpressionDrawer.Ring ring = null;
-                    ringLoader.Load(loaders, mreader, debugger, elName, ringType,
-                                    out t, out ring,
+                    ringLoader.Load(mreader, debugger, elName, ringType,
+                                    out ring,
                                     callback);
                     if (ring == null)
                         return false;
@@ -1709,7 +1719,6 @@ namespace GraphicalDebugging
                 });
                 if (ok)
                 {
-                    traits = t;
                     result = mpoly;
                 }
             }
@@ -1761,10 +1770,9 @@ namespace GraphicalDebugging
 
                 traits = null;
                 ExpressionDrawer.IDrawable dummy;
-                indexableLoader.Load(loaders, null, debugger,
+                indexableLoader.Load(null, debugger,
                                      "(*((" + indexableType + "*)((void*)0)))",
                                      indexableType,
-                                     out traits,
                                      out dummy,
                                      delegate () { return true; });
                 if (traits == null)
@@ -1827,43 +1835,17 @@ namespace GraphicalDebugging
                 valueSizeof = exprParser.GetValueSizeof(leafElemName);
             }
 
-            ContainerLoader leafElementsLoader;
-            ContainerLoader internalNodeElementsLoader;
-            DrawableLoader indexableLoader;
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                return traits;
+            }
 
-            Geometry.Traits traits;
-
-            string leafType;
-            string internalNodeType;
-            string indexableMember;
-            string indexableType;
-            string nodePtrType; // pointer to root or a node in internal node
-            string leafElemsType; // type of container of values
-            string internalNodeElemsType; // type of container of ptr_pair<box, node_ptr>
-            string leafElemType; // type of value
-            string internalNodeElemType; // type of ptr_pair<box, node_ptr>
-            string whichType; // type of which_ member
-
-            long leafElemsDiff; // offset of container of values in variant node which is a leaf
-            long internalNodeElemsDiff; // offset of container of ptr_pair<box, node_ptr> in variant node which is internal node
-            long indexableDiff; // offset of indexable in value
-            long nodePtrDiff; // offset of node_ptr in ptr_pair<box, node_ptr>
-            long whichDiff; // offset of which_ member of variant node
-
-            int nodePtrSizeOf; // size of pointer (4 or 8)
-            int whichSizeOf; // size of which_ member            
-            int nodeVariantSizeof; // size of variant node
-            int nodePtrPairSizeof; // size of ptr_pair<box, node_ptr>
-            int valueSizeof; // size of value
-            
-
-            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+            public override void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ExpressionDrawer.DrawablesContainer result,
                                       LoadCallback callback)
             {
-                traits = null;
                 result = null;
 
                 int size = LoadSize(debugger, name);
@@ -1877,7 +1859,7 @@ namespace GraphicalDebugging
                 if (result == null)
                 {
                     ExpressionDrawer.DrawablesContainer res = new ExpressionDrawer.DrawablesContainer();
-                    if (LoadParsedRecursive(loaders, mreader, debugger,
+                    if (LoadParsedRecursive(mreader, debugger,
                                             nodePtrName,
                                             res,
                                             callback))
@@ -1885,9 +1867,6 @@ namespace GraphicalDebugging
                         result = res;
                     }
                 }
-
-                if (result != null)
-                    traits = this.traits;
             }
 
             private void LoadMemory(MemoryReader mreader, Debugger debugger,
@@ -2062,7 +2041,7 @@ namespace GraphicalDebugging
                 return callback();
             }
             
-            private bool LoadParsedRecursive(Loaders loaders, MemoryReader mreader, Debugger debugger,
+            private bool LoadParsedRecursive(MemoryReader mreader, Debugger debugger,
                                              string nodePtrName,
                                              ExpressionDrawer.DrawablesContainer result,
                                              LoadCallback callback)
@@ -2084,15 +2063,14 @@ namespace GraphicalDebugging
                 {
                     if (isLeaf)
                     {
-                        Geometry.Traits tr = null;
                         ExpressionDrawer.IDrawable indexable = null;
 
-                        indexableLoader.Load(loaders, mreader, debugger,
+                        indexableLoader.Load(mreader, debugger,
                                              elName + indexableMember, indexableType,
-                                             out tr, out indexable,
+                                             out indexable,
                                              callback); // rather dummy callback
 
-                        if (tr == null || indexable == null)
+                        if (indexable == null)
                             return false;
 
                         result.Add(indexable);
@@ -2100,7 +2078,7 @@ namespace GraphicalDebugging
                     else
                     {
                         string nextNodePtrName = elName + ".second";
-                        if (!LoadParsedRecursive(loaders, mreader, debugger,
+                        if (!LoadParsedRecursive(mreader, debugger,
                                                  nextNodePtrName,
                                                  result,
                                                  callback))
@@ -2208,6 +2186,35 @@ namespace GraphicalDebugging
                 result = (which == 0);
                 return true;
             }
+
+            ContainerLoader leafElementsLoader;
+            ContainerLoader internalNodeElementsLoader;
+            DrawableLoader indexableLoader;
+
+            Geometry.Traits traits;
+
+            string leafType;
+            string internalNodeType;
+            string indexableMember;
+            string indexableType;
+            string nodePtrType; // pointer to root or a node in internal node
+            string leafElemsType; // type of container of values
+            string internalNodeElemsType; // type of container of ptr_pair<box, node_ptr>
+            string leafElemType; // type of value
+            string internalNodeElemType; // type of ptr_pair<box, node_ptr>
+            string whichType; // type of which_ member
+
+            long leafElemsDiff; // offset of container of values in variant node which is a leaf
+            long internalNodeElemsDiff; // offset of container of ptr_pair<box, node_ptr> in variant node which is internal node
+            long indexableDiff; // offset of indexable in value
+            long nodePtrDiff; // offset of node_ptr in ptr_pair<box, node_ptr>
+            long whichDiff; // offset of which_ member of variant node
+
+            int nodePtrSizeOf; // size of pointer (4 or 8)
+            int whichSizeOf; // size of which_ member            
+            int nodeVariantSizeof; // size of variant node
+            int nodePtrPairSizeof; // size of ptr_pair<box, node_ptr>
+            int valueSizeof; // size of value
         }
 
         class BPPoint : BXPoint
@@ -2251,13 +2258,17 @@ namespace GraphicalDebugging
                 }
             }
 
-            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                return new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
+            }
+
+            public override void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ExpressionDrawer.Segment result,
                                       LoadCallback callback) // dummy callback
             {
-                traits = new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
                 result = null;
 
                 double x0 = 0, y0 = 0, x1 = 0, y1 = 0;
@@ -2290,13 +2301,17 @@ namespace GraphicalDebugging
                 }
             }
 
-            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                return new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
+            }
+
+            public override void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ExpressionDrawer.Box result,
                                       LoadCallback callback) // dummy callback
             {
-                traits = new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
                 result = null;
 
                 double xl = 0, xh = 0, yl = 0, yh = 0;
@@ -2361,13 +2376,17 @@ namespace GraphicalDebugging
                 this.pointType = pointType;
             }
 
-            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                return new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
+            }
+
+            public override void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ExpressionDrawer.Ring result,
                                       LoadCallback callback)
             {
-                traits = new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
                 result = null;
 
                 string containerName = name + ".coords_";
@@ -2377,7 +2396,7 @@ namespace GraphicalDebugging
                     string pointName, dummyType;
                     containerLoader.ElementInfo(name, containerType, out pointName, out dummyType);
 
-                    result = LoadMemory(loaders, mreader, debugger,
+                    result = LoadMemory(mreader, debugger,
                                         containerName, type,
                                         pointName, pointType, pointLoader,
                                         containerLoader, callback);
@@ -2446,33 +2465,36 @@ namespace GraphicalDebugging
                 this.containerType = containerType;
             }
 
-            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                return new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
+            }
+
+            public override void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ExpressionDrawer.Polygon result,
                                       LoadCallback callback)
             {
-                traits = new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
                 result = null;
 
                 string member_self_ = name + ".self_";
                 string member_holes_ = name + ".holes_";
 
                 ExpressionDrawer.Ring outer = null;
-                outerLoader.Load(loaders, mreader, debugger,
+                outerLoader.Load(mreader, debugger,
                                  member_self_, polygonType,
-                                 out traits, out outer,
+                                 out outer,
                                  callback);
                 if (outer == null)
                     return;
 
-                Geometry.Traits t = null;
                 List<Geometry.Ring> holes = new List<Geometry.Ring>();
                 bool ok = holesLoader.ForEachElement(debugger, member_holes_, delegate (string elName)
                 {
                     ExpressionDrawer.Ring hole = null;
-                    outerLoader.Load(loaders, mreader, debugger, elName, polygonType,
-                                     out t, out hole,
+                    outerLoader.Load(mreader, debugger, elName, polygonType,
+                                     out hole,
                                      callback);
                     if (hole == null)
                         return false;
@@ -2482,8 +2504,6 @@ namespace GraphicalDebugging
                 if (ok)
                 {
                     result = new ExpressionDrawer.Polygon(outer, holes);
-                    if (traits == null) // assign only if it was not set for outer ring
-                        traits = t;
                 }
             }
 
@@ -2506,45 +2526,66 @@ namespace GraphicalDebugging
 
                     List<string> tparams = Util.Tparams(type);
 
-                    return new BVariant(tparams);
+                    DrawableLoader[] drawableLoaders = new DrawableLoader[tparams.Count];
+                    for (int i = 0; i < tparams.Count; ++i)
+                    {
+                        string storedType = tparams[i];
+                        string storedName = "(*(" + storedType + "*)" + name + ".storage_.data_.buf)";
+
+                        drawableLoaders[i] = loaders.FindByType(AllDrawables, storedName, storedType)
+                                                    as DrawableLoader;
+                    }
+
+                    return new BVariant(tparams, drawableLoaders);
                 }
             }
 
-            private BVariant(List<string> tparams)
+            private BVariant(List<string> tparams, DrawableLoader[] loaders)
             {
                 this.tparams = tparams;
+                this.loaders = loaders;
             }
 
-            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                int which = 0;
+                if (!ExpressionParser.TryLoadInt(debugger, name + ".which_", out which))
+                    return null;
+                if (which < 0 || tparams.Count <= which || tparams.Count != loaders.Length)
+                    return null;
+                if (loaders[which] == null)
+                    return null;
+                return loaders[which].GetTraits(mreader, debugger, name);
+            }
+
+            public override void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ExpressionDrawer.IDrawable result,
                                       LoadCallback callback)
             {
-                traits = null;
                 result = null;
 
                 int which = 0;
                 if (!ExpressionParser.TryLoadInt(debugger, name + ".which_", out which))
                     return;
 
-                if (which < 0 || tparams.Count <= which)
+                if (which < 0 || tparams.Count <= which || tparams.Count != loaders.Length)
+                    return;
+
+                if (loaders[which] == null)
                     return;
 
                 string storedType = tparams[which];
                 string storedName = "(*(" + storedType + "*)" + name + ".storage_.data_.buf)";
 
-                DrawableLoader loader = loaders.FindByType(AllDrawables, storedName, storedType)
-                                            as DrawableLoader;
-                if (loader == null)
-                    return;
-
-                loader.Load(loaders, mreader, debugger, storedName, storedType,
-                            out traits, out result,
-                            callback);
+                loaders[which].Load(mreader, debugger, storedName, storedType,
+                                    out result,
+                                    callback);
             }
 
             List<string> tparams;
+            DrawableLoader[] loaders;
         }
 
         class StdPairPoint : PointLoader
@@ -2572,7 +2613,8 @@ namespace GraphicalDebugging
                 this.secondType = secondType;
             }
 
-            public override Geometry.Traits LoadTraits(string type)
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
             {
                 return new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
             }
@@ -2706,18 +2748,22 @@ namespace GraphicalDebugging
                 this.pointType = pointType;
             }
 
-            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                return pointLoader.GetTraits(mreader, debugger, name);
+            }
+
+            public override void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ExpressionDrawer.Turn result,
                                       LoadCallback callback) // rather dummy callback
             {
-                traits = null;
                 result = null;
 
                 ExpressionDrawer.Point p = null;
-                pointLoader.Load(loaders, mreader, debugger, name + ".point", pointType,
-                                 out traits, out p,
+                pointLoader.Load(mreader, debugger, name + ".point", pointType,
+                                 out p,
                                  callback); // rather dummy callback
                 if (p == null)
                     return;
@@ -2811,22 +2857,25 @@ namespace GraphicalDebugging
                 this.turnType = turnType;
             }
 
-            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                return turnLoader.GetTraits(mreader, debugger, name);
+            }
+
+            public override void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ExpressionDrawer.TurnsContainer result,
                                       LoadCallback callback)
             {
-                traits = null;
                 result = null;
 
-                Geometry.Traits t = null;
                 List<ExpressionDrawer.Turn> turns = new List<ExpressionDrawer.Turn>();
                 bool ok = containerLoader.ForEachElement(debugger, name, delegate (string elName)
                 {
                     ExpressionDrawer.Turn turn = null;
-                    turnLoader.Load(loaders, mreader, debugger, elName, turnType,
-                                    out t, out turn,
+                    turnLoader.Load(mreader, debugger, elName, turnType,
+                                    out turn,
                                     callback); // rather dummy callback
                     if (turn == null)
                         return false;
@@ -2835,7 +2884,6 @@ namespace GraphicalDebugging
                 });
                 if (ok)
                 {
-                    traits = t;
                     result = new ExpressionDrawer.TurnsContainer(turns);
                 }
             }
@@ -2887,22 +2935,25 @@ namespace GraphicalDebugging
                 this.geometryType = geometryType;
             }
 
-            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                return geometryLoader.GetTraits(mreader, debugger, name);
+            }
+
+            public override void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ExpressionDrawer.DrawablesContainer result,
                                       LoadCallback callback)
             {
-                traits = null;
                 result = null;
                 
-                Geometry.Traits t = null;
                 ExpressionDrawer.DrawablesContainer drawables = new ExpressionDrawer.DrawablesContainer();
                 bool ok = containerLoader.ForEachElement(debugger, name, delegate (string elName)
                 {
                     ExpressionDrawer.IDrawable drawable = null;
-                    geometryLoader.Load(loaders, mreader, debugger, elName, geometryType,
-                                        out t, out drawable,
+                    geometryLoader.Load(mreader, debugger, elName, geometryType,
+                                        out drawable,
                                         callback);
                     if (drawable == null)
                         return false;
@@ -2912,7 +2963,6 @@ namespace GraphicalDebugging
                 });
                 if (ok)
                 {
-                    traits = t;
                     result = drawables;
                 }
             }
@@ -2960,25 +3010,25 @@ namespace GraphicalDebugging
                 this.pointType = pointType;
             }
 
-            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                return pointLoader.GetTraits(mreader, debugger, name);
+            }
+
+            public override void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ExpressionDrawer.MultiPoint result,
                                       LoadCallback callback)
             {
-                traits = null;
                 result = null;
                 
-                traits = pointLoader.LoadTraits(pointType);
-                if (traits == null)
-                    return;
-
                 if (mreader != null)
                 {
                     string pointName, dummyType;
                     containerLoader.ElementInfo(name, type, out pointName, out dummyType);
 
-                    result = LoadMemory(loaders, mreader, debugger,
+                    result = LoadMemory(mreader, debugger,
                                         name, type,
                                         pointName, pointType, pointLoader,
                                         containerLoader, callback);
@@ -3033,23 +3083,27 @@ namespace GraphicalDebugging
                 this.containerLoader = containerLoader;
             }
 
-            public override void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                return null;
+            }
+
+            public override void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ExpressionDrawer.ValuesContainer result,
                                       LoadCallback callback)
             {
-                traits = null;
                 result = null;
 
                 List<double> values = null;
-                Load(loaders, mreader, debugger, name, type, out values, callback);
+                Load(mreader, debugger, name, type, out values, callback);
 
                 if (values != null)
                     result = new ExpressionDrawer.ValuesContainer(values);
             }
 
-            public void Load(Loaders loaders, MemoryReader mreader, Debugger debugger,
+            public void Load(MemoryReader mreader, Debugger debugger,
                              string name, string type,
                              out List<double> result,
                              LoadCallback callback)
@@ -3121,57 +3175,83 @@ namespace GraphicalDebugging
         // TODO: Still, each time Load() is called ValuesContainers Loaders are created
         class CoordinatesContainers : PointRange<ExpressionDrawer.MultiPoint>
         {
-            public override void Load(Loaders loaders,
-                                      MemoryReader mreader, Debugger debugger,
+            public class LoaderCreator
+            {
+                public CoordinatesContainers Create(Loaders loaders, Expression[] exprs)
+                {
+                    int dimension = Math.Min(exprs.Length, 3); // 2 or 3
+                    if (dimension < 2)
+                        return null;
+
+                    ValuesContainer[] valueContainers = new ValuesContainer[dimension];
+
+                    for (int i = 0; i < dimension; ++i)
+                    {
+                        valueContainers[i] = loaders.FindByType(ExpressionLoader.Kind.ValuesContainer,
+                                                                exprs[i].Name,
+                                                                exprs[i].Type) as ValuesContainer;
+                        if (valueContainers[i] == null)
+                            return null;
+                    }
+
+                    Geometry.Traits traits = new Geometry.Traits(dimension, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
+
+                    return new CoordinatesContainers(valueContainers, traits);
+                }
+            }
+
+            public CoordinatesContainers(ValuesContainer[] valueContainers,
+                                         Geometry.Traits traits)
+            {
+                this.valueContainers = valueContainers;
+                this.traits = traits;
+            }
+
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                return null;
+            }
+
+            public override void Load(MemoryReader mreader, Debugger debugger,
                                       string name, string type,
-                                      out Geometry.Traits traits,
                                       out ExpressionDrawer.MultiPoint result,
                                       LoadCallback callback)
             {
-                traits = null;
                 result = null;
             }
 
-            public void Load(Loaders loaders,
-                             MemoryReader mreader, Debugger debugger,
+            public Geometry.Traits GetTraits()
+            {
+                return traits;
+            }
+
+            public void Load(MemoryReader mreader, Debugger debugger,
                              Expression[] exprs,
-                             out Geometry.Traits traits,
                              out ExpressionDrawer.IDrawable result,
                              LoadCallback callback)
             {
                 ExpressionDrawer.MultiPoint res = default(ExpressionDrawer.MultiPoint);
-                this.Load(loaders, mreader, debugger, exprs, out traits, out res, callback);
+                this.Load(mreader, debugger, exprs, out res, callback);
                 result = res;
             }
 
-            public void Load(Loaders loaders,
-                             MemoryReader mreader, Debugger debugger,
+            public void Load(MemoryReader mreader, Debugger debugger,
                              Expression[] exprs,
-                             out Geometry.Traits traits,
                              out ExpressionDrawer.MultiPoint result,
                              LoadCallback callback)
             {
-                traits = null;
                 result = null;
 
-                int dimension = Math.Min(exprs.Length, 3); // 2 or 3
-
-                traits = new Geometry.Traits(dimension, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
+                int dimension = valueContainers.Length;
 
                 List<double>[] coords = new List<double>[dimension];
                 for ( int i = 0 ; i < dimension; ++i )
                 {
-                    ValuesContainer valuesLoader = loaders.FindByType(ExpressionLoader.Kind.ValuesContainer,
-                                                                      exprs[i].Name,
-                                                                      exprs[i].Type)
-                                                            as ValuesContainer;
-                    if (valuesLoader == null)
-                        return;
-
-                    valuesLoader.Load(loaders, mreader, debugger,
-                                      exprs[i].Name, exprs[i].Type,
-                                      out coords[i],
-                                      callback);
+                    valueContainers[i].Load(mreader, debugger,
+                                            exprs[i].Name, exprs[i].Type,
+                                            out coords[i],
+                                            callback);
                 }
 
                 int maxSize = 0;
@@ -3196,6 +3276,9 @@ namespace GraphicalDebugging
                     result.Add(pt);
                 }
             }
+
+            ValuesContainer[] valueContainers;
+            Geometry.Traits traits;
         }
     }
 }
