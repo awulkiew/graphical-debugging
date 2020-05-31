@@ -82,12 +82,12 @@
   }
   -->
   <Box Id="WpfApp1.MyBox2" CoordinateSystem="Cartesian" Unit="None">
-    <Coordinates>
-      <MinX>left</MinX> <!-- or <Left> -->
-      <MinY>bottom</MinY> <!-- or <Bottom> -->
+    <CoordinatesDimensions>
+      <MinX>left</MinX> <!-- or <Left> or <MaxX> or <Right> -->
+      <MinY>bottom</MinY> <!-- or <Bottom> or <MaxY> or <Top> -->
       <Width>width</Width>
       <Height>height</Height>
-    </Coordinates>
+    </CoordinatesDimensions>
   </Box>
 
   <!--

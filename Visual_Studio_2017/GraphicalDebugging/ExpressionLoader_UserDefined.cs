@@ -463,7 +463,7 @@ namespace GraphicalDebugging
                 }
 
                 public bool IsUserDefined() { return true; }
-                public Kind Kind() { return ExpressionLoader.Kind.Point; }
+                public Kind Kind() { return ExpressionLoader.Kind.Box; }
                 public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
                 {
                     if (!typeMatcher.MatchType(type, id))
@@ -600,7 +600,7 @@ namespace GraphicalDebugging
                 }
 
                 public bool IsUserDefined() { return true; }
-                public Kind Kind() { return ExpressionLoader.Kind.Point; }
+                public Kind Kind() { return ExpressionLoader.Kind.Box; }
                 public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
                 {
                     if (!typeMatcher.MatchType(type, id))
@@ -730,19 +730,21 @@ namespace GraphicalDebugging
                                 new MemoryReader.Member<double>(converterY1, (int)infoY1.Offset),
                                 new MemoryReader.Member<double>(converterX2, (int)infoX2.Offset),
                                 new MemoryReader.Member<double>(converterY2, (int)infoY2.Offset)),
-                            delegate(double[] values)
+                            delegate(double[] values, int offset)
                             {
-                                if (values.Length != 4)
-                                    return;
                                 // convert to LBRT
                                 if (coordsX == CoordsX.LW) // LXWX
-                                    values[2] = values[0] + values[2]; // r = l + w
+                                    values[offset + 2] = values[offset + 0]
+                                                       + values[offset + 2]; // r = l + w
                                 else if (coordsX == CoordsX.WR) // WXRX
-                                    values[0] = values[2] - values[0]; // l = r - w
+                                    values[offset + 0] = values[offset + 2]
+                                                       - values[offset + 0]; // l = r - w
                                 if (coordsY == CoordsY.BH) // XBXH
-                                    values[3] = values[1] + values[3]; // t = b + h
+                                    values[offset + 3] = values[offset + 1]
+                                                       + values[offset + 3]; // t = b + h
                                 else if (coordsY == CoordsY.HT) // XHXT
-                                    values[1] = values[3] - values[1]; // b = t - h
+                                    values[offset + 1] = values[offset + 3]
+                                                       - values[offset + 1]; // b = t - h
                             });
             }
 
@@ -1517,6 +1519,7 @@ namespace GraphicalDebugging
                         {
                             var elPoints = Util.GetXmlElementByTagName(elEntry, "Points");
                             var elCoordinates = Util.GetXmlElementByTagName(elEntry, "Coordinates");
+                            var elCoordinatesDimensions = Util.GetXmlElementByTagName(elEntry, "CoordinatesDimensions");
                             if (elPoints != null)
                             {
                                 var elMin = Util.GetXmlElementByTagName(elPoints, "Min");
@@ -1529,68 +1532,82 @@ namespace GraphicalDebugging
                                                     typeMatcher, exprMin, exprMax));
                                 }
                             }
-                            else if (elCoordinates != null)
+                            else if (elCoordinates != null || elCoordinatesDimensions != null)
                             {
                                 Geometry.CoordinateSystem cs = Geometry.CoordinateSystem.Cartesian;
                                 Geometry.Unit unit = Geometry.Unit.None;
                                 GetCSAndUnit(elEntry, out cs, out unit);
 
-                                var elLeft = Util.GetXmlElementByTagName(elCoordinates, "MinX");
-                                var elBottom = Util.GetXmlElementByTagName(elCoordinates, "MinY");
-                                var elRight = Util.GetXmlElementByTagName(elCoordinates, "MaxX");
-                                var elTop = Util.GetXmlElementByTagName(elCoordinates, "MaxY");
+                                var elParent = elCoordinates != null
+                                             ? elCoordinates
+                                             : elCoordinatesDimensions;
+
+                                var elLeft = Util.GetXmlElementByTagName(elParent, "MinX");
+                                var elBottom = Util.GetXmlElementByTagName(elParent, "MinY");
+                                var elRight = Util.GetXmlElementByTagName(elParent, "MaxX");
+                                var elTop = Util.GetXmlElementByTagName(elParent, "MaxY");
                                 if (elLeft == null)
-                                    elLeft = Util.GetXmlElementByTagName(elCoordinates, "Left");
+                                    elLeft = Util.GetXmlElementByTagName(elParent, "Left");
                                 if (elBottom == null)
-                                    elBottom = Util.GetXmlElementByTagName(elCoordinates, "Bottom");
+                                    elBottom = Util.GetXmlElementByTagName(elParent, "Bottom");
                                 if (elRight == null)
-                                    elRight = Util.GetXmlElementByTagName(elCoordinates, "Right");
+                                    elRight = Util.GetXmlElementByTagName(elParent, "Right");
                                 if (elTop == null)
-                                    elTop = Util.GetXmlElementByTagName(elCoordinates, "Top");
-                                var elWidth = Util.GetXmlElementByTagName(elCoordinates, "Width");
-                                var elHeight = Util.GetXmlElementByTagName(elCoordinates, "Height");
+                                    elTop = Util.GetXmlElementByTagName(elParent, "Top");
+                                var elWidth = Util.GetXmlElementByTagName(elParent, "Width");
+                                var elHeight = Util.GetXmlElementByTagName(elParent, "Height");
+
                                 string exprX1 = null;
                                 string exprX2 = null;
                                 string exprY1 = null;
                                 string exprY2 = null;
                                 UserBoxCoords.CoordsX coordsX = UserBoxCoords.CoordsX.LR;
                                 UserBoxCoords.CoordsY coordsY = UserBoxCoords.CoordsY.BT;
-                                if (elLeft != null && elRight != null)
+                                if (elCoordinates != null)
                                 {
-                                    exprX1 = elLeft.InnerText;
-                                    exprX2 = elRight.InnerText;
-                                    coordsX = UserBoxCoords.CoordsX.LR;
+                                    if (elLeft != null && elRight != null)
+                                    {
+                                        exprX1 = elLeft.InnerText;
+                                        exprX2 = elRight.InnerText;
+                                        coordsX = UserBoxCoords.CoordsX.LR;
+                                    }
+
+                                    if (elBottom != null && elTop != null)
+                                    {
+                                        exprY1 = elBottom.InnerText;
+                                        exprY2 = elTop.InnerText;
+                                        coordsY = UserBoxCoords.CoordsY.BT;
+                                    }
                                 }
-                                else if (elLeft != null && elWidth != null)
+                                else // elCoordinatesDimensions != null
                                 {
-                                    exprX1 = elLeft.InnerText;
-                                    exprX2 = elWidth.InnerText;
-                                    coordsX = UserBoxCoords.CoordsX.LW;
+                                    if (elLeft != null && elWidth != null)
+                                    {
+                                        exprX1 = elLeft.InnerText;
+                                        exprX2 = elWidth.InnerText;
+                                        coordsX = UserBoxCoords.CoordsX.LW;
+                                    }
+                                    else if (elRight != null && elWidth != null)
+                                    {
+                                        exprX1 = elWidth.InnerText;
+                                        exprX2 = elRight.InnerText;
+                                        coordsX = UserBoxCoords.CoordsX.WR;
+                                    }
+
+                                    if (elBottom != null && elHeight != null)
+                                    {
+                                        exprY1 = elBottom.InnerText;
+                                        exprY2 = elHeight.InnerText;
+                                        coordsY = UserBoxCoords.CoordsY.BH;
+                                    }
+                                    else if (elTop != null && elHeight != null)
+                                    {
+                                        exprY1 = elHeight.InnerText;
+                                        exprY2 = elTop.InnerText;
+                                        coordsY = UserBoxCoords.CoordsY.HT;
+                                    }
                                 }
-                                else if (elRight != null && elWidth != null)
-                                {
-                                    exprX1 = elWidth.InnerText;
-                                    exprX2 = elRight.InnerText;
-                                    coordsX = UserBoxCoords.CoordsX.WR;
-                                }
-                                if (elBottom != null && elTop != null)
-                                {
-                                    exprY1 = elBottom.InnerText;
-                                    exprY2 = elTop.InnerText;
-                                    coordsY = UserBoxCoords.CoordsY.BT;
-                                }
-                                else if (elBottom != null && elHeight != null)
-                                {
-                                    exprY1 = elBottom.InnerText;
-                                    exprY2 = elHeight.InnerText;
-                                    coordsY = UserBoxCoords.CoordsY.BH;
-                                }
-                                else if (elTop != null && elHeight != null)
-                                {
-                                    exprY1 = elHeight.InnerText;
-                                    exprY2 = elTop.InnerText;
-                                    coordsY = UserBoxCoords.CoordsY.HT;
-                                }
+
                                 if (exprX1 != null && exprX2 != null && exprY1 != null && exprY2 != null)
                                 {
                                     loaders.Add(new UserBoxCoords.LoaderCreator(

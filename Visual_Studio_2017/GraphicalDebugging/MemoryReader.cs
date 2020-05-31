@@ -215,7 +215,7 @@ namespace GraphicalDebugging
         public class TransformingConverter<ValueType> : Converter<ValueType>
             where ValueType : struct
         {
-            public delegate void Transformer(ValueType[] values);
+            public delegate void Transformer(ValueType[] values, int offset);
 
             public TransformingConverter(Converter<ValueType> baseConverter,
                                          Transformer transformer)
@@ -237,7 +237,7 @@ namespace GraphicalDebugging
             public override void Copy(byte[] bytes, int bytesOffset, ValueType[] result, int resultOffset)
             {
                 baseConverter.Copy(bytes, bytesOffset, result, resultOffset);
-                transformer(result);
+                transformer(result, resultOffset);
             }
 
             Converter<ValueType> baseConverter;
