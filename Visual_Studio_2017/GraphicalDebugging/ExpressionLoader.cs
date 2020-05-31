@@ -587,6 +587,12 @@ namespace GraphicalDebugging
             {
                 return null;
             }
+
+            virtual public ExpressionDrawer.IDrawable DrawableFromMemory(MemoryReader.Converter<double> converter,
+                                                                         double[] values, int offset)
+            {
+                return null;
+            }
         }
 
         /// <summary>
@@ -622,13 +628,60 @@ namespace GraphicalDebugging
             }
             abstract protected ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type);
             abstract protected ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, Debugger debugger, string name, string type);
+
+            public override ExpressionDrawer.IDrawable DrawableFromMemory(MemoryReader.Converter<double> converter,
+                                                                          double[] values, int offset)
+            {
+                int valCount = converter.ValueCount();
+                return valCount >= 2 ? new ExpressionDrawer.Point(values[offset], values[offset + 1])
+                     : valCount == 1 ? new ExpressionDrawer.Point(values[offset], 0)
+                     : null;
+            }
         }
 
         abstract class BoxLoader : GeometryLoader<ExpressionDrawer.Box>
-        { }
+        {
+            public override ExpressionDrawer.IDrawable DrawableFromMemory(MemoryReader.Converter<double> converter,
+                                                                          double[] values, int offset)
+            {
+                int valCount = converter.ValueCount();
+                if (valCount == 4)
+                {
+                    var mi = new ExpressionDrawer.Point(values[offset], values[offset + 1]);
+                    var ma = new ExpressionDrawer.Point(values[offset + 2], values[offset + 3]);
+                    return new ExpressionDrawer.Box(mi, ma);
+                }
+                else if (valCount == 2)
+                {
+                    var mi = new ExpressionDrawer.Point(values[offset], 0);
+                    var ma = new ExpressionDrawer.Point(values[offset + 1], 0);
+                    return new ExpressionDrawer.Box(mi, ma);
+                }
+                return null;
+            }
+        }
 
         abstract class SegmentLoader : GeometryLoader<ExpressionDrawer.Segment>
-        { }
+        {
+            public override ExpressionDrawer.IDrawable DrawableFromMemory(MemoryReader.Converter<double> converter,
+                                                                          double[] values, int offset)
+            {
+                int valCount = converter.ValueCount();
+                if (valCount == 4)
+                {
+                    var p0 = new ExpressionDrawer.Point(values[offset], values[offset + 1]);
+                    var p1 = new ExpressionDrawer.Point(values[offset + 2], values[offset + 3]);
+                    return new ExpressionDrawer.Segment(p0, p1);
+                }
+                else if (valCount == 2)
+                {
+                    var p0 = new ExpressionDrawer.Point(values[offset], 0);
+                    var p1 = new ExpressionDrawer.Point(values[offset + 1], 0);
+                    return new ExpressionDrawer.Segment(p0, p1);
+                }
+                return null;
+            }
+        }
 
         abstract class NSphereLoader : GeometryLoader<ExpressionDrawer.NSphere>
         { }
@@ -663,9 +716,9 @@ namespace GraphicalDebugging
                 bool okx = true, oky = true;
                 double x = 0, y = 0;
                 string ptrName = name + memberArraySuffix;
-                if (count > 0)
+                if (count >= 1)
                     okx = ExpressionParser.TryLoadDouble(debugger, ptrName + "[0]", out x);
-                if (count > 1)
+                if (count >= 2)
                     oky = ExpressionParser.TryLoadDouble(debugger, ptrName + "[1]", out y);
                 return Util.IsOk(okx, oky)
                      ? new ExpressionDrawer.Point(x, y)
@@ -683,12 +736,12 @@ namespace GraphicalDebugging
                 double[] values = new double[count];
                 if (mreader.ReadNumericArray(info.Address, info.Type, info.Size, values))
                 {
-                    if (count > 1)
+                    if (count >= 2)
                         return new ExpressionDrawer.Point(values[0], values[1]);
-                    else if (count > 0)
+                    else if (count == 1)
                         return new ExpressionDrawer.Point(values[0], 0);
                     else
-                        return new ExpressionDrawer.Point(0, 0);
+                        return null;
                 }
 
                 return null;
@@ -704,6 +757,8 @@ namespace GraphicalDebugging
                 int elemSize = ExpressionParser.GetTypeSizeof(debugger, coordType);
                 MemoryReader.Converter<double> arrayConverter
                     = mreader.GetNumericArrayConverter(coordType, elemSize, count);
+                if (arrayConverter == null)
+                    return null;
                 int byteSize = (new ExpressionParser(debugger)).GetValueSizeof(name);
                 if (byteSize == 0)
                     return null;
@@ -884,6 +939,8 @@ namespace GraphicalDebugging
                 string m_max_corner = name + ".m_max_corner";
 
                 MemoryReader.Converter<double> pointConverter = pointLoader.GetMemoryConverter(mreader, debugger, m_min_corner, pointType);
+                if (pointConverter == null)
+                    return null;
 
                 return new MemoryReader.StructConverter<double>(sizeOf,
                             new MemoryReader.Member<double>(pointConverter, (int)minDiff),
@@ -913,6 +970,8 @@ namespace GraphicalDebugging
                         return null;
 
                     string first = name + ".first";
+                    string second = name + ".second";
+
                     string pointType = tparams[0];
                     PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
                                                                  first,
@@ -920,14 +979,26 @@ namespace GraphicalDebugging
                     if (pointLoader == null)
                         return null;
 
-                    return new BGSegment(pointLoader, pointType);
+                    int sizeOf = ExpressionParser.GetTypeSizeof(debugger, type);
+                    if (ExpressionParser.IsInvalidSize(sizeOf))
+                        return null;
+
+                    long firstDiff = ExpressionParser.GetAddressDifference(debugger, name, first);
+                    long secondDiff = ExpressionParser.GetAddressDifference(debugger, name, second);
+                    if (ExpressionParser.IsInvalidOffset(sizeOf, firstDiff, secondDiff))
+                        return null;
+
+                    return new BGSegment(pointLoader, pointType, sizeOf, firstDiff, secondDiff);
                 }
             }
 
-            protected BGSegment(PointLoader pointLoader, string pointType)
+            protected BGSegment(PointLoader pointLoader, string pointType, int sizeOf, long firstDiff, long secondDiff)
             {
                 this.pointLoader = pointLoader;
                 this.pointType = pointType;
+                this.sizeOf = sizeOf;
+                this.firstDiff = firstDiff;
+                this.secondDiff = secondDiff;
             }
 
             public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
@@ -951,10 +1022,32 @@ namespace GraphicalDebugging
                      : null;
             }
 
-            // TODO: GetMemoryConverter
+            public override MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader,
+                                                                              Debugger debugger, // TODO - remove
+                                                                              string name, string type)
+            {
+                // NOTE: Because it can be created by derived class
+                //   and these members can be set to invalid values
+                //   e.g. BGReferringSegment
+                if (ExpressionParser.IsInvalidSize(sizeOf)
+                    || ExpressionParser.IsInvalidOffset(sizeOf, firstDiff, secondDiff))
+                    return null;
+
+                string first = name + ".first";
+                MemoryReader.Converter<double> pointConverter = pointLoader.GetMemoryConverter(mreader, debugger, first, pointType);
+                if (pointConverter == null)
+                    return null;
+
+                return new MemoryReader.StructConverter<double>(sizeOf,
+                            new MemoryReader.Member<double>(pointConverter, (int)firstDiff),
+                            new MemoryReader.Member<double>(pointConverter, (int)secondDiff));
+            }
 
             PointLoader pointLoader;
             string pointType;
+            long firstDiff;
+            long secondDiff;
+            int sizeOf;
         }
 
         class BGReferringSegment : BGSegment
@@ -977,15 +1070,13 @@ namespace GraphicalDebugging
                     PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
                                                                  first,
                                                                  pointType) as PointLoader;
-                    if (pointLoader == null)
-                        return null;
 
                     return new BGReferringSegment(pointLoader, pointType);
                 }
             }
 
             private BGReferringSegment(PointLoader pointLoader, string pointType)
-                : base(pointLoader, pointType)
+                : base(pointLoader, pointType, 0, -1, -1)
             { }
         }
 
@@ -1087,15 +1178,15 @@ namespace GraphicalDebugging
                                             ContainerLoader containerLoader,
                                             LoadCallback callback)
             {
-                ResultType result = null;
+                MemoryReader.Converter<double> pointConverter = pointLoader.GetMemoryConverter(
+                    mreader, debugger, pointName, pointType);
+                if (pointConverter == null)
+                    return null;
 
-                MemoryReader.Converter<double> pointConverter = pointLoader.GetMemoryConverter(mreader, debugger,
-                                                                                               pointName, pointType);
-                if (pointConverter != null)
-                {
-                    int dimension = pointConverter.ValueCount();
-                    result = new ResultType();
-                    bool ok = containerLoader.ForEachMemoryBlock(mreader, debugger, name, type, 0, pointConverter,
+                int dimension = pointConverter.ValueCount();
+                ResultType result = new ResultType();
+                if (containerLoader.ForEachMemoryBlock(mreader, debugger,
+                        name, type, 0, pointConverter,
                         delegate (double[] values)
                         {
                             if (dimension == 0 || values.Length % dimension != 0)
@@ -1112,12 +1203,12 @@ namespace GraphicalDebugging
                             }
 
                             return callback();
-                        });
-                    if (!ok)
-                        result = null;
+                        }))
+                {
+                    return result;
                 }
 
-                return result;
+                return null;
             }
         }
 
@@ -2565,23 +2656,23 @@ namespace GraphicalDebugging
             protected override ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, Debugger debugger,
                                                                       string name, string type)
             {
-                // TODO: Memory converter could be calculated once
                 MemoryReader.Converter<double> converter = GetMemoryConverter(mreader, debugger, name, type);
-                if (converter != null)
+                if (converter == null)
+                    return null;
+
+                if (converter.ValueCount() != 2)
+                    throw new ArgumentOutOfRangeException("converter.ValueCount()");
+
+                ulong address = ExpressionParser.GetValueAddress(debugger, name);
+                if (address == 0)
+                    return null;
+
+                double[] values = new double[2];
+                if (mreader.Read(address, values, converter))
                 {
-                    if (converter.ValueCount() != 2)
-                        throw new ArgumentOutOfRangeException("converter.ValueCount()");
-
-                    ulong address = ExpressionParser.GetValueAddress(debugger, name);
-                    if (address == 0)
-                        return null;
-
-                    double[] values = new double[2];
-                    if (mreader.Read(address, values, converter))
-                    {
-                        return new ExpressionDrawer.Point(values[0], values[1]);
-                    }
+                    return new ExpressionDrawer.Point(values[0], values[1]);
                 }
+
                 return null;
             }
 
@@ -2872,19 +2963,89 @@ namespace GraphicalDebugging
                                                             string name, string type,
                                                             LoadCallback callback)
             {
-                ExpressionDrawer.DrawablesContainer drawables = new ExpressionDrawer.DrawablesContainer();
-                bool ok = containerLoader.ForEachElement(debugger, name, delegate (string elName)
+                ExpressionDrawer.DrawablesContainer result = null;
+
+                if  (mreader != null)
                 {
-                    ExpressionDrawer.IDrawable drawable = geometryLoader.Load(mreader, debugger,
-                                                                              elName, geometryType,
-                                                                              callback);
-                    if (drawable == null)
-                        return false;
-                    drawables.Add(drawable);
-                    //return callback();
-                    return true;
-                });
-                return ok ? drawables : null;
+                    string geometryName, dummyType;
+                    containerLoader.ElementInfo(name, type, out geometryName, out dummyType);
+
+                    result = LoadMemory(mreader, debugger,
+                                        name, type,
+                                        geometryName,
+                                        callback);
+                }
+
+                if (result == null)
+                {
+                    result = LoadParsed(mreader, debugger, name, type, callback);
+                }
+
+                return result;
+            }
+
+            private ExpressionDrawer.DrawablesContainer LoadMemory(MemoryReader mreader, Debugger debugger,
+                                                                   string name, string type,
+                                                                   string geometryName, 
+                                                                   LoadCallback callback)
+            {
+                MemoryReader.Converter<double> geometryConverter = geometryLoader.GetMemoryConverter(
+                    mreader, debugger, geometryName, geometryType);
+
+                if (geometryConverter == null)
+                    return null;
+
+                ExpressionDrawer.DrawablesContainer result = new ExpressionDrawer.DrawablesContainer();
+                if (containerLoader.ForEachMemoryBlock(mreader, debugger,
+                        name, type, 0, geometryConverter,
+                        delegate (double[] values)
+                        {
+                            int valCount = geometryConverter.ValueCount();
+                            if (valCount == 0 || values.Length % valCount != 0)
+                                return false;
+                            int geometriesCount = values.Length / valCount;
+
+                            for (int i = 0; i < geometriesCount; ++i)
+                            {
+                                ExpressionDrawer.IDrawable d = geometryLoader.DrawableFromMemory(
+                                    geometryConverter, values, i * valCount);
+
+                                if (d == null)
+                                    return false;
+
+                                result.Add(d);
+                            }
+
+                            return callback();
+                        }))
+                {
+                    return result;
+                }
+
+                return null;
+            }
+
+            private ExpressionDrawer.DrawablesContainer LoadParsed(MemoryReader mreader, Debugger debugger,
+                                                                   string name, string type,
+                                                                   LoadCallback callback)
+            {
+                ExpressionDrawer.DrawablesContainer drawables = new ExpressionDrawer.DrawablesContainer();
+                if (containerLoader.ForEachElement(debugger, name,
+                        delegate (string elName)
+                        {
+                            ExpressionDrawer.IDrawable drawable = geometryLoader.Load(
+                                mreader, debugger, elName, geometryType,callback);
+                            if (drawable == null)
+                                return false;
+                            drawables.Add(drawable);
+                            //return callback();
+                            return true;
+                        }))
+                {
+                    return drawables;
+                }
+
+                return null;
             }
 
             ContainerLoader containerLoader;

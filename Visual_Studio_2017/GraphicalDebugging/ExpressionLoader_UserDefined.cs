@@ -398,7 +398,8 @@ namespace GraphicalDebugging
             protected override ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, Debugger debugger,
                                                                       string name, string type)
             {
-                MemoryReader.Converter<double> converter = GetMemoryConverter(mreader, debugger, name, type);
+                MemoryReader.Converter<double> converter = GetMemoryConverter(mreader, debugger,
+                                                                              name, type);
                 if (converter == null)
                     return null;
 
@@ -718,7 +719,8 @@ namespace GraphicalDebugging
                 MemoryReader.ValueConverter<double> converterY1 = mreader.GetNumericConverter(infoY1.Type, infoY1.Size);
                 MemoryReader.ValueConverter<double> converterY2 = mreader.GetNumericConverter(infoY2.Type, infoY2.Size);
                 
-                if (converterX1 == null || converterX2 == null || converterY1 == null || converterY2 == null)
+                if (converterX1 == null || converterX2 == null
+                    || converterY1 == null || converterY2 == null)
                     return null;
 
                 return new MemoryReader.TransformingConverter<double>(

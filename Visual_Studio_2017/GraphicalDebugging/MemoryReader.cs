@@ -344,9 +344,9 @@ namespace GraphicalDebugging
         public ArrayConverter<double> GetNumericArrayConverter(string valType, int valSize, int size)
         {
             ValueConverter<double> valueConverter = GetNumericConverter(valType, valSize);
-            return valueConverter == null
-                 ? null
-                 : new ArrayConverter<double>(valueConverter, size);
+            return valueConverter != null
+                 ? new ArrayConverter<double>(valueConverter, size)
+                 : null;
         }
 
         // ptrType - pointer type, must end with *
