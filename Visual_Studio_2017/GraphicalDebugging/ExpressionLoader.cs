@@ -555,6 +555,9 @@ namespace GraphicalDebugging
         /// </summary>
         abstract class DrawableLoader : Loader
         {
+            /// <summary>
+            /// Callback function allowing to break loading of variable.
+            /// </summary>
             public delegate bool LoadCallback();
 
             /// <summary>
