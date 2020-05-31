@@ -1,3 +1,17 @@
+version 0.32
+
+additions:
+- support for Type pattern in user-defined classes
+- support for user-defined coordinate systems and units
+- support for base classes of known types in C#, e.g. IList<>
+- support for user-defined Boxes
+- added enabling/disabling of geometries and plots
+- added changing of colors of geometries and plots
+- improvement of list editing, single click edit
+- implemented direct memory loading of Boost.Geometry R-tree
+- implemented direct memory loading of containers of geometries
+- various other loading optimizations
+
 version 0.31
 
 bugfixes:

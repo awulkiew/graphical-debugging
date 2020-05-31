@@ -83,7 +83,7 @@ Supported:
 * Non-cartesian geometries (spherical_equatorial and geographic)
   * Boost.Geometry: point, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
 * Spatial indexes
-  * Boost.Geometry: rtree (no direct memory access for now, so it may take long time to load)
+  * Boost.Geometry: rtree
 * Complex numbers
   * STL: complex
 * Variants of geometries
@@ -129,7 +129,7 @@ Supported:
 * Non-cartesian geometries (spherical_equatorial and geographic)
   * Boost.Geometry: point, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
 * Spatial indexes
-  * Boost.Geometry: rtree (no direct memory access for now, so it may take long time to load)
+  * Boost.Geometry: rtree
 * Complex numbers
   * STL: complex
 * Images
@@ -189,6 +189,7 @@ Options for each Watch can be found under **Tools**->**Options**->**Graphical De
 The extension offers support for the following user-defined geometries for both C++ and C# types:
 
   * Point
+  * Box (or rectangle)
   * MultiPoint
   * Linestring
   * MultiLinestring
@@ -240,9 +241,7 @@ They can be defined in XML file similar to *.natvis file. Path to this file can 
 Current limitations:
 
   * only one entry per type
-  * based on identifier, no separate entries for template specializations
-  * no support for user-defined coordinate system, cartesian is used by default
-  * in C# elements stored in containers has to be ValueTypes
+  * in C# elements stored in containers has to be ValueTypes, Points and Boxes has to be structs
 
 See more [examples at GitHub](https://github.com/awulkiew/graphical-debugging/tree/master/examples).
 
