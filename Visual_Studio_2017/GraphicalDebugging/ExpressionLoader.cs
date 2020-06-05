@@ -33,7 +33,7 @@ namespace GraphicalDebugging
         public enum Kind
         {
             Container = 0, MultiPoint, TurnsContainer, ValuesContainer, GeometriesContainer,
-            Point, Segment, Box, NSphere, Linestring, Ring, Polygon,
+            Point, Segment, Box, NSphere, Ray, Line, Linestring, Ring, Polygon,
             MultiLinestring, MultiPolygon, MultiGeometry, Turn, OtherGeometry,
             Variant, Image
         };
@@ -633,8 +633,8 @@ namespace GraphicalDebugging
                     result = LoadPointParsed(debugger, name, type);
                 return result;
             }
-            abstract protected ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type);
-            abstract protected ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, Debugger debugger, string name, string type);
+            abstract public ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type);
+            abstract public ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, Debugger debugger, string name, string type);
 
             public override ExpressionDrawer.IDrawable DrawableFromMemory(MemoryReader.Converter<double> converter,
                                                                           double[] values, int offset)
@@ -663,6 +663,50 @@ namespace GraphicalDebugging
                     var mi = new ExpressionDrawer.Point(values[offset], 0);
                     var ma = new ExpressionDrawer.Point(values[offset + 1], 0);
                     return new ExpressionDrawer.Box(mi, ma);
+                }
+                return null;
+            }
+        }
+
+        abstract class RayLoader : GeometryLoader<ExpressionDrawer.Ray>
+        {
+            public override ExpressionDrawer.IDrawable DrawableFromMemory(MemoryReader.Converter<double> converter,
+                                                                          double[] values, int offset)
+            {
+                int valCount = converter.ValueCount();
+                if (valCount == 4)
+                {
+                    var o = new ExpressionDrawer.Point(values[offset], values[offset + 1]);
+                    var d = new ExpressionDrawer.Point(values[offset + 2], values[offset + 3]);
+                    return new ExpressionDrawer.Ray(o, d);
+                }
+                else if (valCount == 2)
+                {
+                    var o = new ExpressionDrawer.Point(values[offset], 0);
+                    var d = new ExpressionDrawer.Point(values[offset + 1], 0);
+                    return new ExpressionDrawer.Ray(o, d);
+                }
+                return null;
+            }
+        }
+
+        abstract class LineLoader : GeometryLoader<ExpressionDrawer.Line>
+        {
+            public override ExpressionDrawer.IDrawable DrawableFromMemory(MemoryReader.Converter<double> converter,
+                                                                          double[] values, int offset)
+            {
+                int valCount = converter.ValueCount();
+                if (valCount == 4)
+                {
+                    var f = new ExpressionDrawer.Point(values[offset], values[offset + 1]);
+                    var s = new ExpressionDrawer.Point(values[offset + 2], values[offset + 3]);
+                    return new ExpressionDrawer.Line(f, s);
+                }
+                else if (valCount == 2)
+                {
+                    var f = new ExpressionDrawer.Point(values[offset], 0);
+                    var s = new ExpressionDrawer.Point(values[offset + 1], 0);
+                    return new ExpressionDrawer.Line(f, s);
                 }
                 return null;
             }
@@ -718,7 +762,7 @@ namespace GraphicalDebugging
                 return traits;
             }
 
-            protected override ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type)
+            public override ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type)
             {
                 bool okx = true, oky = true;
                 double x = 0, y = 0;
@@ -732,7 +776,7 @@ namespace GraphicalDebugging
                      : null;
             }
 
-            protected override ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, Debugger debugger,
+            public override ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, Debugger debugger,
                                                                       string name, string type)
             {
                 string ptrName = name + memberArraySuffix;
@@ -2650,7 +2694,7 @@ namespace GraphicalDebugging
                 return new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
             }
 
-            protected override ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type)
+            public override ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type)
             {
                 double x = 0, y = 0;
                 bool okx = ExpressionParser.TryLoadDouble(debugger, name + ".first", out x);
@@ -2660,7 +2704,7 @@ namespace GraphicalDebugging
                      : null;
             }
 
-            protected override ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, Debugger debugger,
+            public override ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, Debugger debugger,
                                                                       string name, string type)
             {
                 MemoryReader.Converter<double> converter = GetMemoryConverter(mreader, debugger, name, type);

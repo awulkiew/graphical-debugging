@@ -293,6 +293,367 @@ namespace GraphicalDebugging
             string elemType;
         }
 
+        class UserValue
+        {
+            public UserValue(double value) { Value = value; }
+            public double Value;
+        }
+
+        class UserValueMember
+        {
+            public UserValueMember(Debugger debugger,
+                                   string parentName, string parentType, int parentSizeOf,
+                                   ClassScopeExpression memberExpr)
+            {
+                IsValid = false;
+
+                expr = memberExpr;
+                expr.Reinitialize(debugger, parentName, parentType);
+                
+                string name = expr.GetString(parentName);
+                type = ExpressionParser.GetValueType(debugger, name);
+                if (ExpressionParser.IsInvalidType(type))
+                    return;
+
+                sizeOf = ExpressionParser.GetTypeSizeof(debugger, type);
+                if (ExpressionParser.IsInvalidSize(sizeOf))
+                    return;
+
+                offset = ExpressionParser.GetAddressDifference(debugger, parentName, name);
+                // offset + size > sizeOf
+                if (ExpressionParser.IsInvalidOffset(parentSizeOf, offset))
+                    return;
+
+                IsValid = true;
+            }
+
+            public UserValue Load(MemoryReader mreader, Debugger debugger,
+                                  string parentName)
+            {
+                UserValue result = null;
+                if (mreader != null)
+                    result = LoadMemory(mreader, debugger, parentName);
+                if (result == null)
+                    result = LoadParsed(debugger, parentName);
+                return result;
+            }
+
+            public UserValue LoadParsed(Debugger debugger,
+                                         string parentName)
+            {
+                string name = expr.GetString(parentName);
+                double val = 0;
+                bool ok = ExpressionParser.TryLoadDouble(debugger, name, out val);
+                return Util.IsOk(ok)
+                     ? new UserValue(val)
+                     : null;
+            }
+
+            public UserValue LoadMemory(MemoryReader mreader, Debugger debugger,
+                                         string parentName)
+            {
+                MemoryReader.ValueConverter<double> converter = mreader.GetNumericConverter(type, sizeOf);
+                if (converter == null)
+                    return null;
+
+                string name = expr.GetString(parentName);
+                ulong address = ExpressionParser.GetValueAddress(debugger, name);
+                if (address == 0)
+                    return null;
+
+                double[] values = new double[1];
+                if (!mreader.Read(address, values, converter))
+                    return null;
+
+                return new UserValue(values[0]);
+            }
+
+            public MemoryReader.Member<double> GetMemoryConverter(MemoryReader mreader,
+                                                                  Debugger debugger, // TODO - remove
+                                                                  string parentName)
+            {
+                MemoryReader.ValueConverter<double> converter = mreader.GetNumericConverter(type, sizeOf);
+                if (converter == null)
+                    return null;
+                return new MemoryReader.Member<double>(converter, (int)offset);
+            }
+
+            public bool IsValid;
+
+            ClassScopeExpression expr;
+            // For memory loading:
+            string type;
+            int sizeOf;
+            long offset;
+        }
+
+        class UserPointMember
+        {
+            public UserPointMember(Loaders loaders, Debugger debugger,
+                                   string parentName, string parentType, int parentSizeOf,
+                                   ClassScopeExpression memberExpr)
+            {
+                IsValid = false;
+
+                expr = memberExpr;
+                expr.Reinitialize(debugger, parentName, parentType);
+
+                string name = expr.GetString(parentName);
+                type = ExpressionParser.GetValueType(debugger, name);
+                if (ExpressionParser.IsInvalidType(type))
+                    return;
+
+                loader = loaders.FindByType(ExpressionLoader.Kind.Point, name, type) as PointLoader;
+                if (loader == null)
+                    return;
+
+                offset = ExpressionParser.GetAddressDifference(debugger, parentName, name);
+                // offset + size > sizeOf
+                if (ExpressionParser.IsInvalidOffset(parentSizeOf, offset))
+                    return;
+
+                IsValid = true;
+            }
+
+            public Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger, string parentName)
+            {
+                string name = expr.GetString(parentName);
+                return loader.GetTraits(mreader, debugger, name);
+            }
+
+            public Geometry.Point Load(MemoryReader mreader, Debugger debugger, string parentName)
+            {
+                string name = expr.GetString(parentName);
+                return loader.LoadPoint(mreader, debugger, name, type);
+            }
+
+            public Geometry.Point LoadParsed(Debugger debugger, string parentName)
+            {
+                string name = expr.GetString(parentName);
+                return loader.LoadPointParsed(debugger, name, type);
+            }
+
+            public Geometry.Point LoadMemory(MemoryReader mreader, Debugger debugger, string parentName)
+            {
+                string name = expr.GetString(parentName);
+                return loader.LoadPointMemory(mreader, debugger, name, type);
+            }
+
+            public MemoryReader.Member<double> GetMemoryConverter(MemoryReader mreader,
+                                                                  Debugger debugger, // TODO - remove
+                                                                  string parentName)
+            {
+                string name = expr.GetString(parentName);                
+                MemoryReader.Converter<double> converter = loader.GetMemoryConverter(mreader, debugger, name, type);
+                if (converter == null)
+                    return null;
+
+                return new MemoryReader.Member<double>(converter, (int)offset);
+            }
+
+            public bool IsValid;
+
+            ClassScopeExpression expr;
+            PointLoader loader;
+            // For memory loading:
+            string type;
+            long offset;
+        }
+
+        class UserSimpleGeometryMembers
+        {
+            public Geometry.Point[] Points;
+            public double[] Values;
+        }
+
+        class UserSimpleGeometry
+        {
+            public UserSimpleGeometry(Loaders loaders, Debugger debugger,
+                                      string name, string type,
+                                      ClassScopeExpression[] pointExprs,
+                                      ClassScopeExpression[] valueExprs,
+                                      Geometry.Traits traits)
+            {
+                IsValid = false;
+
+                sizeOf = ExpressionParser.GetTypeSizeof(debugger, type);
+                if (ExpressionParser.IsInvalidSize(sizeOf))
+                    return;
+
+                if (pointExprs != null)
+                {
+                    pointMembers = new UserPointMember[pointExprs.Length];
+                    for (int i = 0; i < pointExprs.Length; ++i)
+                    {
+                        pointMembers[i] = new UserPointMember(loaders, debugger,
+                                                              name, type,
+                                                              sizeOf, pointExprs[i]);
+                        if (!pointMembers[i].IsValid)
+                            return;
+                    }
+                }
+                
+                if (valueExprs != null)
+                {
+                    valueMembers = new UserValueMember[valueExprs.Length];
+                    for (int i = 0; i < valueExprs.Length; ++i)
+                    {
+                        valueMembers[i] = new UserValueMember(debugger,
+                                                              name, type,
+                                                              sizeOf, valueExprs[i]);
+                        if (!valueMembers[i].IsValid)
+                            return;
+                    }
+                }
+                
+                this.traits = traits;
+
+                IsValid = true;
+            }
+            
+            public Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                             string name)
+            {
+                if (traits != null)
+                    return traits;
+                if (pointMembers != null && pointMembers.Length > 0 && pointMembers[0].IsValid)
+                    return pointMembers[0].GetTraits(mreader, debugger, name);
+                return null;
+            }
+            
+            public UserSimpleGeometryMembers Load(MemoryReader mreader, Debugger debugger,
+                                                  string name)
+            {
+                UserSimpleGeometryMembers result = new UserSimpleGeometryMembers();
+
+                if (pointMembers != null)
+                {
+                    Geometry.Point[] points = new Geometry.Point[pointMembers.Length];
+                    for (int i = 0; i < pointMembers.Length; ++i)
+                    {
+                        points[i] = pointMembers[i].Load(mreader, debugger, name);
+                        if (points[i] == null)
+                            return null;
+                    }
+                    result.Points = points;
+                }
+
+                if (valueMembers != null)
+                {
+                    double[] values = new double[valueMembers.Length];
+                    for (int i = 0; i < valueMembers.Length; ++i)
+                    {
+                        UserValue v = valueMembers[i].Load(mreader, debugger, name);
+                        if (v == null)
+                            return null;
+                        values[i] = v.Value;
+                    }
+                    result.Values = values;
+                }
+
+                return result;
+            }
+
+            public UserSimpleGeometryMembers LoadParsed(Debugger debugger, string name)
+            {
+                UserSimpleGeometryMembers result = new UserSimpleGeometryMembers();
+
+                if (pointMembers != null)
+                {
+                    Geometry.Point[] points = new Geometry.Point[pointMembers.Length];
+                    for (int i = 0; i < pointMembers.Length; ++i)
+                    {
+                        points[i] = pointMembers[i].LoadParsed(debugger, name);
+                        if (points[i] == null)
+                            return null;
+                    }
+                    result.Points = points;
+                }
+
+                if (valueMembers != null)
+                {
+                    double[] values = new double[valueMembers.Length];
+                    for (int i = 0; i < valueMembers.Length; ++i)
+                    {
+                        UserValue v = valueMembers[i].LoadParsed(debugger, name);
+                        if (v == null)
+                            return null;
+                        values[i] = v.Value;
+                    }
+                    result.Values = values;
+                }
+
+                return result;
+            }
+
+            public UserSimpleGeometryMembers LoadMemory(MemoryReader mreader, Debugger debugger,
+                                                        string name)
+            {
+                UserSimpleGeometryMembers result = new UserSimpleGeometryMembers();
+
+                if (pointMembers != null)
+                {
+                    Geometry.Point[] points = new Geometry.Point[pointMembers.Length];
+                    for (int i = 0; i < pointMembers.Length; ++i)
+                    {
+                        points[i] = pointMembers[i].LoadMemory(mreader, debugger, name);
+                        if (points[i] == null)
+                            return null;
+                    }
+                    result.Points = points;
+                }
+
+                if (valueMembers != null)
+                {
+                    double[] values = new double[valueMembers.Length];
+                    for (int i = 0; i < valueMembers.Length; ++i)
+                    {
+                        UserValue v = valueMembers[i].LoadMemory(mreader, debugger, name);
+                        if (v == null)
+                            return null;
+                        values[i] = v.Value;
+                    }
+                    result.Values = values;
+                }
+
+                return result;
+            }
+
+            public MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader,
+                                                                     Debugger debugger,
+                                                                     string name, string type)
+            {
+                int pLength = pointMembers != null ? pointMembers.Length : 0;
+                int vLength = valueMembers != null ? valueMembers.Length : 0;
+                int length = pLength + vLength;
+                MemoryReader.Member<double>[] converters = new MemoryReader.Member<double>[length];
+                for (int i = 0; i < pLength; ++i)
+                {
+                    converters[i] = pointMembers[i].GetMemoryConverter(mreader, debugger, name);
+                    if (converters[i] == null)
+                        return null;
+                }
+                for (int i = 0; i < vLength; ++i)
+                {
+                    int j = i + pLength;
+                    converters[j] = valueMembers[i].GetMemoryConverter(mreader, debugger, name);
+                    if (converters[i] == null)
+                        return null;
+                }
+                return length > 0
+                     ? new MemoryReader.StructConverter<double>(sizeOf, converters)
+                     : null;
+            }
+
+            public bool IsValid;
+
+            UserPointMember[] pointMembers;
+            UserValueMember[] valueMembers;
+            Geometry.Traits traits;
+            // For memory loading:
+            int sizeOf;
+        }
+
         class UserPoint : PointLoader
         {
             public class LoaderCreator : ExpressionLoader.LoaderCreator
@@ -317,42 +678,16 @@ namespace GraphicalDebugging
                     if (!typeMatcher.MatchType(type, id))
                         return null;
 
-                    exprX.Reinitialize(debugger, name, type);
-                    exprY.Reinitialize(debugger, name, type);
+                    var exprs = new ClassScopeExpression[] { exprX.DeepCopy(), exprY.DeepCopy() };
+                    UserSimpleGeometry simpleGeometry = new UserSimpleGeometry(loaders, debugger,
+                                                                name, type,
+                                                                null,
+                                                                exprs,
+                                                                new Geometry.Traits(2, cs, unit));
 
-                    UserPoint res = new UserPoint(exprX.DeepCopy(),
-                                                  exprY.DeepCopy(),
-                                                  cs,
-                                                  unit);
-
-                    res.sizeOf = ExpressionParser.GetTypeSizeof(debugger, type);
-                    if (ExpressionParser.IsInvalidSize(res.sizeOf))
-                        //res.sizeOf = 0;
-                        return null;
-
-                    string nameX = res.exprX.GetString(name);
-                    string nameY = res.exprY.GetString(name);
-                    res.typeX = ExpressionParser.GetValueType(debugger, nameX);
-                    res.typeY = ExpressionParser.GetValueType(debugger, nameY);
-                    if (ExpressionParser.IsInvalidType(res.typeX, res.typeY))
-                        //res.sizeOf = 0;
-                        return null;
-
-                    res.sizeX = ExpressionParser.GetTypeSizeof(debugger, res.typeX);
-                    res.sizeY = ExpressionParser.GetTypeSizeof(debugger, res.typeY);
-                    if (ExpressionParser.IsInvalidSize(res.sizeX, res.sizeY))
-                        //res.sizeOf = 0;
-                        return null;
-
-                    res.offsetX = ExpressionParser.GetAddressDifference(debugger, name, nameX);
-                    res.offsetY = ExpressionParser.GetAddressDifference(debugger, name, nameY);
-                    // offsetX + sizeX > sizeOf
-                    // offsetY + sizeY > sizeOf
-                    if (ExpressionParser.IsInvalidOffset(res.sizeOf, res.offsetX, res.offsetY))
-                        //res.sizeOf = 0;
-                        return null;
-
-                    return res;
+                    return simpleGeometry != null
+                         ? new UserPoint(simpleGeometry)
+                         : null;
                 }
 
                 ITypeMatcher typeMatcher;
@@ -362,91 +697,41 @@ namespace GraphicalDebugging
                 Geometry.Unit unit;
             }
 
-            private UserPoint(ClassScopeExpression exprX,
-                              ClassScopeExpression exprY,
-                              Geometry.CoordinateSystem cs,
-                              Geometry.Unit unit)
+            private UserPoint(UserSimpleGeometry simpleGeometry)
             {
-                this.exprX = exprX;
-                this.exprY = exprY;
-                this.cs = cs;
-                this.unit = unit;
-
-                this.typeX = null;
-                this.typeY = null;
-                this.sizeOf = 0;
+                this.simpleGeometry = simpleGeometry;
             }
 
-            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
-                                                      string name)
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger, string name)
             {
-                // NOTE: in the future dimension should also be loaded
-                //   but for now set it to 2 since the extension ignores higher dimensions anyway
-                return new Geometry.Traits(2, cs, unit);
+                return simpleGeometry.GetTraits(mreader, debugger, name);
             }
 
-            protected override ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type)
+            public override ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type)
             {
-                double x = 0, y = 0;
-                bool okx = ExpressionParser.TryLoadDouble(debugger, exprX.GetString(name), out x);
-                bool oky = ExpressionParser.TryLoadDouble(debugger, exprY.GetString(name), out y);
-                return Util.IsOk(okx, oky)
-                     ? new ExpressionDrawer.Point(x, y)
+                UserSimpleGeometryMembers members = simpleGeometry.LoadParsed(debugger, name);
+                return members != null
+                     ? new ExpressionDrawer.Point(members.Values[0], members.Values[1])
                      : null;
             }
 
-            protected override ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, Debugger debugger,
-                                                                      string name, string type)
+            public override ExpressionDrawer.Point LoadPointMemory(MemoryReader mreader, Debugger debugger,
+                                                                   string name, string type)
             {
-                MemoryReader.Converter<double> converter = GetMemoryConverter(mreader, debugger,
-                                                                              name, type);
-                if (converter == null)
-                    return null;
-
-                if (converter.ValueCount() != 2)
-                    throw new ArgumentOutOfRangeException("converter.ValueCount()");
-
-                ulong address = ExpressionParser.GetValueAddress(debugger, name);
-                if (address == 0)
-                    return null;
-
-                double[] values = new double[2];
-                if (!mreader.Read(address, values, converter))
-                    return null;
-
-                return new ExpressionDrawer.Point(values[0], values[1]);
+                UserSimpleGeometryMembers members = simpleGeometry.LoadMemory(mreader, debugger, name);
+                return members != null
+                     ? new ExpressionDrawer.Point(members.Values[0], members.Values[1])
+                     : null;
             }
 
             public override MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader,
                                                                               Debugger debugger,
                                                                               string name, string type)
             {
-                if (sizeOf == 0)
-                    return null;
-
-                MemoryReader.ValueConverter<double> converterX = mreader.GetNumericConverter(typeX, sizeX);
-                MemoryReader.ValueConverter<double> converterY = mreader.GetNumericConverter(typeY, sizeY);
-                if (converterX == null || converterY == null)
-                    return null;
-
-                return new MemoryReader.StructConverter<double>(
-                            sizeOf,
-                            new MemoryReader.Member<double>(converterX, (int)offsetX),
-                            new MemoryReader.Member<double>(converterY, (int)offsetY));
+                return simpleGeometry.GetMemoryConverter(mreader, debugger, name, type);
             }
 
-            ClassScopeExpression exprX;
-            ClassScopeExpression exprY;
-            Geometry.CoordinateSystem cs;
-            Geometry.Unit unit;
-            // For memory loading:
-            string typeX;
-            string typeY;
-            long offsetX;
-            long offsetY;
-            int sizeOf;
-            int sizeX;
-            int sizeY;
+            UserSimpleGeometry simpleGeometry;
         }
 
         class UserBoxPoints : BoxLoader
@@ -469,39 +754,14 @@ namespace GraphicalDebugging
                     if (!typeMatcher.MatchType(type, id))
                         return null;
 
-                    exprMin.Reinitialize(debugger, name, type);
-                    exprMax.Reinitialize(debugger, name, type);
+                    var exprs = new ClassScopeExpression[] { exprMin.DeepCopy(), exprMax.DeepCopy() };
+                    UserSimpleGeometry simpleGeometry = new UserSimpleGeometry(loaders, debugger,
+                                                                name, type,
+                                                                exprs, null, null);
 
-                    UserBoxPoints res = new UserBoxPoints(exprMin.DeepCopy(),
-                                                          exprMax.DeepCopy());
-
-                    res.sizeOf = ExpressionParser.GetTypeSizeof(debugger, type);
-                    if (ExpressionParser.IsInvalidSize(res.sizeOf))
-                        //res.sizeOf = 0;
-                        return null;
-
-                    string nameMin = res.exprMin.GetString(name);
-                    string nameMax = res.exprMax.GetString(name);
-                    res.typeMin = ExpressionParser.GetValueType(debugger, nameMin);
-                    res.typeMax = ExpressionParser.GetValueType(debugger, nameMax);
-                    if (ExpressionParser.IsInvalidType(res.typeMin, res.typeMax))
-                        //res.sizeOf = 0;
-                        return null;
-
-                    res.loaderMin = loaders.FindByType(ExpressionLoader.Kind.Point, nameMin, res.typeMin) as PointLoader;
-                    res.loaderMax = loaders.FindByType(ExpressionLoader.Kind.Point, nameMax, res.typeMax) as PointLoader;
-                    if (res.loaderMin == null || res.loaderMax == null)
-                        return null;
-
-                    res.offsetMin = ExpressionParser.GetAddressDifference(debugger, name, nameMin);
-                    res.offsetMax = ExpressionParser.GetAddressDifference(debugger, name, nameMax);
-                    // offsetX + sizeX > sizeOf
-                    // offsetY + sizeY > sizeOf
-                    if (ExpressionParser.IsInvalidOffset(res.sizeOf, res.offsetMin, res.offsetMax))
-                        //res.sizeOf = 0;
-                        return null;
-
-                    return res;
+                    return simpleGeometry.IsValid
+                         ? new UserBoxPoints(simpleGeometry)
+                         : null;
                 }
 
                 ITypeMatcher typeMatcher;
@@ -509,35 +769,24 @@ namespace GraphicalDebugging
                 ClassScopeExpression exprMax;
             }
 
-            private UserBoxPoints(ClassScopeExpression exprMin,
-                                  ClassScopeExpression exprMax)
+            private UserBoxPoints(UserSimpleGeometry simpleGeometry)
             {
-                this.exprMin = exprMin;
-                this.exprMax = exprMax;
-
-                this.typeMin = null;
-                this.typeMax = null;
-                this.sizeOf = 0;
+                this.simpleGeometry = simpleGeometry;
             }
 
             public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
                                                       string name)
             {
-                return loaderMin.GetTraits(mreader, debugger, name);
+                return simpleGeometry.GetTraits(mreader, debugger, name);
             }
 
             public override ExpressionDrawer.IDrawable Load(MemoryReader mreader, Debugger debugger,
                                                             string name, string type,
                                                             LoadCallback callback) // dummy callback
             {
-                string nameMin = exprMin.GetString(name);
-                string nameMax = exprMax.GetString(name);
-
-                Geometry.Point fp = loaderMin.LoadPoint(mreader, debugger, nameMin, typeMin);
-                Geometry.Point sp = loaderMax.LoadPoint(mreader, debugger, nameMax, typeMax);
-
-                return Util.IsOk(fp, sp)
-                     ? new ExpressionDrawer.Box(fp, sp)
+                UserSimpleGeometryMembers members = simpleGeometry.Load(mreader, debugger, name);
+                return members != null
+                     ? new ExpressionDrawer.Box(members.Points[0], members.Points[1])
                      : null;
             }
 
@@ -546,29 +795,10 @@ namespace GraphicalDebugging
                                                                               Debugger debugger, // TODO - remove
                                                                               string name, string type)
             {
-                string nameMin = exprMin.GetString(name);
-                string nameMax = exprMax.GetString(name);
-
-                MemoryReader.Converter<double> minConverter = loaderMin.GetMemoryConverter(mreader, debugger, nameMin, typeMin);
-                MemoryReader.Converter<double> maxConverter = loaderMax.GetMemoryConverter(mreader, debugger, nameMax, typeMax);
-                if (minConverter == null || maxConverter == null)
-                    return null;
-
-                return new MemoryReader.StructConverter<double>(sizeOf,
-                            new MemoryReader.Member<double>(minConverter, (int)offsetMin),
-                            new MemoryReader.Member<double>(maxConverter, (int)offsetMax));
+                return simpleGeometry.GetMemoryConverter(mreader, debugger, name, type);
             }
 
-            ClassScopeExpression exprMin;
-            ClassScopeExpression exprMax;
-            PointLoader loaderMin;
-            PointLoader loaderMax;
-            // For memory loading:
-            string typeMin;
-            string typeMax;
-            long offsetMin;
-            long offsetMax;
-            int sizeOf;
+            UserSimpleGeometry simpleGeometry;
         }
 
         class UserBoxCoords : BoxLoader
@@ -606,39 +836,17 @@ namespace GraphicalDebugging
                     if (!typeMatcher.MatchType(type, id))
                         return null;
 
-                    exprX1.Reinitialize(debugger, name, type);
-                    exprX2.Reinitialize(debugger, name, type);
-                    exprY1.Reinitialize(debugger, name, type);
-                    exprY2.Reinitialize(debugger, name, type);
+                    var exprs = new ClassScopeExpression[] { exprX1.DeepCopy(),
+                                                             exprY1.DeepCopy(),
+                                                             exprX2.DeepCopy(),
+                                                             exprY2.DeepCopy() };
+                    UserSimpleGeometry simpleGeometry = new UserSimpleGeometry(loaders, debugger,
+                                                                name, type,
+                                                                null, exprs, traits);
 
-                    UserBoxCoords res = new UserBoxCoords(exprX1.DeepCopy(),
-                                                          exprX2.DeepCopy(),
-                                                          coordsX,
-                                                          exprY1.DeepCopy(),
-                                                          exprY2.DeepCopy(),
-                                                          coordsY,
-                                                          traits);
-
-                    res.sizeOf = ExpressionParser.GetTypeSizeof(debugger, type);
-                    if (ExpressionParser.IsInvalidSize(res.sizeOf))
-                        //res.sizeOf = 0;
-                        return null;
-
-                    string nameX1 = res.exprX1.GetString(name);
-                    string nameX2 = res.exprX2.GetString(name);
-                    string nameY1 = res.exprY1.GetString(name);
-                    string nameY2 = res.exprY2.GetString(name);
-
-                    res.infoX1 = new MemberInfo(debugger, name, nameX1);
-                    res.infoX2 = new MemberInfo(debugger, name, nameX2);
-                    res.infoY1 = new MemberInfo(debugger, name, nameY1);
-                    res.infoY2 = new MemberInfo(debugger, name, nameY2);
-                    if (!res.infoX1.IsValid || !res.infoX2.IsValid
-                        || !res.infoY1.IsValid || !res.infoY2.IsValid)
-                        //res.sizeOf = 0;
-                        return null;
-
-                    return res;
+                    return simpleGeometry.IsValid
+                         ? new UserBoxCoords(simpleGeometry, coordsX, coordsY)
+                         : null;
                 }
 
                 ITypeMatcher typeMatcher;
@@ -651,48 +859,34 @@ namespace GraphicalDebugging
                 Geometry.Traits traits;
             }
 
-            private UserBoxCoords(ClassScopeExpression exprX1,
-                                  ClassScopeExpression exprX2,
+            private UserBoxCoords(UserSimpleGeometry simpleGeometry,
                                   CoordsX coordsX,
-                                  ClassScopeExpression exprY1,
-                                  ClassScopeExpression exprY2,
-                                  CoordsY coordsY,
-                                  Geometry.Traits traits)
+                                  CoordsY coordsY)
             {
-                this.exprX1 = exprX1;
-                this.exprX2 = exprX2;
-                this.exprY1 = exprY1;
-                this.exprY2 = exprY2;
+                this.simpleGeometry = simpleGeometry;
                 this.coordsX = coordsX;
                 this.coordsY = coordsY;
-                this.traits = traits;
-
-                this.sizeOf = 0;
             }
 
             public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
                                                       string name)
             {
-                return traits;
+                return simpleGeometry.GetTraits(mreader, debugger, name);
             }
 
             public override ExpressionDrawer.IDrawable Load(MemoryReader mreader, Debugger debugger,
                                                             string name, string type,
                                                             LoadCallback callback) // dummy callback
             {
-                string nameX1 = exprX1.GetString(name);
-                string nameX2 = exprX2.GetString(name);
-                string nameY1 = exprY1.GetString(name);
-                string nameY2 = exprY2.GetString(name);
-
-                double x1 = 0, x2 = 0, y1 = 0, y2 = 0;
-                bool ok = ExpressionParser.TryLoadDouble(debugger, nameX1, out x1)
-                       && ExpressionParser.TryLoadDouble(debugger, nameX2, out x2)
-                       && ExpressionParser.TryLoadDouble(debugger, nameY1, out y1)
-                       && ExpressionParser.TryLoadDouble(debugger, nameY2, out y2);
-                if (!ok)
+                UserSimpleGeometryMembers members = simpleGeometry.Load(mreader, debugger, name);
+                if (members == null)
                     return null;
 
+                double x1 = members.Values[0];
+                double y1 = members.Values[1];
+                double x2 = members.Values[2];
+                double y2 = members.Values[3];
+                
                 ExpressionDrawer.Point minP = new ExpressionDrawer.Point(x1, y1); // LB
                 ExpressionDrawer.Point maxP = new ExpressionDrawer.Point(x2, y2); // RT
                 if (coordsX == CoordsX.LW)
@@ -711,25 +905,12 @@ namespace GraphicalDebugging
                                                                               Debugger debugger, // TODO - remove
                                                                               string name, string type)
             {
-                if (sizeOf == 0)
-                    return null;
-
-                MemoryReader.ValueConverter<double> converterX1 = mreader.GetNumericConverter(infoX1.Type, infoX1.Size);
-                MemoryReader.ValueConverter<double> converterX2 = mreader.GetNumericConverter(infoX2.Type, infoX2.Size);
-                MemoryReader.ValueConverter<double> converterY1 = mreader.GetNumericConverter(infoY1.Type, infoY1.Size);
-                MemoryReader.ValueConverter<double> converterY2 = mreader.GetNumericConverter(infoY2.Type, infoY2.Size);
-                
-                if (converterX1 == null || converterX2 == null
-                    || converterY1 == null || converterY2 == null)
+                MemoryReader.Converter<double> converter = simpleGeometry.GetMemoryConverter(mreader, debugger, name, type);
+                if (converter == null)
                     return null;
 
                 return new MemoryReader.TransformingConverter<double>(
-                            new MemoryReader.StructConverter<double>(
-                                sizeOf,
-                                new MemoryReader.Member<double>(converterX1, (int)infoX1.Offset),
-                                new MemoryReader.Member<double>(converterY1, (int)infoY1.Offset),
-                                new MemoryReader.Member<double>(converterX2, (int)infoX2.Offset),
-                                new MemoryReader.Member<double>(converterY2, (int)infoY2.Offset)),
+                            converter,
                             delegate(double[] values, int offset)
                             {
                                 // convert to LBRT
@@ -748,19 +929,251 @@ namespace GraphicalDebugging
                             });
             }
 
-            ClassScopeExpression exprX1;
-            ClassScopeExpression exprX2;
-            ClassScopeExpression exprY1;
-            ClassScopeExpression exprY2;
+            UserSimpleGeometry simpleGeometry;
             CoordsX coordsX;
             CoordsY coordsY;
-            Geometry.Traits traits;
-            // For memory loading:
-            MemberInfo infoX1;
-            MemberInfo infoX2;
-            MemberInfo infoY1;
-            MemberInfo infoY2;
-            int sizeOf;
+        }
+
+        class UserSegmentCoords : SegmentLoader
+        {
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            {
+                public LoaderCreator(ITypeMatcher typeMatcher,
+                                     ClassScopeExpression exprFirstX,
+                                     ClassScopeExpression exprFirstY,
+                                     ClassScopeExpression exprSecondX,
+                                     ClassScopeExpression exprSecondY,
+                                     Geometry.CoordinateSystem cs,
+                                     Geometry.Unit unit)
+                {
+                    this.typeMatcher = typeMatcher;
+                    this.exprFirstX = exprFirstX;
+                    this.exprFirstY = exprFirstY;
+                    this.exprSecondX = exprSecondX;
+                    this.exprSecondY = exprSecondY;
+                    this.traits = new Geometry.Traits(2, cs, unit);
+                }
+
+                public bool IsUserDefined() { return true; }
+                public Kind Kind() { return ExpressionLoader.Kind.Segment; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    if (!typeMatcher.MatchType(type, id))
+                        return null;
+
+                    var exprs = new ClassScopeExpression[] { exprFirstX.DeepCopy(),
+                                                             exprFirstY.DeepCopy(),
+                                                             exprSecondX.DeepCopy(),
+                                                             exprSecondY.DeepCopy() };
+                    UserSimpleGeometry simpleGeometry = new UserSimpleGeometry(loaders, debugger,
+                                                                name, type,
+                                                                null, exprs, traits);
+                    return simpleGeometry.IsValid
+                         ? new UserSegmentCoords(simpleGeometry)
+                         : null;
+                }
+
+                ITypeMatcher typeMatcher;
+                ClassScopeExpression exprFirstX;
+                ClassScopeExpression exprFirstY;
+                ClassScopeExpression exprSecondX;
+                ClassScopeExpression exprSecondY;
+                Geometry.Traits traits;
+            }
+
+            private UserSegmentCoords(UserSimpleGeometry simpleGeometry)
+            {
+                this.simpleGeometry = simpleGeometry;
+            }
+
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                return simpleGeometry.GetTraits(mreader, debugger, name);
+            }
+
+            public override ExpressionDrawer.IDrawable Load(MemoryReader mreader, Debugger debugger,
+                                                            string name, string type,
+                                                            LoadCallback callback) // dummy callback
+            {
+                UserSimpleGeometryMembers members = simpleGeometry.Load(mreader, debugger, name);
+                if (members == null)
+                    return null;
+                ExpressionDrawer.Point first = new ExpressionDrawer.Point(members.Values[0],
+                                                                          members.Values[1]);
+                ExpressionDrawer.Point second = new ExpressionDrawer.Point(members.Values[2],
+                                                                           members.Values[3]);
+                return new ExpressionDrawer.Segment(first, second);
+            }
+
+            public override MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader,
+                                                                              Debugger debugger, // TODO - remove
+                                                                              string name, string type)
+            {
+                return simpleGeometry.GetMemoryConverter(mreader, debugger, name, type);
+            }
+
+            UserSimpleGeometry simpleGeometry;
+        }
+
+        class UserRayCoords : RayLoader
+        {
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            {
+                public LoaderCreator(ITypeMatcher typeMatcher,
+                                     ClassScopeExpression exprOrigX,
+                                     ClassScopeExpression exprOrigY,
+                                     ClassScopeExpression exprDirX,
+                                     ClassScopeExpression exprDirY)
+                {
+                    this.typeMatcher = typeMatcher;
+                    this.exprOrigX = exprOrigX;
+                    this.exprOrigY = exprOrigY;
+                    this.exprDirX = exprDirX;
+                    this.exprDirY = exprDirY;
+                    this.traits = new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
+                }
+
+                public bool IsUserDefined() { return true; }
+                public Kind Kind() { return ExpressionLoader.Kind.Ray; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    if (!typeMatcher.MatchType(type, id))
+                        return null;
+
+                    var exprs = new ClassScopeExpression[] { exprOrigX.DeepCopy(),
+                                                             exprOrigY.DeepCopy(),
+                                                             exprDirX.DeepCopy(),
+                                                             exprDirY.DeepCopy() };
+                    UserSimpleGeometry simpleGeometry = new UserSimpleGeometry(loaders, debugger,
+                                                                name, type,
+                                                                null, exprs, traits);
+                    return simpleGeometry.IsValid
+                         ? new UserRayCoords(simpleGeometry)
+                         : null;
+                }
+
+                ITypeMatcher typeMatcher;
+                ClassScopeExpression exprOrigX;
+                ClassScopeExpression exprOrigY;
+                ClassScopeExpression exprDirX;
+                ClassScopeExpression exprDirY;
+                Geometry.Traits traits;
+            }
+
+            private UserRayCoords(UserSimpleGeometry simpleGeometry)
+            {
+                this.simpleGeometry = simpleGeometry;
+            }
+
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                return simpleGeometry.GetTraits(mreader, debugger, name);
+            }
+
+            public override ExpressionDrawer.IDrawable Load(MemoryReader mreader, Debugger debugger,
+                                                            string name, string type,
+                                                            LoadCallback callback) // dummy callback
+            {
+                UserSimpleGeometryMembers members = simpleGeometry.Load(mreader, debugger, name);
+                if (members == null)
+                    return null;
+                ExpressionDrawer.Point orig = new ExpressionDrawer.Point(members.Values[0],
+                                                                         members.Values[1]);
+                ExpressionDrawer.Point dir = new ExpressionDrawer.Point(members.Values[2],
+                                                                        members.Values[3]);
+                return new ExpressionDrawer.Ray(orig, dir);
+            }
+
+            public override MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader,
+                                                                              Debugger debugger, // TODO - remove
+                                                                              string name, string type)
+            {
+                return simpleGeometry.GetMemoryConverter(mreader, debugger, name, type);
+            }
+
+            UserSimpleGeometry simpleGeometry;
+        }
+
+        class UserLineCoords : LineLoader
+        {
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            {
+                public LoaderCreator(ITypeMatcher typeMatcher,
+                                     ClassScopeExpression exprFirstX,
+                                     ClassScopeExpression exprFirstY,
+                                     ClassScopeExpression exprSecondX,
+                                     ClassScopeExpression exprSecondY)
+                {
+                    this.typeMatcher = typeMatcher;
+                    this.exprFirstX = exprFirstX;
+                    this.exprFirstY = exprFirstY;
+                    this.exprSecondX = exprSecondX;
+                    this.exprSecondY = exprSecondY;
+                    this.traits = new Geometry.Traits(2, Geometry.CoordinateSystem.Cartesian, Geometry.Unit.None);
+                }
+
+                public bool IsUserDefined() { return true; }
+                public Kind Kind() { return ExpressionLoader.Kind.Line; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    if (!typeMatcher.MatchType(type, id))
+                        return null;
+
+                    var exprs = new ClassScopeExpression[] { exprFirstX.DeepCopy(),
+                                                             exprFirstY.DeepCopy(),
+                                                             exprSecondX.DeepCopy(),
+                                                             exprSecondY.DeepCopy() };
+                    UserSimpleGeometry simpleGeometry = new UserSimpleGeometry(loaders, debugger,
+                                                                name, type,
+                                                                null, exprs, traits);
+                    return simpleGeometry.IsValid
+                         ? new UserLineCoords(simpleGeometry)
+                         : null;
+                }
+
+                ITypeMatcher typeMatcher;
+                ClassScopeExpression exprFirstX;
+                ClassScopeExpression exprFirstY;
+                ClassScopeExpression exprSecondX;
+                ClassScopeExpression exprSecondY;
+                Geometry.Traits traits;
+            }
+
+            private UserLineCoords(UserSimpleGeometry simpleGeometry)
+            {
+                this.simpleGeometry = simpleGeometry;
+            }
+
+            public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
+                                                      string name)
+            {
+                return simpleGeometry.GetTraits(mreader, debugger, name);
+            }
+
+            public override ExpressionDrawer.IDrawable Load(MemoryReader mreader, Debugger debugger,
+                                                            string name, string type,
+                                                            LoadCallback callback) // dummy callback
+            {
+                UserSimpleGeometryMembers members = simpleGeometry.Load(mreader, debugger, name);
+                if (members == null)
+                    return null;
+                ExpressionDrawer.Point first = new ExpressionDrawer.Point(members.Values[0],
+                                                                          members.Values[1]);
+                ExpressionDrawer.Point second = new ExpressionDrawer.Point(members.Values[2],
+                                                                           members.Values[3]);
+                return new ExpressionDrawer.Line(first, second);
+            }
+
+            public override MemoryReader.Converter<double> GetMemoryConverter(MemoryReader mreader,
+                                                                              Debugger debugger, // TODO - remove
+                                                                              string name, string type)
+            {
+                return simpleGeometry.GetMemoryConverter(mreader, debugger, name, type);
+            }
+
+            UserSimpleGeometry simpleGeometry;
         }
 
         class UserContainerLoaders<ElementLoaderT>
@@ -1620,6 +2033,71 @@ namespace GraphicalDebugging
                                                     coordsY,
                                                     cs,
                                                     unit));
+                                }
+                            }
+                        }
+                        else if (elEntry.Name == "Segment")
+                        {
+                            var elCoords = Util.GetXmlElementByTagName(elEntry, "Coordinates");
+                            if (elCoords != null)
+                            {
+                                var firstX = Util.GetXmlElementByTagName(elCoords, "FirstX");
+                                var firstY = Util.GetXmlElementByTagName(elCoords, "FirstY");
+                                var secondX = Util.GetXmlElementByTagName(elCoords, "SecondX");
+                                var secondY = Util.GetXmlElementByTagName(elCoords, "SecondY");
+                                if (firstX != null && firstY != null && secondX != null && secondY != null)
+                                {
+                                    Geometry.CoordinateSystem cs = Geometry.CoordinateSystem.Cartesian;
+                                    Geometry.Unit unit = Geometry.Unit.None;
+                                    GetCSAndUnit(elEntry, out cs, out unit);
+
+                                    ClassScopeExpression exprFirstX = new ClassScopeExpression(firstX.InnerText);
+                                    ClassScopeExpression exprFirstY = new ClassScopeExpression(firstY.InnerText);
+                                    ClassScopeExpression exprSecondX = new ClassScopeExpression(secondX.InnerText);
+                                    ClassScopeExpression exprSecondY = new ClassScopeExpression(secondY.InnerText);
+                                    loaders.Add(new UserSegmentCoords.LoaderCreator(typeMatcher,
+                                                        exprFirstX, exprFirstY, exprSecondX, exprSecondY,
+                                                        cs, unit));
+                                }
+                            }
+                        }
+                        else if (elEntry.Name == "Ray")
+                        {
+                            var elCoords = Util.GetXmlElementByTagName(elEntry, "Coordinates");
+                            if (elCoords != null)
+                            {
+                                var origX = Util.GetXmlElementByTagName(elCoords, "OriginX");
+                                var origY = Util.GetXmlElementByTagName(elCoords, "OriginY");
+                                var dirX = Util.GetXmlElementByTagName(elCoords, "DirectionX");
+                                var dirY = Util.GetXmlElementByTagName(elCoords, "DirectionY");
+                                if (origX != null && origY != null && dirX != null && dirY != null)
+                                {
+                                    ClassScopeExpression exprOrigX = new ClassScopeExpression(origX.InnerText);
+                                    ClassScopeExpression exprOrigY = new ClassScopeExpression(origY.InnerText);
+                                    ClassScopeExpression exprDirX = new ClassScopeExpression(dirX.InnerText);
+                                    ClassScopeExpression exprDirY = new ClassScopeExpression(dirY.InnerText);
+                                    loaders.Add(new UserRayCoords.LoaderCreator(typeMatcher,
+                                                        exprOrigX, exprOrigY, exprDirX, exprDirY));
+                                }
+                            }
+                        }
+                        else if (elEntry.Name == "Line")
+                        {
+                            var elCoords = Util.GetXmlElementByTagName(elEntry, "Coordinates");
+                            if (elCoords != null)
+                            {
+                                var firstX = Util.GetXmlElementByTagName(elCoords, "FirstX");
+                                var firstY = Util.GetXmlElementByTagName(elCoords, "FirstY");
+                                var secondX = Util.GetXmlElementByTagName(elCoords, "SecondX");
+                                var secondY = Util.GetXmlElementByTagName(elCoords, "SecondY");
+                                if (firstX != null && firstY != null && secondX != null && secondY != null)
+                                {
+                                    ClassScopeExpression exprFirstX = new ClassScopeExpression(firstX.InnerText);
+                                    ClassScopeExpression exprFirstY = new ClassScopeExpression(firstY.InnerText);
+                                    ClassScopeExpression exprSecondX = new ClassScopeExpression(secondX.InnerText);
+                                    ClassScopeExpression exprSecondY = new ClassScopeExpression(secondY.InnerText);
+                                    loaders.Add(new UserLineCoords.LoaderCreator(typeMatcher,
+                                                        exprFirstX, exprFirstY, exprSecondX, exprSecondY));
                                 }
                             }
                         }

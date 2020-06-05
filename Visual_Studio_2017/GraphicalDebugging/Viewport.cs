@@ -36,28 +36,39 @@ namespace GraphicalDebugging
             brush = new SolidBrush(Color.FromArgb(64, color));
         }
 
-        public bool DrawDir(PointF p0, PointF p1, PointF p0Ref, PointF p1Ref)
+        public enum DirPos { Begin, Middle, End };
+
+        public bool DrawDir(PointF p0, PointF p1, PointF p0Ref, PointF p1Ref,
+                            DirPos dirPos = DirPos.Middle,
+                            bool ignoreShort = true)
         {
-            PointF vRef = SubF(p1Ref, p0Ref);
-            float distRefSqr = DotF(vRef, vRef);
-            if (distRefSqr < 49.0f) // (1+5+1)^2
-                return false;
+            if (ignoreShort)
+            {
+                PointF vRef = SubF(p1Ref, p0Ref);
+                float distRefSqr = DotF(vRef, vRef);
+                if (distRefSqr < 49.0f) // (1+5+1)^2
+                    return false;
+            }
 
             PointF v = SubF(p1, p0);
-            PointF ph = AddF(p0, MulF(v, 0.5f));
+            PointF p = dirPos == DirPos.Middle ? AddF(p0, MulF(v, 0.5f)) :
+                       dirPos == DirPos.End ?    AddF(p0, v) :
+                                                 p0;
             float a = AngleF(v);
-            PointF ps = AddF(ph, RotF(new PointF(-1.25f, -2.5f), a));
-            PointF pm = AddF(ph, RotF(new PointF(1.25f, 0.0f), a));
-            PointF pe = AddF(ph, RotF(new PointF(-1.25f, 2.5f), a));
+            PointF ps = AddF(p, RotF(new PointF(-1.25f, -2.5f), a));
+            PointF pm = AddF(p, RotF(new PointF(1.25f, 0.0f), a));
+            PointF pe = AddF(p, RotF(new PointF(-1.25f, 2.5f), a));
             graphics.DrawLine(pen, pm, ps);
             graphics.DrawLine(pen, pm, pe);
 
             return true;
         }
 
-        public bool DrawDir(PointF p0, PointF p1)
+        public bool DrawDir(PointF p0, PointF p1,
+                            DirPos dirPos = DirPos.Middle,
+                            bool ignoreShort = true)
         {
-            return DrawDir(p0, p1, p0, p1);
+            return DrawDir(p0, p1, p0, p1, dirPos, ignoreShort);
         }
 
         public void DrawDirs(PointF[] points, bool closed)

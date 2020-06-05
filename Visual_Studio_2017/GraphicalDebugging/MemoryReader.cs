@@ -171,6 +171,12 @@ namespace GraphicalDebugging
                 initialize(byteSize);
             }
 
+            public StructConverter(int byteSize, Member<ValueType>[] members)
+            {
+                this.members = members;
+                initialize(byteSize);
+            }
+
             public override int ValueCount()
             {
                 return internalValueCount;

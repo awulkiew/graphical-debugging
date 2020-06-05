@@ -128,6 +128,57 @@
     </CoordinatesDimensions>
   </Box>
 
+  <Segment Id="MySegment">
+    <Coordinates>
+      <FirstX>first.x</FirstX>
+      <FirstY>first.y</FirstY>
+      <SecondX>second.x</SecondX>
+      <SecondY>second.y</SecondY>
+    </Coordinates>
+  </Segment>
+  
+  <Ray Id="MyRay">
+    <Coordinates>
+      <OriginX>origin.x</OriginX>
+      <OriginY>origin.y</OriginY>
+      <DirectionX>direction.x</DirectionX>
+      <DirectionY>direction.y</DirectionY>
+    </Coordinates>
+  </Ray>
+
+  <!--
+  <Ray Id="MyRay">
+    <Points>
+      <Origin>origin</Origin>
+      <Direction>direction</Direction>
+    </Points>
+  </Ray>
+
+  <Ray Id="MyRay">
+    <Origin>
+      <Coordinates>
+        <X>origin.x</X>
+        <Y>origin.y</Y>
+      </Coordinates>
+    </Origin>
+    <Direction>
+      <Coordinates>
+        <X>direction.x</X>
+        <Y>direction.y</Y>
+      </Coordinates>
+    </Direction>
+  </Ray>
+  -->
+  
+  <Line Id="MyLine">
+    <Coordinates>
+      <FirstX>first.x</FirstX>
+      <FirstY>first.y</FirstY>
+      <SecondX>second.x</SecondX>
+      <SecondY>second.y</SecondY>
+    </Coordinates>
+  </Line>
+
   <!--
   struct MyLinestring
   {

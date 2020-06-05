@@ -756,6 +756,27 @@ namespace GraphicalDebugging
                 p[i] += p2[i];
         }
 
+        public static Point Added(Point p1, Point p2)
+        {
+            Point res = p1.Clone();
+            Add(res, p2);
+            return res;
+        }
+
+        public static void Sub(Point p, Point p2)
+        {
+            Debug.Assert(p.Dimension == p2.Dimension);
+            for (int i = 0; i < p.Dimension; ++i)
+                p[i] -= p2[i];
+        }
+
+        public static Point Subed(Point p1, Point p2)
+        {
+            Point res = p1.Clone();
+            Sub(res, p2);
+            return res;
+        }
+
         public static void Div(Point p, double v)
         {
             for (int i = 0; i < p.Dimension; ++i)
@@ -864,6 +885,48 @@ namespace GraphicalDebugging
                             (tanLat0 + tanLat1) / (1 + tanLat0 * tanLat1)
                           * Math.Tan((ToRadian(p1[0], unit) - ToRadian(p0[0], unit)) / 2)
                          );
+        }
+
+        public static bool LineBoxIntersection(Point p0, Point p1, Box box, out Point pN, out Point pF)
+        {
+            pN = null;
+            pF = null;
+            double tN = double.NegativeInfinity;
+            double tF = double.PositiveInfinity;
+            int dimension = p0.Dimension;
+            for (int i = 0; i < dimension; ++i)
+                if (!LineBoxIntersection(p0, p1, box, i, ref tN, ref tF))
+                    return false;
+            Point d = Subed(p1, p0);
+            Point dN = d.Clone();
+            Mul(dN, tN);
+            Point dF = d.Clone();            
+            Mul(dF, tF);
+            pN = Added(p0, dN);
+            pF = Added(p0, dF);
+            return true;
+        }
+
+        public static bool LineBoxIntersection(Point p0, Point p1, Box box, int i,
+                                               ref double tNear, ref double tFar)
+        {
+            double o = p0[i];
+            double d = p1[i] - o;
+            double tN = (box.Min[i] - o) / d;
+            double tF = (box.Max[i] - o) / d;
+            if (tN > tF)
+                Swap(ref tN, ref tF);
+            tNear = Math.Max(tNear, tN);
+            tFar = Math.Min(tFar, tF);
+            return tNear <= tFar;
+        }
+
+        static void Swap<T>(ref T lhs, ref T rhs)
+        {
+            T temp;
+            temp = lhs;
+            lhs = rhs;
+            rhs = temp;
         }
     }
 }

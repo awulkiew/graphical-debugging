@@ -321,7 +321,7 @@ namespace GraphicalDebugging
                 : base(first, second)
             {}
 
-            public void Draw(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
+            public virtual void Draw(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
             {
                 LocalCS cs = new LocalCS(box, graphics);
                 Drawer drawer = new Drawer(graphics, settings.color);
@@ -352,6 +352,61 @@ namespace GraphicalDebugging
             public bool DrawAxes()
             {
                 return true;
+            }
+        }
+
+        public class Ray : Segment
+        {
+            public Ray(Geometry.Point origin, Geometry.Point direction)
+                : base(origin, Geometry.Added(origin, direction))
+            { }
+
+            public override void Draw(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
+            {
+                LocalCS cs = new LocalCS(box, graphics);
+                Drawer drawer = new Drawer(graphics, settings.color);
+                
+                if (traits.Unit == Geometry.Unit.None)
+                {
+                    PointF p0 = cs.Convert(this[0]);
+                    PointF p1 = cs.Convert(this[1]);
+                    //drawer.DrawPoint(p0);
+                    drawer.DrawLine(p0, p1);
+                    drawer.DrawDir(p0, p1, Drawer.DirPos.End, false);
+                    Geometry.Box b = cs.ViewBox();
+                    Geometry.Point pN, pF;
+                    if (Geometry.LineBoxIntersection(this[0], this[1], b, out pN, out pF))
+                        drawer.DrawLine(p1, cs.Convert(pF), true, true);
+                }
+            }
+        }
+
+        public class Line : Segment
+        {
+            public Line(Geometry.Point first, Geometry.Point second)
+                : base(first, second)
+            { }
+
+            public override void Draw(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
+            {
+                LocalCS cs = new LocalCS(box, graphics);
+                Drawer drawer = new Drawer(graphics, settings.color);
+
+                if (traits.Unit == Geometry.Unit.None)
+                {
+                    PointF p0 = cs.Convert(this[0]);
+                    PointF p1 = cs.Convert(this[1]);
+                    //drawer.DrawPoint(p0);
+                    drawer.DrawLine(p0, p1);
+                    drawer.DrawDir(p0, p1);
+                    Geometry.Box b = cs.ViewBox();
+                    Geometry.Point pN, pF;
+                    if (Geometry.LineBoxIntersection(this[0], this[1], b, out pN, out pF))
+                    {
+                        drawer.DrawLine(p1, cs.Convert(pF), true, true);
+                        drawer.DrawLine(p0, cs.Convert(pN), true, true);
+                    }
+                }
             }
         }
 
