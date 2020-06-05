@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GraphicalDebugging>
+
+  <Point Id="sf::Vector2">
+    <Coordinates>
+      <X>x</X>
+      <Y>y</Y>
+    </Coordinates>
+  </Point>
+  
+  <Point Id="sf::Vertex">
+    <Coordinates>
+      <X>position.x</X>
+      <Y>position.y</Y>
+    </Coordinates>
+  </Point>
+
+  <Ring Id="sf::Shape">
+    <Points>
+      <Container>
+        <Name>m_vertices.m_vertices</Name>
+      </Container>
+    </Points>
+  </Ring>
+
+  <Ring Id="sf::CircleShape">
+    <Points>
+      <Container>
+        <Name>m_vertices.m_vertices</Name>
+      </Container>
+    </Points>
+  </Ring>
+
+</GraphicalDebugging>
