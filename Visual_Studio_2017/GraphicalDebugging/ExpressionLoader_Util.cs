@@ -9,7 +9,6 @@ using EnvDTE;
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using System.Windows;
 
 namespace GraphicalDebugging
 {
@@ -24,35 +23,75 @@ namespace GraphicalDebugging
 
             public bool CheckTimeAndDisplayMsg(string name)
             {
-                if (stopWatch.ElapsedMilliseconds > timesMs[timeIndex])
+                if (stopWatch.ElapsedMilliseconds > 10000)
                 {
-                    int timeIndexNext = Math.Min(timeIndex + 1, 2);
-
-                    string messageBoxText = "Loading of expression \"" + name + "\" takes more than "
-                                            + timesStr[timeIndex] + ". Do you want to wait "
-                                            + timesStr[timeIndexNext] + " longer?";
-                    var res = MessageBox.Show(messageBoxText,
-                                              "Loading takes much time.",
-                                              MessageBoxButton.YesNo,
-                                              MessageBoxImage.Question);
-                    if (res == MessageBoxResult.Yes)
+                    if (! windowCreated)
                     {
-                        timeIndex = timeIndexNext;
-                        stopWatch.Restart();
+                        windowCreated = true;
+                        System.Threading.Thread thread = new System.Threading.Thread(() =>
+                        {
+                            LoadingWindow w = new LoadingWindow();
+                            w.Title = "Loading takes much time.";
+                            w.Show();
+                            w.Closed += (sender2, e2) => w.Dispatcher.InvokeShutdown();
+                            window = w;
+                            System.Windows.Threading.Dispatcher.Run();
+                        });
+                        thread.SetApartmentState(System.Threading.ApartmentState.STA);
+                        thread.Start();
                     }
-                    else
+
+                    // Is mutex needed here to check the reference?
+                    if (windowCreated && window != null)
                     {
-                        return false;
+                        long elapsedSeconds = stopWatch.ElapsedMilliseconds / 1000;
+                        string messageBoxText = "Loading of expression \"" + name + "\" takes " + elapsedSeconds + " sec.\r\n"
+                                                + "Loading can be stopped by clicking the button below.";
+
+                        bool result = true;
+                        try
+                        {
+                            window.Dispatcher.Invoke(() =>
+                            {
+                                if (window.IsClosed) // just in case
+                                    result = false;
+                                else
+                                    window.LoadingTextBlock.Text = messageBoxText;
+                            });
+                        }
+                        catch(System.Threading.Tasks.TaskCanceledException e)
+                        {
+                            result = false;
+                        }
+
+                        if (result == false)
+                        {
+                            windowCreated = false;
+                            window = null;
+                            // This also means that the thread already finished
+                            // or will do it in the near future because window
+                            // closing shuts down the dispatcher.
+                        }
+
+                        return result;
                     }
                 }
 
                 return true;
             }
 
+            public void Reset()
+            {
+                if (windowCreated && window != null)
+                    window.Dispatcher.Invoke(() => window.Close());
+                windowCreated = false;
+                window = null;
+            }
+
+            bool windowCreated = false;
+            LoadingWindow window = null;
+
             System.Diagnostics.Stopwatch stopWatch = new System.Diagnostics.Stopwatch();
-            long[] timesMs = new long[] { 10000, 60000, 600000 };
-            string[] timesStr = new string[] { "10 seconds", "1 minute", "10 minutes" };
-            int timeIndex = 0;
         }
 
         class TypeInfo

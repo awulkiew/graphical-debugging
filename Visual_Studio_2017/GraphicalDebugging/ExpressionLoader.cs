@@ -355,6 +355,8 @@ namespace GraphicalDebugging
                                         return timeGuard.CheckTimeAndDisplayMsg(name);
                                      });
             }
+
+            timeGuard.Reset();
         }
 
         class LoadersCache
