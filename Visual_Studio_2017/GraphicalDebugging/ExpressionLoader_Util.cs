@@ -21,8 +21,8 @@ namespace GraphicalDebugging
                 this.variableName = variableName;
                 this.timeThreshold = timeThreshold;
 
-                this.messagePrefix = "Loading of expression \"" + variableName + "\" takes ";
-                this.messagePostfix = " sec.\r\n" + "It can be stopped by clicking the button below.";
+                this.messagePrefix = "Loading expression: \"" + variableName + "\"\r\nElapsed time: ";
+                this.messagePostfix = " sec.\r\n" + "You can stop it by clicking the button below.";
 
                 stopWatch.Start();
             }
@@ -34,12 +34,19 @@ namespace GraphicalDebugging
                     if (! windowCreated)
                     {
                         windowCreated = true;
+                        IntPtr mainWindowHandle = Util.GetWindowHandle(System.Windows.Application.Current.MainWindow);
                         System.Threading.Thread thread = new System.Threading.Thread(() =>
                         {
                             LoadingWindow w = new LoadingWindow();
                             w.Title = "Loading takes much time.";
                             w.Show();
                             w.Closed += (sender2, e2) => w.Dispatcher.InvokeShutdown();
+                            IntPtr wHandle = Util.GetWindowHandle(w);
+                            IntPtr r = IntPtr.Zero;
+                            if (wHandle != IntPtr.Zero && mainWindowHandle != IntPtr.Zero)
+                                r = Util.SetWindowOwner(wHandle, mainWindowHandle);
+                            if (r == IntPtr.Zero)
+                                w.Topmost = true;
                             window = w;
                             System.Windows.Threading.Dispatcher.Run();
                         });

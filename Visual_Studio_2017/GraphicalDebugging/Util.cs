@@ -13,8 +13,10 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Threading;
@@ -597,6 +599,38 @@ namespace GraphicalDebugging
         public static string TemplateType(string id, string tparam0, string tparam1)
         {
             return id + "<" + tparam0 + "," + tparam1 + (tparam1.EndsWith(">") ? " >" : ">");
+        }
+
+        public const int GWL_HWNDPARENT = -8;
+
+        // https://www.medo64.com/2013/07/setwindowlongptr/
+        public static IntPtr SetWindowLongPtr(IntPtr hwnd, int index, IntPtr newStyle)
+        {
+            try {
+                if (IntPtr.Size == 4)
+                    return SetWindowLongPtr32(hwnd, index, newStyle);
+                else
+                    return SetWindowLongPtr64(hwnd, index, newStyle);
+            } catch (Exception) { }
+            return IntPtr.Zero;
+        }
+        [DllImport("user32.dll", SetLastError = true, EntryPoint = "SetWindowLong")]
+        private static extern IntPtr SetWindowLongPtr32(IntPtr hwnd, int index, IntPtr newStyle);
+        [DllImport("user32.dll", SetLastError = true, EntryPoint = "SetWindowLongPtr")]
+        private static extern IntPtr SetWindowLongPtr64(IntPtr hwnd, int index, IntPtr newStyle);
+
+        public static IntPtr GetWindowHandle(Window window)
+        {
+            try {
+                WindowInteropHelper helper = new WindowInteropHelper(window);
+                return helper.Handle;
+            } catch (Exception) { }
+            return IntPtr.Zero;
+        }
+
+        public static IntPtr SetWindowOwner(IntPtr windowHandle, IntPtr ownerHandle)
+        {
+            return SetWindowLongPtr(windowHandle, GWL_HWNDPARENT, ownerHandle);
         }
     }
 }

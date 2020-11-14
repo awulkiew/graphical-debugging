@@ -7,14 +7,12 @@
              WindowStartupLocation="CenterScreen"
              WindowStyle="SingleBorderWindow"
              ShowInTaskbar="False"
-             Topmost="True"
              ResizeMode="NoResize"
              SizeToContent="WidthAndHeight"
-             Title="" MinWidth="154" MinHeight="155" MaxWidth="470"
+             Title="" MinWidth="370" MinHeight="170" MaxWidth="470"
              mc:Ignorable="d" 
-             d:DesignHeight="200" d:DesignWidth="470"
              Closed="Window_Closed">
-    <Grid Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}">
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
