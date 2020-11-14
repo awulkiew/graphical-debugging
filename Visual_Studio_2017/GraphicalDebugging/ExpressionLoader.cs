@@ -321,7 +321,7 @@ namespace GraphicalDebugging
                 mreader = new MemoryReader(Instance.debugger);
             }
 
-            LoadTimeGuard timeGuard = new LoadTimeGuard();
+            LoadTimeGuard timeGuard = new LoadTimeGuard(name);
             
             if (exprs.Length == 1)
             {
@@ -337,7 +337,7 @@ namespace GraphicalDebugging
                                      exprs[0].Name, exprs[0].Type,
                                      delegate ()
                                      {
-                                        return timeGuard.CheckTimeAndDisplayMsg(name);
+                                        return timeGuard.Update();
                                      });
             }
             else //if (exprs.Length > 1)
@@ -352,7 +352,7 @@ namespace GraphicalDebugging
                                      exprs,
                                      delegate ()
                                      {
-                                        return timeGuard.CheckTimeAndDisplayMsg(name);
+                                        return timeGuard.Update();
                                      });
             }
 

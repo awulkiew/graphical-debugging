@@ -16,14 +16,20 @@ namespace GraphicalDebugging
     {
         class LoadTimeGuard
         {
-            public LoadTimeGuard()
+            public LoadTimeGuard(string variableName, long timeThreshold = 10000)
             {
+                this.variableName = variableName;
+                this.timeThreshold = timeThreshold;
+
+                this.messagePrefix = "Loading of expression \"" + variableName + "\" takes ";
+                this.messagePostfix = " sec.\r\n" + "It can be stopped by clicking the button below.";
+
                 stopWatch.Start();
             }
 
-            public bool CheckTimeAndDisplayMsg(string name)
+            public bool Update()
             {
-                if (stopWatch.ElapsedMilliseconds > 10000)
+                if (stopWatch.ElapsedMilliseconds > timeThreshold)
                 {
                     if (! windowCreated)
                     {
@@ -45,8 +51,7 @@ namespace GraphicalDebugging
                     if (windowCreated && window != null)
                     {
                         long elapsedSeconds = stopWatch.ElapsedMilliseconds / 1000;
-                        string messageBoxText = "Loading of expression \"" + name + "\" takes " + elapsedSeconds + " sec.\r\n"
-                                                + "Loading can be stopped by clicking the button below.";
+                        string messageBoxText = messagePrefix + elapsedSeconds + messagePostfix;
 
                         bool result = true;
                         try
@@ -59,7 +64,7 @@ namespace GraphicalDebugging
                                     window.LoadingTextBlock.Text = messageBoxText;
                             });
                         }
-                        catch(System.Threading.Tasks.TaskCanceledException e)
+                        catch (System.Threading.Tasks.TaskCanceledException)
                         {
                             result = false;
                         }
@@ -87,6 +92,11 @@ namespace GraphicalDebugging
                 windowCreated = false;
                 window = null;
             }
+
+            string variableName;
+            long timeThreshold;
+            string messagePrefix;
+            string messagePostfix;
 
             bool windowCreated = false;
             LoadingWindow window = null;
