@@ -107,12 +107,10 @@ namespace GraphicalDebugging
 
             if (type.StartsWith("const ")) // volatile?
                 startIndex = 6;
-            int i = type.IndexOf('<', startIndex); // ignore template parameters
+            // Ignore template parameters, C# derived class, Basic generic parameters
+            int i = type.IndexOfAny(new char[] { '<', '{', '(' }, startIndex);
             if (i >= 0)
                 endIndex = Math.Min(endIndex, i);
-            int j = type.IndexOf('{', startIndex); // ignore C# derived class
-            if (j >= 0)
-                endIndex = Math.Min(endIndex, j);
             // An artifact of C# derived class, but do in all cases just in case
             while (endIndex > 0 && type[endIndex - 1] == ' ')
                 --endIndex;
@@ -121,6 +119,7 @@ namespace GraphicalDebugging
             return type;
         }
 
+        // TODO: Basic generic parameters
         public static List<string> TypesList(string type,
                                              char begCh = '<',
                                              char endCh = '>',

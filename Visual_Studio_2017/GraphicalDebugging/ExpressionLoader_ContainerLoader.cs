@@ -75,7 +75,7 @@ namespace GraphicalDebugging
                     }
                 }
 
-                if (!ok)
+                if (ok)
                     outSize = LoadSize(debugger, name);
             }
         }
@@ -1626,6 +1626,111 @@ namespace GraphicalDebugging
 
             string derivedType = "";
             ContainerLoader loader = null;
+        }
+
+        // TODO: ContiguousContainer if in the future I figure out how to get address of a variable in VB
+        // and implement it in ExpressionParser
+        class BasicArray : RandomAccessContainer
+        {
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            {
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Container; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return IsBasicArrayType(type)
+                         ? new BasicArray()
+                         : null;
+                }
+            }
+
+            public override void ElementInfo(string name, string type,
+                                             out string elemName, out string elemType)
+            {
+                elemType = ElemTypeFromType(type);
+                elemName = name + "(0)";
+            }
+
+            public override string RandomAccessElementName(string rawName, int i)
+            {
+                return rawName + "(" + i + ")";
+            }
+
+            public override int LoadSize(Debugger debugger, string name)
+            {
+                return ExpressionParser.LoadSize(debugger, name + ".Length");
+            }
+
+            public override Size LoadSize(MemoryReader mreader, ulong address)
+            {
+                return new Size();
+            }
+
+            public override bool ForEachMemoryBlock<T>(MemoryReader mreader, Debugger debugger,
+                                                       string name, string type, ulong address,
+                                                       MemoryReader.Converter<T> elementConverter,
+                                                       MemoryBlockPredicate<T> memoryBlockPredicate)
+            {
+                return false;
+            }
+
+            static public bool IsBasicArrayType(string type)
+            {
+                return type.EndsWith("()");
+            }
+
+            // type -> name()
+            static private string ElemTypeFromType(string type)
+            {
+                return type.EndsWith("()")
+                     ? type.Substring(0, type.Length - 2)
+                     : "";
+            }
+        }
+
+        class BasicList : RandomAccessContainer
+        {
+            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            {
+                public bool IsUserDefined() { return false; }
+                public Kind Kind() { return ExpressionLoader.Kind.Container; }
+                public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
+                {
+                    return id == "System.Collections.Generic.List"
+                         ? new BasicList()
+                         : null;
+                }
+            }
+
+            public override int LoadSize(Debugger debugger, string name)
+            {
+                return ExpressionParser.LoadSize(debugger, name + ".Count");
+            }
+
+            public override Size LoadSize(MemoryReader mreader, ulong address)
+            {
+                return new Size();
+            }
+
+            public override string RandomAccessElementName(string rawName, int i)
+            {
+                return rawName + "._items(" + i + ")";
+            }
+
+            public override void ElementInfo(string name, string type,
+                                             out string elemName, out string elemType)
+            {
+                elemType = Util.Tparam(type, 0);
+                elemName = name + "._items(0)";
+            }
+
+            public override bool ForEachMemoryBlock<T>(MemoryReader mreader, Debugger debugger,
+                                                       string name, string type, ulong address,
+                                                       MemoryReader.Converter<T> elementConverter,
+                                                       MemoryBlockPredicate<T> memoryBlockPredicate)
+            {
+                return false;
+            }
         }
     }
 }

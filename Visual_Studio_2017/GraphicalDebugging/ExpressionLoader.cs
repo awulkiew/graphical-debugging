@@ -23,8 +23,10 @@ namespace GraphicalDebugging
         private DebuggerEvents debuggerEvents; // debuggerEvents member is needed for the events to fire properly
         private Loaders loadersCpp;
         private Loaders loadersCS;
+        private Loaders loadersBasic;
         private LoadersCache loadersCacheCpp;
         private LoadersCache loadersCacheCS;
+        private LoadersCache loadersCacheBasic;
 
         // TODO: It's not clear what to do with Variant
         // At the initial stage it's not known what is stored in Variant
@@ -140,8 +142,16 @@ namespace GraphicalDebugging
             loadersCS.Add(new ValuesContainer.LoaderCreator());
             loadersCS.Add(new GeometryContainer.LoaderCreator());
 
+            loadersBasic = new Loaders();
+
+            loadersBasic.Add(new BasicList.LoaderCreator());
+            loadersBasic.Add(new BasicArray.LoaderCreator());
+
+            loadersBasic.Add(new ValuesContainer.LoaderCreator());
+
             loadersCacheCpp = new LoadersCache();
             loadersCacheCS = new LoadersCache();
+            loadersCacheBasic = new LoadersCache();
         }
 
         // Expressions utilities
@@ -312,7 +322,13 @@ namespace GraphicalDebugging
                 return;
 
             string language = Instance.debugger.CurrentStackFrame.Language;
-            Loaders loaders = language == "C#" ? Instance.loadersCS : Instance.loadersCpp;
+            Loaders loaders = language == "C++" ? Instance.loadersCpp
+                            : language == "C#" ? Instance.loadersCS
+                            : language == "Basic" ? Instance.loadersBasic
+                            : null;
+
+            if (loaders == null)
+                return;
 
             MemoryReader mreader = null;
             GeneralOptionPage optionPage = Util.GetDialogPage<GeneralOptionPage>();
@@ -458,10 +474,17 @@ namespace GraphicalDebugging
             {
                 // Check if a Loader is cached for this type
                 string language = Instance.debugger.CurrentStackFrame.Language;
-                var loadersCache = language == "C#" ? Instance.loadersCacheCS : Instance.loadersCacheCpp;
-                Loader loader = loadersCache.Find(type, kindConstraint);
-                if (loader != null)
-                    return loader;
+                var loadersCache = language == "C++" ? Instance.loadersCacheCpp
+                                 : language == "C#" ? Instance.loadersCacheCS
+                                 : language == "Basic" ? Instance.loadersCacheBasic
+                                 : null;
+
+                if (loadersCache != null)
+                {
+                    Loader loader = loadersCache.Find(type, kindConstraint);
+                    if (loader != null)
+                        return loader;
+                }
 
                 // Parse type for qualified identifier
                 string id = Util.TypeId(type);
@@ -474,10 +497,11 @@ namespace GraphicalDebugging
                     int kindIndex = (int)kind;
                     foreach (LoaderCreator creator in lists[kindIndex])
                     {
-                        loader = creator.Create(this, Debugger, name, type, id);
+                        Loader loader = creator.Create(this, Debugger, name, type, id);
                         if (loader != null)
                         {
-                            loadersCache.Add(type, kind, loader);
+                            if (loadersCache != null)
+                                loadersCache.Add(type, kind, loader);
                             return loader;
                         }
                     }
@@ -492,10 +516,11 @@ namespace GraphicalDebugging
                         {
                             foreach (LoaderCreator creator in lists[i])
                             {
-                                loader = creator.Create(this, Debugger, name, type, id);
+                                Loader loader = creator.Create(this, Debugger, name, type, id);
                                 if (loader != null)
                                 {
-                                    loadersCache.Add(type, kind, loader);
+                                    if (loadersCache != null)
+                                        loadersCache.Add(type, kind, loader);
                                     return loader;
                                 }
                             }
@@ -812,7 +837,7 @@ namespace GraphicalDebugging
                     = mreader.GetNumericArrayConverter(coordType, elemSize, count);
                 if (arrayConverter == null)
                     return null;
-                int byteSize = (new ExpressionParser(debugger)).GetValueSizeof(name);
+                int byteSize = ExpressionParser.GetValueSizeof(debugger, name);
                 if (byteSize == 0)
                     return null;
                 long byteOffset = ExpressionParser.GetAddressDifference(debugger, name, elemName);
@@ -1858,11 +1883,9 @@ namespace GraphicalDebugging
                 if (traits == null)
                     throw new CreationException();
 
-                ExpressionParser exprParser = new ExpressionParser(debugger);
-
                 string nodePtrName = RootNodePtr(name);
                 string nodeVariantName = "*" + nodePtrName;
-                string nodeVariantType = exprParser.GetValueType(nodeVariantName);
+                string nodeVariantType = ExpressionParser.GetValueType(debugger, nodeVariantName);
                 if (Util.Empty(nodeVariantType))
                     throw new CreationException();
 
@@ -1885,13 +1908,13 @@ namespace GraphicalDebugging
 
                 // For Memory Loading
 
-                nodePtrType = exprParser.GetValueType(nodePtrName);
-                nodePtrSizeOf = exprParser.GetTypeSizeof(nodePtrType);
+                nodePtrType = ExpressionParser.GetValueType(debugger, nodePtrName);
+                nodePtrSizeOf = ExpressionParser.GetTypeSizeof(debugger, nodePtrType);
 
-                leafElemsDiff = exprParser.GetAddressDifference(nodeVariantName,
-                                                                NodeElements(nodePtrName, leafType));
-                internalNodeElemsDiff = exprParser.GetAddressDifference(nodeVariantName,
-                                                                        NodeElements(nodePtrName, internalNodeType));
+                leafElemsDiff = ExpressionParser.GetAddressDifference(debugger, nodeVariantName,
+                                                                      NodeElements(nodePtrName, leafType));
+                internalNodeElemsDiff = ExpressionParser.GetAddressDifference(debugger, nodeVariantName,
+                                                                              NodeElements(nodePtrName, internalNodeType));
                 string leafElemName;
                 leafElementsLoader.ElementInfo(leafElemsName, leafElemsType,
                                                out leafElemName, out leafElemType);
@@ -1899,20 +1922,19 @@ namespace GraphicalDebugging
                 internalNodeElementsLoader.ElementInfo(internalNodeElemsName, internalNodeElemsType,
                                                        out internalNodeElemName, out internalNodeElemType);
 
-                indexableDiff = exprParser.GetAddressDifference(leafElemName,
-                                                                leafElemName + indexableMember);
-                nodePtrDiff = exprParser.GetAddressDifference(internalNodeElemName,
-                                                              internalNodeElemName + ".second");
+                indexableDiff = ExpressionParser.GetAddressDifference(debugger, leafElemName,
+                                                                      leafElemName + indexableMember);
+                nodePtrDiff = ExpressionParser.GetAddressDifference(debugger, internalNodeElemName,
+                                                                    internalNodeElemName + ".second");
 
                 string whichName = "(" + nodeVariantName + ").which_";
-                whichType = exprParser.GetValueType(whichName);
-                whichSizeOf = exprParser.GetTypeSizeof(whichType);
-                whichDiff = exprParser.GetAddressDifference(nodeVariantName,
-                                                            whichName);
+                whichType = ExpressionParser.GetValueType(debugger, whichName);
+                whichSizeOf = ExpressionParser.GetTypeSizeof(debugger, whichType);
+                whichDiff = ExpressionParser.GetAddressDifference(debugger, nodeVariantName, whichName);
 
-                nodeVariantSizeof = exprParser.GetValueSizeof(nodeVariantName);
-                nodePtrPairSizeof = exprParser.GetValueSizeof(internalNodeElemName);
-                valueSizeof = exprParser.GetValueSizeof(leafElemName);
+                nodeVariantSizeof = ExpressionParser.GetValueSizeof(debugger, nodeVariantName);
+                nodePtrPairSizeof = ExpressionParser.GetValueSizeof(debugger, internalNodeElemName);
+                valueSizeof = ExpressionParser.GetValueSizeof(debugger, leafElemName);
             }
 
             public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,

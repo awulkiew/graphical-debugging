@@ -16,22 +16,12 @@ namespace GraphicalDebugging
 {
     class ExpressionParser
     {
-        public int LoadSize(string name)
-        {
-            return LoadSize(debugger, name);
-        }
-
         public static int LoadSize(Debugger debugger, string name)
         {
             Expression expr = debugger.GetExpression(name);
             return expr.IsValidValue
                  ? Math.Max(Util.ParseInt(expr.Value, debugger.HexDisplayMode), 0)
                  : 0;
-        }
-
-        public bool TryLoadInt(string name, out int result)
-        {
-            return TryLoadInt(debugger, name, out result);
         }
 
         public static bool TryLoadInt(Debugger debugger, string name, out int result)
@@ -44,24 +34,17 @@ namespace GraphicalDebugging
             return true;
         }
 
-        public bool TryLoadDouble(string name, out double result)
-        {
-            return TryLoadDouble(debugger, name, out result);
-        }
-
         public static bool TryLoadDouble(Debugger debugger, string name, out double result)
         {
             result = 0.0;
-            Expression expr = debugger.GetExpression("(double)" + name);
+            string castedName = "(double)" + name;
+            if (IsLanguageBasic(debugger))
+                castedName = "CType(" + name + ", Double)";
+            Expression expr = debugger.GetExpression(castedName);
             if (!expr.IsValidValue)
                 return false;
             result = Util.ParseDouble(expr.Value);
             return true;
-        }
-
-        public long GetAddressDifference(string valName1, string valName2)
-        {
-            return GetAddressDifference(debugger, valName1, valName2);
         }
 
         /*struct AddressDifference
@@ -105,18 +88,7 @@ namespace GraphicalDebugging
             return diff == long.MinValue;
         }
 
-        public ulong GetValueAddress(string valName)
-        {
-            Expression ptrExpr = debugger.GetExpression("(void*)&(" + valName + ")");
-            if (!ptrExpr.IsValidValue)
-                return 0;
-            string addr = ptrExpr.Value;
-
-            // NOTE: Hexadecimal value is automatically detected, this is probably not needed.
-            // But automatically detect the format just in case of various versions
-            // of VS displayed it differently regardless of debugger mode.
-            return Util.ParseULong(addr/*, true*/);
-        }
+        // C++ and C# only!
 
         // TODO: C# classes
         // For value-types, structs, etc.
@@ -152,42 +124,32 @@ namespace GraphicalDebugging
 
         // Valid size or 0
         // NOTE: In C++ the actual byte size depends on CHAR_BIT
-        public int GetValueSizeof(string valName)
+        public static int GetValueSizeof(Debugger debugger, string valName)
         {
-            string sizeOfStr = "sizeof(" + valName + ")";
-            if (language == Language.CS)
+            string typeName = valName; // In C++ value and type is interchangeable when passed into sizeof
+            //if (!IsLanguageCpp(debugger))
+            if (IsLanguageCs(debugger)) // Change this when getting address in Basic works
             {
                 Expression valExpr = debugger.GetExpression(valName);
                 if (!valExpr.IsValidValue)
                     return 0;
-                sizeOfStr = "sizeof(" + valExpr.Type + ")";
+                typeName = valExpr.Type;
             }
-
-            Expression valSizeExpr = debugger.GetExpression(sizeOfStr);
-            return valSizeExpr.IsValidValue
-                 ? Util.ParseInt(valSizeExpr.Value, debugger.HexDisplayMode)
-                 : 0;
-        }
-
-        // Valid size or 0
-        public int GetTypeSizeof(string valType)
-        {
-            return GetTypeSizeof(debugger, valType);
+            return GetTypeSizeof(debugger, typeName);
         }
 
         // Valid size or 0
         public static int GetTypeSizeof(Debugger debugger, string valType)
         {
-            Expression valSizeExpr = debugger.GetExpression("sizeof(" + valType + ")");
+            if (IsLanguageBasic(debugger)) // Change this when getting address in Basic works
+                //sizeOfStr = "System.Runtime.InteropServices.Marshal.SizeOf(GetType(" + valType + "))";
+                return 0;
+
+            string sizeOfStr = "sizeof(" + valType + ")";
+            Expression valSizeExpr = debugger.GetExpression(sizeOfStr);
             return valSizeExpr.IsValidValue
                  ? Util.ParseInt(valSizeExpr.Value, debugger.HexDisplayMode)
                  : 0;
-        }
-
-        // Valid name or null
-        public string GetValueType(string valName)
-        {
-            return GetValueType(debugger, valName);
         }
 
         // Valid name or null
@@ -232,17 +194,19 @@ namespace GraphicalDebugging
                 || IsInvalidOffset(size, offset2);
         }
 
-        public ExpressionParser(Debugger debugger)
+        private static bool IsLanguageCpp(Debugger debugger)
         {
-            string language = debugger.CurrentStackFrame.Language;
-            this.language = language == "C#" ? Language.CS : Language.Cpp;
-
-            this.debugger = debugger;
+            return debugger.CurrentStackFrame.Language.StartsWith("C+");
         }
 
-        enum Language { Cpp, CS };
+        private static bool IsLanguageCs(Debugger debugger)
+        {
+            return debugger.CurrentStackFrame.Language.StartsWith("C#");
+        }
 
-        Language language;
-        Debugger debugger;
+        private static bool IsLanguageBasic(Debugger debugger)
+        {
+            return debugger.CurrentStackFrame.Language.StartsWith("Ba");
+        }
     }
 }

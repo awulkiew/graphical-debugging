@@ -259,6 +259,13 @@ namespace GraphicalDebugging
                     || valType == "short"
                     || valType == "sbyte";
             }
+            else if (language == Language.Basic)
+            {
+                return valType == "Integer"
+                    || valType == "Long"
+                    || valType == "Short"
+                    || valType == "SByte";
+            }
             else
             {
                 return valType == "int"
@@ -284,6 +291,14 @@ namespace GraphicalDebugging
                     || valType == "char"
                     || valType == "byte";
             }
+            else if (language == Language.Basic)
+            {
+                return valType == "UInteger"
+                    || valType == "ULong"
+                    || valType == "UShort"
+                    || valType == "Char"
+                    || valType == "Byte";
+            }
             else
             {
                 return valType == "unsigned int"
@@ -300,11 +315,11 @@ namespace GraphicalDebugging
             if (valType == null || valSize <= 0)
                 return null;
 
-            if (valType == "double")
+            if (valType == "double" || valType == "Double")
             {
                 return new ValueConverter<ValueType, double>();
             }
-            else if (valType == "float")
+            else if (valType == "float" || valType == "Single")
             {
                 return new ValueConverter<ValueType, float>();
             }
@@ -334,7 +349,7 @@ namespace GraphicalDebugging
                 else
                     return null;
             }
-            else if (valType == "decimal") // C# only
+            else if (valType == "decimal" || valType == "Decimal") // C# and Basic only
             {
                 return new ValueConverter<ValueType, decimal>();
             }
@@ -464,7 +479,9 @@ namespace GraphicalDebugging
         public MemoryReader(Debugger debugger)
         {
             string language = debugger.CurrentStackFrame.Language;
-            this.language = language == "C#" ? Language.CS : Language.Cpp;
+            this.language = language == "C#" ? Language.CS
+                          : language == "Basic" ? Language.Basic
+                          : Language.Cpp;
 
             this.process = GetDebuggedProcess(debugger);
         }
@@ -513,7 +530,7 @@ namespace GraphicalDebugging
             return null;
         }
 
-        enum Language { Cpp, CS };
+        enum Language { Cpp, CS, Basic };
 
         Language language;
         DkmProcess process;
