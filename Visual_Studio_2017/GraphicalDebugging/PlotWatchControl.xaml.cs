@@ -428,68 +428,23 @@ namespace GraphicalDebugging
             {
                 if (m_pointDown[0] != point.X || m_pointDown[1] != point.Y)
                 {
-                    double ox = m_pointDown[0];
-                    double oy = m_pointDown[1];
+                    double originx = m_pointDown[0];
+                    double originy = m_pointDown[1];
                     double x = Math.Min(Math.Max(point.X, 0), image.ActualWidth);
                     double y = Math.Min(Math.Max(point.Y, 0), image.ActualHeight);
-                    double w = Math.Abs(x - ox);
-                    double h = Math.Abs(y - oy);
+                    double width = Math.Abs(x - originx);
+                    double height = Math.Abs(y - originy);
 
-                    double prop = h / w;
-                    double iProp = image.ActualHeight / image.ActualWidth;
-                    if (prop < iProp)
-                        h = iProp * w;
-                    else if (prop > iProp)
-                        w = h / iProp;
+                    if (originx > x) { originx -= width; }
+                    if (originy > y) { originy -= height; }
 
-                    double l = ox;
-                    double t = oy;
+                    Canvas.SetLeft(m_selectionRect, originx);
+                    m_selectionRect.Width = width;
+                    Canvas.SetTop(m_selectionRect, originy);
+                    m_selectionRect.Height = height;
 
-                    if (ox <= x)
-                    {
-                        if (ox + w > image.ActualWidth)
-                        {
-                            w = image.ActualWidth - ox;
-                            h = iProp * w;
-                        }
-                    }
-                    else
-                    {
-                        if (ox - w < 0)
-                        {
-                            w = ox;
-                            h = iProp * w;
-                        }
-                        l = ox - w;
-                    }
+                    m_selectionRect.Visibility = Visibility.Visible;
 
-                    if (oy <= y)
-                    {
-                        if (oy + h > image.ActualHeight)
-                        {
-                            h = image.ActualHeight - oy;
-                            w = h / iProp;
-                        }
-                    }
-                    else
-                    {
-                        if (oy - h < 0)
-                        {
-                            h = oy;
-                            w = h / iProp;
-                        }
-                        t = oy - h;
-                    }
-
-                    if (w > 0 && h > 0)
-                    {
-                        Canvas.SetLeft(m_selectionRect, l);
-                        Canvas.SetTop(m_selectionRect, t);
-                        m_selectionRect.Width = w;
-                        m_selectionRect.Height = h;
-
-                        m_selectionRect.Visibility = Visibility.Visible;
-                    }
                 }
             }
         }
