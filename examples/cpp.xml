@@ -128,6 +128,13 @@
     </CoordinatesDimensions>
   </Box>
 
+  <!--
+  struct MySegment
+  {
+      struct { double x, y; } first;
+      struct { double x, y; } second;
+  };
+  -->  
   <Segment Id="MySegment">
     <Coordinates>
       <FirstX>first.x</FirstX>
@@ -136,7 +143,14 @@
       <SecondY>second.y</SecondY>
     </Coordinates>
   </Segment>
-  
+
+  <!--
+  struct MyRay
+  {
+      struct { double x, y; } origin;
+      struct { double x, y; } direction;
+  };
+  -->
   <Ray Id="MyRay">
     <Coordinates>
       <OriginX>origin.x</OriginX>
@@ -147,29 +161,12 @@
   </Ray>
 
   <!--
-  <Ray Id="MyRay">
-    <Points>
-      <Origin>origin</Origin>
-      <Direction>direction</Direction>
-    </Points>
-  </Ray>
-
-  <Ray Id="MyRay">
-    <Origin>
-      <Coordinates>
-        <X>origin.x</X>
-        <Y>origin.y</Y>
-      </Coordinates>
-    </Origin>
-    <Direction>
-      <Coordinates>
-        <X>direction.x</X>
-        <Y>direction.y</Y>
-      </Coordinates>
-    </Direction>
-  </Ray>
+  struct MyLine
+  {
+      struct { double x, y; } first;
+      struct { double x, y; } second;
+  };
   -->
-  
   <Line Id="MyLine">
     <Coordinates>
       <FirstX>first.x</FirstX>
