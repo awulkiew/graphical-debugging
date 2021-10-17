@@ -75,7 +75,7 @@ namespace GraphicalDebugging
                     }
                 }
 
-                if (ok)
+                if (! ok)
                     outSize = LoadSize(debugger, name);
             }
         }
