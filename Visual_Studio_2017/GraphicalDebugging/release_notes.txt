@@ -4,6 +4,7 @@ additions:
 - support for user-defined Segment, Ray and Line
 - support for Visual Basic array and List and basic data types (without direct memory access)
 - loading time message window no longer blocks loading
+- containers of geometries use color of the elements in GraphicalWatch
 
 version 0.32
 
