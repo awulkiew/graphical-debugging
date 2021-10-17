@@ -71,7 +71,6 @@ namespace GraphicalDebugging
                 MultiLinestringColor = Color.DarkGreen;
                 MultiPolygonColor = Color.FromArgb(0xFF, 0, 0, 128);
                 TurnColor = Color.DarkOrange;
-                GeometriesContainerColor = Color.SaddleBrown;
             }
             else
             {
@@ -95,7 +94,6 @@ namespace GraphicalDebugging
                 MultiLinestringColor = Color.FromArgb(0xFF, 128, 172, 128);
                 MultiPolygonColor = Color.FromArgb(0xFF, 128, 128, 172);
                 TurnColor = Color.FromArgb(0xFF, 255, 197, 128);
-                GeometriesContainerColor = Color.Tan;
             }
         }
 
@@ -139,7 +137,6 @@ namespace GraphicalDebugging
         public Color MultiLinestringColor { get; set; }
         public Color MultiPolygonColor { get; set; }
         public Color TurnColor { get; set; }
-        public Color GeometriesContainerColor { get; set; }
 
         private void CreateColors(uint[] colorValues)
         {

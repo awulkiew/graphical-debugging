@@ -739,10 +739,21 @@ namespace GraphicalDebugging
         {
             public void Draw(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits)
             {
-                // TODO: Draw using IDrawable color?
                 for (int i = 0; i < this.Count; ++i)
                 {
                     this[i].Draw(box, graphics, settings, traits);
+                }
+            }
+
+            // TODO: This overload is defined to allow drawing elements using their specific colors
+            //       Incorporate this into the IDrawable interface?
+            public void Draw(Geometry.Box box, Graphics graphics, Settings settings, Geometry.Traits traits, Colors colors)
+            {
+                for (int i = 0; i < this.Count; ++i)
+                {
+                    IDrawable drawable = this[i];
+                    settings.color = DefaultColor(drawable, colors);
+                    drawable.Draw(box, graphics, settings, traits);
                 }
             }
 
@@ -1211,7 +1222,7 @@ namespace GraphicalDebugging
                 return colors.BoxColor;
             else if (drawable is NSphere)
                 return colors.NSphereColor;
-            else if (drawable is Segment)
+            else if (drawable is Segment) // Ray, Line
                 return colors.SegmentColor;
             else if (drawable is Linestring)
                 return colors.LinestringColor;
@@ -1227,8 +1238,6 @@ namespace GraphicalDebugging
                 return colors.MultiPolygonColor;
             else if (drawable is Turn || drawable is TurnsContainer)
                 return colors.TurnColor;
-            else if (drawable is DrawablesContainer)
-                return colors.GeometriesContainerColor;
             else
                 return colors.DrawColor;
         }
@@ -1254,7 +1263,11 @@ namespace GraphicalDebugging
                 bool fill = (traits == null);
                 if (drawable.DrawAxes())
                     Drawer.DrawAxes(graphics, aabb, unit, colors, fill);
-                drawable.Draw(aabb, graphics, settings, traits);
+                // TODO: This is ugly, it should probably be changed
+                if (drawable is DrawablesContainer)
+                    (drawable as DrawablesContainer).Draw(aabb, graphics, settings, traits, colors);
+                else
+                    drawable.Draw(aabb, graphics, settings, traits);
             }
             return true;
         }
