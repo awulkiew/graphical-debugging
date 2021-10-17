@@ -44,18 +44,17 @@ To install after building double-click the *.vsix file from bin/Debug or bin/Rel
 
 Supported:
 
-* Boost.Array: array
-* Boost.CircularBuffer: circular_buffer
-* Boost.Container: vector, static_vector
+* Boost.Array: `array`
+* Boost.CircularBuffer: `circular_buffer`
+* Boost.Container: `vector`, `static_vector`
 * Boost.Geometry:
-  * de9im: mask, matrix, static_mask
-  * detail: turn_info, traversal_turn_info, turn_operation, turn_operation_linear, traversal_turn_operation, segment_ratio
-  * index: rtree, varray
-  * model: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
-* Boost.MPL: int_, size_t, integral_c, vector, vector_c
-* Boost.Polygon: point_data, interval_data, segment_data, rectangle_data, polygon_data, polygon_with_holes_data
-* Boost.Tuple: tuple, cons
-* Boost.Variant: variant
+  * de9im: `mask`, `matrix`, `static_mask`
+  * index: `rtree`
+  * model: `point`, `point_xy`, `box`, `segment`, `referring_segment`, `linestring`, `polygon`, `multi_point`, `multi_linestring`, `multi_polygon`, `nsphere`
+* Boost.MPL: `int_`, `size_t`, `integral_c`, `vector`, `vector_c`
+* Boost.Polygon: `point_data`, `interval_data`, `segment_data`, `rectangle_data`, `polygon_data`, `polygon_with_holes_data`
+* Boost.Tuple: `tuple`
+* Boost.Variant: `variant`
 
 ![Watch](images/natvis_watch.png)
 
