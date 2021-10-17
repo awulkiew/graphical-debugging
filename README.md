@@ -42,6 +42,8 @@ To install after building double-click the *.vsix file from bin/Debug or bin/Rel
 
 ##### Debugger visualizers
 
+![Watch](images/natvis_watch.png)
+
 Supported:
 
 * Boost.Array: `array`
@@ -55,8 +57,6 @@ Supported:
 * Boost.Polygon: `point_data`, `interval_data`, `segment_data`, `rectangle_data`, `polygon_data`, `polygon_with_holes_data`
 * Boost.Tuple: `tuple`
 * Boost.Variant: `variant`
-
-![Watch](images/natvis_watch.png)
 
 ##### Geometry Watch
 
