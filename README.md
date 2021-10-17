@@ -111,49 +111,49 @@ Watch window displaying plot representation of variables in a single image. Type
   * C-style array
   * Pointer to elements with size specifier e.g.: `ptr,5`
   * Sequence of containers of point coordinates e.g.: `vec_x;vec_y`
-  * STL: array, vector, deque, list, set
-  * Boost.Array: array
-  * Boost.CircularBuffer: circular_buffer
-  * Boost.Container: vector, static_vector
-  * C#: array, List, LinkedList
-  * VB: array List (containers of values only)
+  * STL: `array`, `vector`, `deque`, `list`, `set`
+  * Boost.Array: `array`
+  * Boost.CircularBuffer: `circular_buffer`
+  * Boost.Container: `vector`, `static_vector`
+  * C#: array, `List`, `LinkedList`,  `IList`, `IEnumerable`
+  * VB: array, `List` (containers of values only)
   * user-defined containers (see below)
 * 2D cartesian geometries
-  * Boost.Geometry: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
-  * Boost.Polygon: point_data, segment_data, rectangle_data, polygon_data, polygon_with_holes_data
-  * STL: pair
+  * Boost.Geometry: `point`, `point_xy`, `box`, `segment`, `referring_segment`, `linestring`, `polygon`, `multi_point`, `multi_linestring`, `multi_polygon`, `nsphere`
+  * Boost.Polygon: `point_data`, `segment_data`, `rectangle_data`, `polygon_data`, `polygon_with_holes_data`
+  * STL: `pair`
   * user-defined geometry types (see below)
 * Non-cartesian geometries (spherical_equatorial and geographic)
-  * Boost.Geometry: point, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
+  * Boost.Geometry: `point`, `box`, `segment`, `referring_segment`, `linestring`, `polygon`, `multi_point`, `multi_linestring`, `multi_polygon`, `nsphere`
 * Spatial indexes
-  * Boost.Geometry: rtree
+  * Boost.Geometry: `rtree`
 * Complex numbers
-  * STL: complex
+  * STL: `complex`
 * Images
-  * Boost.Gil: image (incl. typedefs, e.g. rgb8_image_t, abgr16_image_t, cmyk32_image_t, rgb64f_planar_image_t, etc.)
+  * Boost.Gil: `image` (incl. typedefs, e.g. `rgb8_image_t`, `abgr16_image_t`, `cmyk32_image_t`, `rgb64f_planar_image_t`, etc.)
 * Variants of geometries
-  * Boost.Variant: variant
+  * Boost.Variant: `variant`
 
 ##### User-defined types
 
 The extension offers support for the following user-defined geometries for both C++ and C# types:
 
-  * Box (aka rectangle)
-  * Line
-  * Linestring
-  * MultiLinestring
-  * MultiPoint
-  * MultiPolygon
-  * Point
-  * Polygon (polygon with holes)
-  * Ray
-  * Ring (polygon without holes)  
-  * Segment
+  * `Box` (aka rectangle)
+  * `Line`
+  * `Linestring`
+  * `MultiLinestring`
+  * `MultiPoint`
+  * `MultiPolygon`
+  * `Point`
+  * `Polygon` (polygon with holes)
+  * `Ray`
+  * `Ring` (polygon without holes)  
+  * `Segment`
 
 as well as user defined containers for C++:
 
-  * Array
-  * LinkedList
+  * `Array`
+  * `LinkedList`
 
 They can be defined in XML file similar to *.natvis file. Path to this file can be set in options under **Tools**->**Options**->**Graphical Debugging**->**General**. An example XML file defining C++ types `MyPoint`, `MyRing` and `MyPolygon` in global namespace might look like this:
 
