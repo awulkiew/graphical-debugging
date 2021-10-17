@@ -61,33 +61,7 @@ Supported:
 
 ##### Geometry Watch
 
-Watch window displaying graphical representation of variables in a single image. This allows to compare the variables easily.
-
-Supported:
-
-* Containers of points and other geometries
-  * C-style array
-  * Pointer to elements with size specifier e.g.: `ptr,5`
-  * Sequence of containers of point coordinates e.g.: `vec_x;vec_y`
-  * STL: array, vector, deque, list, set
-  * Boost.Array: array
-  * Boost.CircularBuffer: circular_buffer
-  * Boost.Container: vector, static_vector
-  * C#: array, List, LinkedList
-  * user-defined containers (see below)
-* 2D cartesian geometries
-  * Boost.Geometry: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
-  * Boost.Polygon: point_data, segment_data, rectangle_data, polygon_data, polygon_with_holes_data
-  * STL: pair
-  * user-defined geometry types (see below)
-* Non-cartesian geometries (spherical_equatorial and geographic)
-  * Boost.Geometry: point, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
-* Spatial indexes
-  * Boost.Geometry: rtree
-* Complex numbers
-  * STL: complex
-* Variants of geometries
-  * Boost.Variant: variant
+Watch window displaying graphical representation of variables in a single image. This allows to compare the variables easily. Variables can be of any supported type (see below) representing a geometrical object, e.g. point, polygon, ray, container of complex numbers, etc.
 
 ![Geometry Watch](images/geometry_watch.png)
 
@@ -97,7 +71,7 @@ Segments may be densified in order to reflect the curvature of the globe. This b
 
 ![Geometry Watch Spherical](images/geometry_watch_sph.png)
 
-where
+where geometries are Boost.Geometry types:
 
     polygon_sd_t poly_sd{{{-100, 0},{100, 0},{100, 50},{-100, 50},{-100, 0}},
                          {{-150, 10},{-150, 20},{150, 20},{150, 10},{-150, 10}}};
@@ -107,35 +81,7 @@ where
 
 ##### Graphical Watch
 
-Watch window displaying graphical representations of variables in a list. Each variable is placed and visualized in a separate row.
-
-Supported:
-
-* Containers of values convertible to double, points and other geometries
-  * C-style array
-  * Pointer to elements with size specifier e.g.: `ptr,5`
-  * Sequence of containers of point coordinates e.g.: `vec_x;vec_y`
-  * STL: array, vector, deque, list, set
-  * Boost.Array: array
-  * Boost.CircularBuffer: circular_buffer
-  * Boost.Container: vector, static_vector
-  * C#: array, List, LinkedList
-  * user-defined containers (see below)
-* 2D cartesian geometries
-  * Boost.Geometry: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
-  * Boost.Polygon: point_data, segment_data, rectangle_data, polygon_data, polygon_with_holes_data
-  * STL: pair
-  * user-defined geometry types (see below)
-* Non-cartesian geometries (spherical_equatorial and geographic)
-  * Boost.Geometry: point, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
-* Spatial indexes
-  * Boost.Geometry: rtree
-* Complex numbers
-  * STL: complex
-* Images
-  * Boost.Gil: image (incl. typedefs, e.g. rgb8_image_t, abgr16_image_t, cmyk32_image_t, rgb64f_planar_image_t, etc.)
-* Variants of geometries
-  * Boost.Variant: variant
+Watch window displaying graphical representations of variables in a list. Each variable is placed and visualized in a separate row. Variables can be of any supported type (see below) incl. images (see below).
 
 ![Graphical Watch](images/graphical_watch.png)
 
@@ -155,10 +101,13 @@ where
 
 ##### Plot Watch
 
-Watch window displaying plot representation of variables in a single image. Type of plot can be set in **Options**.
+Watch window displaying plot representation of variables in a single image. Type of plot can be set in **Options**. Variables can be of any supported type (see below) representing a container of values or points incl. complex and pair.
 
-Supported containers of values convertible to double and containers of points:
+![Plot Watch](images/plot_watch.png)
 
+##### Types supported in watch windows
+
+* Containers of values convertible to double, points and other geometries
   * C-style array
   * Pointer to elements with size specifier e.g.: `ptr,5`
   * Sequence of containers of point coordinates e.g.: `vec_x;vec_y`
@@ -167,35 +116,39 @@ Supported containers of values convertible to double and containers of points:
   * Boost.CircularBuffer: circular_buffer
   * Boost.Container: vector, static_vector
   * C#: array, List, LinkedList
+  * VB: array List (containers of values only)
   * user-defined containers (see below)
-
-where points can be of any supported point type (coordinate system is ignored):
-
-  * STL: complex, pair
-  * Boost.Geometry: point, point_xy
-  * Boost.Polygon: point_data
-  * user-defined point type (see below)
-
-![Plot Watch](images/plot_watch.png)
-
-##### Options
-
-Options for each Watch can be found under **Tools**->**Options**->**Graphical Debugging**
-
-![Plot Watch Various](images/plot_watch_various.png)
+* 2D cartesian geometries
+  * Boost.Geometry: point, point_xy, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
+  * Boost.Polygon: point_data, segment_data, rectangle_data, polygon_data, polygon_with_holes_data
+  * STL: pair
+  * user-defined geometry types (see below)
+* Non-cartesian geometries (spherical_equatorial and geographic)
+  * Boost.Geometry: point, box, segment, referring_segment, polygon, multi_point, multi_linestring, multi_polygon, nsphere
+* Spatial indexes
+  * Boost.Geometry: rtree
+* Complex numbers
+  * STL: complex
+* Images
+  * Boost.Gil: image (incl. typedefs, e.g. rgb8_image_t, abgr16_image_t, cmyk32_image_t, rgb64f_planar_image_t, etc.)
+* Variants of geometries
+  * Boost.Variant: variant
 
 ##### User-defined types
 
 The extension offers support for the following user-defined geometries for both C++ and C# types:
 
-  * Point
-  * Box (or rectangle)
-  * MultiPoint
+  * Box (aka rectangle)
+  * Line
   * Linestring
   * MultiLinestring
-  * Ring (polygon without holes)
-  * Polygon (polygon with holes)
+  * MultiPoint
   * MultiPolygon
+  * Point
+  * Polygon (polygon with holes)
+  * Ray
+  * Ring (polygon without holes)  
+  * Segment
 
 as well as user defined containers for C++:
 
@@ -245,14 +198,6 @@ Current limitations:
 
 See more [examples at GitHub](https://github.com/awulkiew/graphical-debugging/tree/master/examples).
 
-##### Zooming/cropping
-
-Geometry Watch and Plot Watch has zooming/cropping feature. Mouse wheel can be used to zoom in/out as well.
-
-![Geometry Watch Zoom](images/geometry_watch_zoom.png)
-
-![Geometry Watch Zoomed](images/geometry_watch_zoomed.png)
-
 ##### Direct memory access
 
 The extension attempts to obtain data through direct memory access if possible. From this feature benefit all supported containers of fundamental numeric types and geometries using such coordinate types. E.g.:
@@ -268,6 +213,20 @@ The extension attempts to obtain data through direct memory access if possible. 
   * etc.
 
 This behavior is enabled by default but can be disabled in options under **Tools**->**Options**->**Graphical Debugging**->**General**
+
+##### Zooming/cropping
+
+Geometry Watch and Plot Watch has zooming/cropping feature. Mouse wheel can be used to zoom in/out as well.
+
+![Geometry Watch Zoom](images/geometry_watch_zoom.png)
+
+![Geometry Watch Zoomed](images/geometry_watch_zoomed.png)
+
+##### Options
+
+Options for each Watch can be found under **Tools**->**Options**->**Graphical Debugging**
+
+![Plot Watch Various](images/plot_watch_various.png)
 
 ##### Themes
 
