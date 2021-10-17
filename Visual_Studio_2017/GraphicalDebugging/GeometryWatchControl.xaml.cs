@@ -546,7 +546,7 @@ namespace GraphicalDebugging
         {
             TextBlock textBlock = sender as TextBlock;
             GeometryItem geometry = textBlock.DataContext as GeometryItem;
-            if (geometry.ColorId >= 0)
+            if (geometry != null && geometry.ColorId >= 0)
             {
                 var color = (textBlock.Background as System.Windows.Media.SolidColorBrush).Color;
                 var newColor = Util.ShowColorDialog(color);
