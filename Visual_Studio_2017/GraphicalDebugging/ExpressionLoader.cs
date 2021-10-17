@@ -337,7 +337,7 @@ namespace GraphicalDebugging
                 mreader = new MemoryReader(Instance.debugger);
             }
 
-            LoadTimeGuard timeGuard = new LoadTimeGuard(name);
+            LoadTimeGuard timeGuard = new LoadTimeGuard(name, 3000);
             
             if (exprs.Length == 1)
             {

@@ -16,7 +16,7 @@ namespace GraphicalDebugging
     {
         class LoadTimeGuard
         {
-            public LoadTimeGuard(string variableName, long timeThreshold = 10000)
+            public LoadTimeGuard(string variableName, long timeThreshold)
             {
                 this.variableName = variableName;
                 this.timeThreshold = timeThreshold;
