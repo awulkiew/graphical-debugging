@@ -1,5 +1,11 @@
 # Graphical Debugging
-## extension for Visual Studio 2013, 2015, 2017 and 2019
+### Extension for Visual Studio 2013, 2015, 2017 and 2019
+
+[![VS Marketplace](https://vsmarketplacebadge.apphb.com/version-short/AdamWulkiewicz.GraphicalDebugging.svg)](https://marketplace.visualstudio.com/items?itemName=AdamWulkiewicz.GraphicalDebugging)
+[![Installs](https://vsmarketplacebadge.apphb.com/installs-short/AdamWulkiewicz.GraphicalDebugging.svg)](https://marketplace.visualstudio.com/items?itemName=AdamWulkiewicz.GraphicalDebugging)
+[![Rating](https://vsmarketplacebadge.apphb.com/rating-short/AdamWulkiewicz.GraphicalDebugging.svg)](https://marketplace.visualstudio.com/items?itemName=AdamWulkiewicz.GraphicalDebugging)
+![License](https://img.shields.io/github/license/awulkiew/graphical-debugging.svg)
+[![Donate](https://img.shields.io/badge/Donate-_-yellow.svg)](https://awulkiew.github.io/donate)
 
 This extension allows to display graphical representation of C++ and C# variables during debugging.
 
@@ -14,21 +20,11 @@ It supports Boost.Geometry and Boost.Polygon models, Boost.Variant, STL/Boost co
 
 Feel free to report bugs, propose features and create pull requests. Any help is appreciated.
 
-##### Download
+#### Download
 
 You can download this extension from [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=AdamWulkiewicz.GraphicalDebugging) or [GitHub](https://github.com/awulkiew/graphical-debugging/releases).
 
-##### Instructions
-
-###### Build
-
-You need Microsoft Visual Studio 2017 Community and .NET Framework 4.5.2.
-
-###### Install
-
-To install after building double-click the *.vsix file from bin/Debug or bin/Release directory.
-
-###### Use
+#### Instructions
 
 1. place a breakpoint somewhere in the code
 2. start debugging
@@ -38,9 +34,7 @@ To install after building double-click the *.vsix file from bin/Debug or bin/Rel
    * **View**->**Other Windows**->**Plot Watch**
 4. write the name of a variable in an edit box on the list
 
-#### Details
-
-##### Debugger visualizers
+#### Debugger visualizers
 
 ![Watch](images/natvis_watch.png)
 
@@ -58,7 +52,7 @@ Supported:
 * Boost.Tuple: `tuple`
 * Boost.Variant: `variant`
 
-##### Geometry Watch
+#### Geometry Watch
 
 Watch window displaying graphical representation of variables in a single image. This allows to compare the variables easily. Variables can be of any supported type (see below) representing a geometrical object, e.g. point, polygon, ray, container of complex numbers, etc.
 
@@ -78,7 +72,7 @@ where geometries are Boost.Geometry types:
                                  {{0, 10},{-15, 20},{-50, 50},{0, 60}}}};
     multi_point_sd_t mpt_sd{{0, 0},{90, 10},{170, 20},{-170, 30}};
 
-##### Graphical Watch
+#### Graphical Watch
 
 Watch window displaying graphical representations of variables in a list. Each variable is placed and visualized in a separate row. Variables can be of any supported type (see below) incl. images (see below).
 
@@ -98,13 +92,13 @@ where
                                  {{0, 10},{-15, 20},{-50, 50},{0, 60}}}};
     multi_point_sd_t mpt_sd{{0, 0},{90, 10},{170, 20},{-170, 30}};
 
-##### Plot Watch
+#### Plot Watch
 
 Watch window displaying plot representation of variables in a single image. Type of plot can be set in **Options**. Variables can be of any supported type (see below) representing a container of values or points incl. complex and pair.
 
 ![Plot Watch](images/plot_watch.png)
 
-##### Types supported in watch windows
+#### Supported types
 
 * Containers of values convertible to double, points and other geometries
   * C-style array
@@ -133,7 +127,7 @@ Watch window displaying plot representation of variables in a single image. Type
 * Variants of geometries
   * Boost.Variant: `variant`
 
-##### User-defined types
+#### User-defined types
 
 The extension offers support for the following user-defined geometries for both C++ and C# types:
 
@@ -197,7 +191,7 @@ Current limitations:
 
 See more [examples at GitHub](https://github.com/awulkiew/graphical-debugging/tree/master/examples).
 
-##### Direct memory access
+#### Direct memory access
 
 The extension attempts to obtain data through direct memory access if possible. From this feature benefit all supported containers of fundamental numeric types and geometries using such coordinate types. E.g.:
   * `int arr[5]`
@@ -213,7 +207,7 @@ The extension attempts to obtain data through direct memory access if possible. 
 
 This behavior is enabled by default but can be disabled in options under **Tools**->**Options**->**Graphical Debugging**->**General**
 
-##### Zooming/cropping
+#### Zooming/cropping
 
 Geometry Watch and Plot Watch has zooming/cropping feature. Mouse wheel can be used to zoom in/out as well.
 
@@ -221,13 +215,8 @@ Geometry Watch and Plot Watch has zooming/cropping feature. Mouse wheel can be u
 
 ![Geometry Watch Zoomed](images/geometry_watch_zoomed.png)
 
-##### Options
+#### Options
 
 Options for each Watch can be found under **Tools**->**Options**->**Graphical Debugging**
 
 ![Plot Watch Various](images/plot_watch_various.png)
-
-##### Themes
-
-The extension supports Visual Studio themes. The visualization of variables may be drawn in two versions, dark or light depending on the brightness of the theme background color.
-
