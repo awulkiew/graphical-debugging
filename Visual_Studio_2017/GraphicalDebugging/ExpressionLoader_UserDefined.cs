@@ -685,7 +685,7 @@ namespace GraphicalDebugging
                                                                 exprs,
                                                                 new Geometry.Traits(2, cs, unit));
 
-                    return simpleGeometry != null
+                    return simpleGeometry != null && simpleGeometry.IsValid == true
                          ? new UserPoint(simpleGeometry)
                          : null;
                 }
@@ -710,7 +710,7 @@ namespace GraphicalDebugging
             public override ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type)
             {
                 UserSimpleGeometryMembers members = simpleGeometry.LoadParsed(debugger, name);
-                return members != null
+                return members != null && members.Values != null && members.Values.Length >= 2
                      ? new ExpressionDrawer.Point(members.Values[0], members.Values[1])
                      : null;
             }
@@ -719,7 +719,7 @@ namespace GraphicalDebugging
                                                                    string name, string type)
             {
                 UserSimpleGeometryMembers members = simpleGeometry.LoadMemory(mreader, debugger, name);
-                return members != null
+                return members != null && members.Values != null && members.Values.Length >= 2
                      ? new ExpressionDrawer.Point(members.Values[0], members.Values[1])
                      : null;
             }
