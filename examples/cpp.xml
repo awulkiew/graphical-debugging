@@ -121,8 +121,8 @@
   -->
   <Box Type="MyBox2" Id="MyBox2" CoordinateSystem="Cartesian" Unit="None">
     <CoordinatesDimensions>
-      <MinX>left</MinX> <!-- or <Left> or <MaxX> or <Right> -->
-      <MinY>bottom</MinY> <!-- or <Bottom> or <MaxY> or <Top> -->
+      <MinX>left</MinX> <!-- or <Left> or <MaxX> or <Right> or <CenterX>-->
+      <MinY>bottom</MinY> <!-- or <Bottom> or <MaxY> or <Top> or <CenterY> -->
       <Width>width</Width>
       <Height>height</Height>
     </CoordinatesDimensions>

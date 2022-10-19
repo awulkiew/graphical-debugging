@@ -803,8 +803,8 @@ namespace GraphicalDebugging
 
         class UserBoxCoords : BoxLoader
         {
-            public enum CoordsX { LR, LW, WR };
-            public enum CoordsY { BT, BH, HT };
+            public enum CoordsX { LR, LW, WR, CW };
+            public enum CoordsY { BT, BH, HT, CH };
 
             public class LoaderCreator : ExpressionLoader.LoaderCreator
             {
@@ -893,10 +893,20 @@ namespace GraphicalDebugging
                     maxP[0] = x1 + x2; // r = l + w
                 else if (coordsX == CoordsX.WR)
                     minP[0] = x2 - x1; // l = r - w
+                else if (coordsX == CoordsX.CW)
+                {
+                    minP[0] = x1 - x2 / 2.0; // l = c - w/2
+                    maxP[0] = x1 + x2 / 2.0; // r = c + w/2
+                }
                 if (coordsY == CoordsY.BH)
                     maxP[1] = y1 + y2; // t = b + h
                 else if (coordsY == CoordsY.HT)
                     minP[1] = y2 - y1; // b = t - h
+                else if (coordsY == CoordsY.CH)
+                {
+                    minP[1] = y1 - y2 / 2.0; // b = c - h/2
+                    maxP[1] = y1 + y2 / 2.0; // t = c + h/2
+                }
 
                 return new ExpressionDrawer.Box(minP, maxP);
             }
@@ -920,12 +930,27 @@ namespace GraphicalDebugging
                                 else if (coordsX == CoordsX.WR) // WXRX
                                     values[offset + 0] = values[offset + 2]
                                                        - values[offset + 0]; // l = r - w
+                                else if (coordsX == CoordsX.CW) // CXWX
+                                {
+                                    values[offset + 2] = values[offset + 0]
+                                                         + values[offset + 2]/2.0; // r = c + w/2.0
+                                    values[offset + 0] = values[offset + 0]
+                                                         - values[offset + 2]/2.0; // l = c - w/2.0
+                                }
+
                                 if (coordsY == CoordsY.BH) // XBXH
                                     values[offset + 3] = values[offset + 1]
                                                        + values[offset + 3]; // t = b + h
                                 else if (coordsY == CoordsY.HT) // XHXT
                                     values[offset + 1] = values[offset + 3]
                                                        - values[offset + 1]; // b = t - h
+                                else if (coordsX == CoordsX.CW) // XCXW
+                                {
+                                    values[offset + 3] = values[offset + 1]
+                                                         + values[offset + 3]/2.0; // t = c + h/2.0
+                                    values[offset + 1] = values[offset + 1]
+                                                         - values[offset + 3]/2.0; // t = c - h/2.0
+                                }
                             });
             }
 
@@ -1967,6 +1992,8 @@ namespace GraphicalDebugging
                                     elRight = Util.GetXmlElementByTagName(elParent, "Right");
                                 if (elTop == null)
                                     elTop = Util.GetXmlElementByTagName(elParent, "Top");
+                                var elCenterX = Util.GetXmlElementByTagName(elParent, "CenterX");
+                                var elCenterY = Util.GetXmlElementByTagName(elParent, "CenterY");
                                 var elWidth = Util.GetXmlElementByTagName(elParent, "Width");
                                 var elHeight = Util.GetXmlElementByTagName(elParent, "Height");
 
@@ -1976,23 +2003,22 @@ namespace GraphicalDebugging
                                 string exprY2 = null;
                                 UserBoxCoords.CoordsX coordsX = UserBoxCoords.CoordsX.LR;
                                 UserBoxCoords.CoordsY coordsY = UserBoxCoords.CoordsY.BT;
-                                if (elCoordinates != null)
-                                {
-                                    if (elLeft != null && elRight != null)
-                                    {
-                                        exprX1 = elLeft.InnerText;
-                                        exprX2 = elRight.InnerText;
-                                        coordsX = UserBoxCoords.CoordsX.LR;
-                                    }
 
-                                    if (elBottom != null && elTop != null)
-                                    {
-                                        exprY1 = elBottom.InnerText;
-                                        exprY2 = elTop.InnerText;
-                                        coordsY = UserBoxCoords.CoordsY.BT;
-                                    }
+                                if (elLeft != null && elRight != null)
+                                {
+                                    exprX1 = elLeft.InnerText;
+                                    exprX2 = elRight.InnerText;
+                                    coordsX = UserBoxCoords.CoordsX.LR;
                                 }
-                                else // elCoordinatesDimensions != null
+
+                                if (elBottom != null && elTop != null)
+                                {
+                                    exprY1 = elBottom.InnerText;
+                                    exprY2 = elTop.InnerText;
+                                    coordsY = UserBoxCoords.CoordsY.BT;
+                                }
+
+                                if (elCoordinatesDimensions != null)
                                 {
                                     if (elLeft != null && elWidth != null)
                                     {
@@ -2006,6 +2032,12 @@ namespace GraphicalDebugging
                                         exprX2 = elRight.InnerText;
                                         coordsX = UserBoxCoords.CoordsX.WR;
                                     }
+                                    else if (elCenterX != null && elWidth != null)
+                                    {
+                                        exprX1 = elCenterX.InnerText;
+                                        exprX2 = elWidth.InnerText;
+                                        coordsX = UserBoxCoords.CoordsX.CW;
+                                    }
 
                                     if (elBottom != null && elHeight != null)
                                     {
@@ -2018,6 +2050,12 @@ namespace GraphicalDebugging
                                         exprY1 = elHeight.InnerText;
                                         exprY2 = elTop.InnerText;
                                         coordsY = UserBoxCoords.CoordsY.HT;
+                                    }
+                                    else if (elCenterY != null && elHeight != null)
+                                    {
+                                        exprY1 = elCenterY.InnerText;
+                                        exprY2 = elHeight.InnerText;
+                                        coordsY = UserBoxCoords.CoordsY.CH;
                                     }
                                 }
 
