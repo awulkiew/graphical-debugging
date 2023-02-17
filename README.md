@@ -1,9 +1,9 @@
 # Graphical Debugging
 ### Extension for Visual Studio 2013, 2015, 2017 and 2019
 
-[![VS Marketplace](https://vsmarketplacebadge.apphb.com/version-short/AdamWulkiewicz.GraphicalDebugging.svg)](https://marketplace.visualstudio.com/items?itemName=AdamWulkiewicz.GraphicalDebugging)
-[![Installs](https://vsmarketplacebadge.apphb.com/installs-short/AdamWulkiewicz.GraphicalDebugging.svg)](https://marketplace.visualstudio.com/items?itemName=AdamWulkiewicz.GraphicalDebugging)
-[![Rating](https://vsmarketplacebadge.apphb.com/rating-short/AdamWulkiewicz.GraphicalDebugging.svg)](https://marketplace.visualstudio.com/items?itemName=AdamWulkiewicz.GraphicalDebugging)
+[![VS Marketplace](https://vsmarketplacebadges.dev/version-short/AdamWulkiewicz.GraphicalDebugging.svg)](https://marketplace.visualstudio.com/items?itemName=AdamWulkiewicz.GraphicalDebugging)
+[![Installs](https://vsmarketplacebadges.dev/installs-short/AdamWulkiewicz.GraphicalDebugging.svg)](https://marketplace.visualstudio.com/items?itemName=AdamWulkiewicz.GraphicalDebugging)
+[![Rating](https://vsmarketplacebadges.dev/rating-short/AdamWulkiewicz.GraphicalDebugging.svg)](https://marketplace.visualstudio.com/items?itemName=AdamWulkiewicz.GraphicalDebugging)
 ![License](https://img.shields.io/github/license/awulkiew/graphical-debugging.svg)
 [![Donate](https://img.shields.io/badge/Donate-_-yellow.svg)](https://awulkiew.github.io/donate)
 
