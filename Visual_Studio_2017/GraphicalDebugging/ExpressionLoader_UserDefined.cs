@@ -480,6 +480,7 @@ namespace GraphicalDebugging
                 if (ExpressionParser.IsInvalidSize(sizeOf))
                     return;
 
+                bool allValid = true;
                 if (pointExprs != null)
                 {
                     pointMembers = new UserPointMember[pointExprs.Length];
@@ -489,7 +490,7 @@ namespace GraphicalDebugging
                                                               name, type,
                                                               sizeOf, pointExprs[i]);
                         if (!pointMembers[i].IsValid)
-                            return;
+                            allValid = false;
                     }
                 }
                 
@@ -502,13 +503,13 @@ namespace GraphicalDebugging
                                                               name, type,
                                                               sizeOf, valueExprs[i]);
                         if (!valueMembers[i].IsValid)
-                            return;
+                            allValid = false;
                     }
                 }
                 
                 this.traits = traits;
 
-                IsValid = true;
+                IsValid = allValid;
             }
             
             public Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
