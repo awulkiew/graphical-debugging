@@ -1,3 +1,9 @@
+version 0.34
+
+bugfixes:
+- fixed validity checks of user-defined types
+- fixed visualization of some types with VS2019, e.g. Boost.Geometry segment and rtree
+
 version 0.33
 
 additions:
