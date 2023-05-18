@@ -1,3 +1,11 @@
+version 0.50
+
+additions:
+- support for Visual Studio 2022
+
+breaking changes:
+- dropped support for Visual Studio 2013, 2015, 2017 and 2019
+
 version 0.34
 
 bugfixes:
@@ -327,6 +335,7 @@ bugfixes:
 
 version 0.1
 
-Debug visualizers for Boost.Array, Boost.Geometry, Boost.Variant
-GraphicalWatch
-GeometryWatch
+additions:
+- debug visualizers for Boost.Array, Boost.Geometry, Boost.Variant
+- GraphicalWatch
+- GeometryWatch
