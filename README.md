@@ -1,5 +1,5 @@
 # Graphical Debugging
-### Extension for Visual Studio 2013, 2015, 2017 and 2019
+### Extension for Visual Studio 2022
 
 [![VS Marketplace](https://vsmarketplacebadges.dev/version-short/AdamWulkiewicz.GraphicalDebugging.svg)](https://marketplace.visualstudio.com/items?itemName=AdamWulkiewicz.GraphicalDebugging)
 [![Installs](https://vsmarketplacebadges.dev/installs-short/AdamWulkiewicz.GraphicalDebugging.svg)](https://marketplace.visualstudio.com/items?itemName=AdamWulkiewicz.GraphicalDebugging)
@@ -23,6 +23,8 @@ Feel free to report bugs, propose features and create pull requests. Any help is
 #### Download
 
 You can download this extension from [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=AdamWulkiewicz.GraphicalDebugging) or [GitHub](https://github.com/awulkiew/graphical-debugging/releases).
+
+Since version 0.50 Visual Studio 2013, 2015, 2017 and 2019 are no longer supported. If you want to use this extension with one of the previous versions of Visual Studio download version 0.34 and install it manually.
 
 #### Instructions
 
