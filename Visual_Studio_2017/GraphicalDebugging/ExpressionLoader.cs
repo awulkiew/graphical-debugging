@@ -74,7 +74,7 @@ namespace GraphicalDebugging
             ThreadHelper.ThrowIfNotOnUIThread();
 
             this.dte = dte;
-            this.debugger = dte.Debugger;
+            this.debugger = new Wrappers.DebuggerWrapper(dte.Debugger);
             this.debuggerEvents = this.dte.Events.DebuggerEvents;
             this.debuggerEvents.OnEnterBreakMode += DebuggerEvents_OnEnterBreakMode;
 

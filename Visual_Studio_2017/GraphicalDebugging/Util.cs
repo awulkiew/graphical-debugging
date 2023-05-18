@@ -119,6 +119,21 @@ namespace GraphicalDebugging
             return type;
         }
 
+        public static string CppNormalizeType(string type)
+        {
+            string result = "";
+            char prev = '\0';
+            foreach (char c in type)
+            {
+                if (c == '>' && prev == '>')
+                    result += " >";
+                else
+                    result += c;
+                prev = c;
+            }
+            return result;
+        }
+
         // TODO: Basic generic parameters
         public static List<string> TypesList(string type,
                                              char begCh = '<',

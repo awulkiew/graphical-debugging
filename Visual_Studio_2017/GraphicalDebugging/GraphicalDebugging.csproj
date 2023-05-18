@@ -118,6 +118,7 @@
     <Compile Include="Util.cs" />
     <Compile Include="VariableItem.cs" />
     <Compile Include="Viewport.cs" />
+    <Compile Include="Wrappers.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config">
