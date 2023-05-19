@@ -134,6 +134,19 @@ namespace GraphicalDebugging
             return result;
         }
 
+        public static string CppRemoveCVRef(string type)
+        {
+            if (type.StartsWith("const "))
+                type = type.Remove(0, 6);
+            if (type.StartsWith("volatile "))
+                type = type.Remove(0, 9);
+            if (type.EndsWith(" const"))
+                type = type.Remove(type.Length - 6);
+            if (type.EndsWith(" &"))
+                type = type.Remove(type.Length - 2);
+            return type;
+        }
+
         // TODO: Basic generic parameters
         public static List<string> TypesList(string type,
                                              char begCh = '<',

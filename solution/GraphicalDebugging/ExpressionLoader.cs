@@ -479,6 +479,11 @@ namespace GraphicalDebugging
                                  : language == "Basic" ? Instance.loadersCacheBasic
                                  : null;
 
+                if (language == "C++")
+                {
+                    type = Util.CppRemoveCVRef(type);
+                }
+
                 if (loadersCache != null)
                 {
                     Loader loader = loadersCache.Find(type, kindConstraint);
