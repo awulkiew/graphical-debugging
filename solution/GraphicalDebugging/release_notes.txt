@@ -1,3 +1,8 @@
+version 0.51
+
+additions:
+- handling of C++ const, volatile and reference variables
+
 version 0.50
 
 additions:
