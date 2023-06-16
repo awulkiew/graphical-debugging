@@ -77,6 +77,11 @@ namespace GraphicalDebugging
                 get { return coords.Length; }
             }
 
+            public bool Equals(Point other)
+            {
+                return coords.AsSpan().SequenceEqual(other.coords);
+            }
+
             public Point Clone()
             {
                 Point res = new Point();
@@ -148,6 +153,11 @@ namespace GraphicalDebugging
             public bool IsValid() { return Min[0] <= Max[0] && Min[1] <= Max[1]; }
 
             public double Dim(int i) { return Max[i] - Min[i]; }
+
+            public bool Equals(Box other)
+            {
+                return Min.Equals(other.Min) && Max.Equals(other.Max);
+            }
 
             public Box Clone()
             {
@@ -652,17 +662,24 @@ namespace GraphicalDebugging
         public static double NormalizedAngleSigned(double x, Unit unit)
         {
             double pi = StraightAngle(unit);
-            while (x < -pi) x += 2 * pi;
-            while (x > pi) x -= 2 * pi;
-            return x;
+            double twoPi = FullAngle(unit);
+            if (x < -pi)
+                return ((x - pi) % twoPi) + pi;
+            else if (x > pi)
+                return ((x + pi) % twoPi) - pi;
+            else
+                return x;
         }
 
         public static double NormalizedAngleUnsigned(double x, Unit unit)
         {
-            double pi = StraightAngle(unit);
-            while (x < 0) x += 2 * pi;
-            while (x > 2 * pi) x -= 2 * pi;
-            return x;
+            double twoPi = FullAngle(unit);
+            if (x < 0)
+                return (x % twoPi) + twoPi;
+            else if (x > twoPi)
+                return (x % twoPi);
+            else
+                return x;
         }
 
         /*public static double NormalizedAngle(double x, Unit unit)

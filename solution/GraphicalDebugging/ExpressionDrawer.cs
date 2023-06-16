@@ -671,6 +671,9 @@ namespace GraphicalDebugging
                 {
                     Geometry.Box ls_box = AabbRange(this[i], false, traits, calculateEnvelope);
 
+                    if (Geometry.InversedBox().Equals(ls_box))
+                        continue;
+
                     if (box == null)
                         box = ls_box;
                     else
@@ -711,6 +714,9 @@ namespace GraphicalDebugging
                 for (int i = 0; i < this.Count; ++i)
                 {
                     Geometry.Box poly_box = AabbPolygon(this[i], traits, calculateEnvelope);
+
+                    if (Geometry.InversedBox().Equals(poly_box))
+                        continue;
 
                     if (box == null)
                         box = poly_box;
@@ -764,6 +770,9 @@ namespace GraphicalDebugging
                 for (int i = 0; i < this.Count; ++i)
                 {
                     Geometry.Box box = this[i].Aabb(traits, calculateEnvelope);
+
+                    if (Geometry.InversedBox().Equals(box))
+                        continue;
 
                     if (result == null)
                         result = box;
