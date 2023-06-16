@@ -1,5 +1,5 @@
 ﻿//------------------------------------------------------------------------------
-// <copyright file="GraphicalWatchPackage.cs">
+// <copyright file="GraphicalDebuggingPackage.cs">
 //     Copyright (c) Adam Wulkiewicz.
 // </copyright>
 //------------------------------------------------------------------------------
@@ -33,7 +33,7 @@ namespace GraphicalDebugging
     [PackageRegistration(UseManagedResourcesOnly = true)]
     [InstalledProductRegistration("#110", "#112", "1.0", IconResourceID = 400)] // Info on this package for Help/About
     [ProvideMenuResource("Menus.ctmenu", 1)]
-    [Guid(GraphicalWatchPackage.PackageGuidString)]
+    [Guid(GraphicalDebuggingPackage.PackageGuidString)]
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "pkgdef, VS and vsixmanifest are valid VS terms")]
     [ProvideToolWindow(typeof(GeometryWatch), MultiInstances = true)]
     [ProvideToolWindow(typeof(GraphicalWatch), MultiInstances = true)]
@@ -42,22 +42,22 @@ namespace GraphicalDebugging
     [ProvideOptionPage(typeof(GeometryWatchOptionPage), "Graphical Debugging", "Geometry Watch", 0, 0, true)]
     [ProvideOptionPage(typeof(GraphicalWatchOptionPage), "Graphical Debugging", "Graphical Watch", 0, 0, true)]
     [ProvideOptionPage(typeof(PlotWatchOptionPage), "Graphical Debugging", "Plot Watch", 0, 0, true)]
-    public sealed class GraphicalWatchPackage : Package
+    public sealed class GraphicalDebuggingPackage : Package
     {
         /// <summary>
-        /// GraphicalWatchPackage GUID string.
+        /// GraphicalDebuggingPackage GUID string.
         /// </summary>
         public const string PackageGuidString = "f63e15c7-29b1-420d-94a9-8b28e516c170";
 
         /// <summary>
-        /// GraphicalWatchPackage Instance set during initialization of the package.
+        /// GraphicalDebuggingPackage Instance set during initialization of the package.
         /// </summary>
-        public static GraphicalWatchPackage Instance { get; private set; }
+        public static GraphicalDebuggingPackage Instance { get; private set; }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="GraphicalWatch"/> class.
+        /// Initializes a new instance of the <see cref="GraphicalDebuggingPackage"/> class.
         /// </summary>
-        public GraphicalWatchPackage()
+        public GraphicalDebuggingPackage()
         {
             // Inside this method you can place any initialization code that does not require
             // any Visual Studio service because at this point the package object is created but

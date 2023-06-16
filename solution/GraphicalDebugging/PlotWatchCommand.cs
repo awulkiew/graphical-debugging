@@ -81,7 +81,7 @@ namespace GraphicalDebugging
         /// Initializes the singleton instance of the command.
         /// </summary>
         /// <param name="package">Owner package, not null.</param>
-        public static void Initialize(GraphicalWatchPackage package)
+        public static void Initialize(GraphicalDebuggingPackage package)
         {
             OleMenuCommandService commandService = package.GetService(typeof(IMenuCommandService)) as OleMenuCommandService;
             

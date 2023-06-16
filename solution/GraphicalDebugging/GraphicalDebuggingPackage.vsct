@@ -22,7 +22,7 @@
 
   <!--The Commands section is where commands, menus, and menu groups are defined.
       This section uses a Guid to identify the package that provides the command defined inside it. -->
-  <Commands package="guidGraphicalWatchPackage">
+  <Commands package="guidGraphicalDebuggingPackage">
     <!-- Inside this section we have different sub-sections: one for the menus, another
     for the menu groups, one for the buttons (the actual commands), one for the combos
     and the last one for the bitmaps used. Each element is identified by a command id that
@@ -42,21 +42,21 @@
               <CommandFlag>DefaultInvisible</CommandFlag>
               <CommandFlag>DynamicVisibility</CommandFlag>
           If you do not want an image next to your command, remove the Icon node /> -->
-      <Button guid="guidGraphicalWatchPackageCmdSet" id="cmdidGeometriesWatchCommand" priority="0x0100" type="Button">
+      <Button guid="guidGraphicalDebuggingPackageCmdSet" id="cmdidGeometriesWatchCommand" priority="0x0100" type="Button">
         <Parent guid="guidSHLMainMenu" id="IDG_VS_WNDO_OTRWNDWS1" />
         <Icon guid="guidGeometryIcon" id="geometryIcon" />
         <Strings>
           <ButtonText>Geometry Watch</ButtonText>
         </Strings>
       </Button>
-      <Button guid="guidGraphicalWatchPackageCmdSet" id="cmdidGraphicalWatchCommand" priority="0x0100" type="Button">
+      <Button guid="guidGraphicalDebuggingPackageCmdSet" id="cmdidGraphicalWatchCommand" priority="0x0100" type="Button">
         <Parent guid="guidSHLMainMenu" id="IDG_VS_WNDO_OTRWNDWS1" />
         <Icon guid="guidGraphicalIcon" id="graphicalIcon" />
         <Strings>
           <ButtonText>Graphical Watch</ButtonText>
         </Strings>
       </Button>
-      <Button guid="guidGraphicalWatchPackageCmdSet" id="cmdidPlotWatchCommand" priority="0x0100" type="Button">
+      <Button guid="guidGraphicalDebuggingPackageCmdSet" id="cmdidPlotWatchCommand" priority="0x0100" type="Button">
         <Parent guid="guidSHLMainMenu" id="IDG_VS_WNDO_OTRWNDWS1" />
         <Icon guid="guidPlotIcon" id="plotIcon" />
         <Strings>
@@ -83,10 +83,10 @@
 
   <Symbols>
     <!-- This is the package guid. -->
-    <GuidSymbol name="guidGraphicalWatchPackage" value="{f63e15c7-29b1-420d-94a9-8b28e516c170}" />
+    <GuidSymbol name="guidGraphicalDebuggingPackage" value="{f63e15c7-29b1-420d-94a9-8b28e516c170}" />
 
     <!-- This is the guid used to group the menu commands together -->
-    <GuidSymbol name="guidGraphicalWatchPackageCmdSet" value="{9550913a-2953-4f4a-9eb0-96a0bf7d3d87}">
+    <GuidSymbol name="guidGraphicalDebuggingPackageCmdSet" value="{9550913a-2953-4f4a-9eb0-96a0bf7d3d87}">
       <IDSymbol value="256" name="cmdidGeometriesWatchCommand" />
       <IDSymbol value="257" name="cmdidGraphicalWatchCommand" />
       <IDSymbol value="258" name="cmdidPlotWatchCommand" />

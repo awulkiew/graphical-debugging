@@ -83,7 +83,7 @@
     <Compile Include="GraphicalWatchOptionPage.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="GraphicalWatchPackage.cs" />
+    <Compile Include="GraphicalDebuggingPackage.cs" />
     <Compile Include="LoadingWindow.xaml.cs">
       <DependentUpon>LoadingWindow.xaml</DependentUpon>
     </Compile>
@@ -129,7 +129,7 @@
     </Content>
     <Content Include="Resources\plot.ico" />
     <Content Include="Resources\PlotWatchCommand.png" />
-    <VSCTCompile Include="GraphicalWatchPackage.vsct">
+    <VSCTCompile Include="GraphicalDebuggingPackage.vsct">
       <ResourceName>Menus.ctmenu</ResourceName>
     </VSCTCompile>
     <Content Include="BoostArray.natvis">

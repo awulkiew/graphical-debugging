@@ -62,7 +62,7 @@ namespace GraphicalDebugging
             get { return Instance.debugger; }
         }
         
-        public static void Initialize(GraphicalWatchPackage package)
+        public static void Initialize(GraphicalDebuggingPackage package)
         {
             DTE2 dte = package.GetService(typeof(DTE)) as DTE2;
             
