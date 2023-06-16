@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="GraphicalDebugging.Adam.Wulkiewicz.ab1fcb4d-58d9-4d6e-b243-68bc2285475e" Version="0.51" Language="en-US" Publisher="Adam Wulkiewicz" />
+        <Identity Id="GraphicalDebugging.Adam.Wulkiewicz.ab1fcb4d-58d9-4d6e-b243-68bc2285475e" Version="0.52" Language="en-US" Publisher="Adam Wulkiewicz" />
         <DisplayName>Graphical Debugging</DisplayName>
         <Description xml:space="preserve">Visualization of C++ and C# variables during debugging, e.g. Boost.Geometry models, containers of values, arrays of points, etc.</Description>
         <License>LICENSE.txt</License>

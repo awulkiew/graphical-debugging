@@ -1,3 +1,9 @@
+version 0.52
+
+bugfixes:
+- fixed visualization of collections with empty elements
+- fixed normalization of angles
+
 version 0.51
 
 additions:
