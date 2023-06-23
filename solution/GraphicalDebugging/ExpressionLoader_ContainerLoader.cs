@@ -1286,8 +1286,8 @@ namespace GraphicalDebugging
 
             private bool ForEachElementRecursive(Debugger debugger, string nodeName, ElementPredicate elementPredicate)
             {
-                Expression expr = debugger.GetExpression("(" + nodeName + "->_Isnil == false)");
-                if (expr.IsValidValue && (expr.Value == "true" || expr.Value == "1"))
+                bool isNil;
+                if (debugger.TryLoadBool(nodeName + "->_Isnil", out isNil) && !isNil)
                 {
                     return ForEachElementRecursive(debugger, nodeName + "->_Left", elementPredicate)
                         && elementPredicate(nodeName + "->_Myval")

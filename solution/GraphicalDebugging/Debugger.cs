@@ -49,6 +49,16 @@ namespace GraphicalDebugging
             return true;
         }
 
+        public bool TryLoadBool(string name, out bool result)
+        {
+            result = false;
+            Expression expr = debugger.GetExpression("(" + name + ") == true)");
+            if (!expr.IsValidValue)
+                return false;
+            result = (expr.Value == "true" || expr.Value == "1");
+            return true;
+        }
+
         /*struct AddressDifference
         {
             long Value;
