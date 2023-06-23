@@ -62,7 +62,7 @@ namespace GraphicalDebugging
                 outSize = 0;
 
                 if (outAddress == 0)
-                    outAddress = ExpressionParser.GetValueAddress(debugger, name);
+                    outAddress = debugger.GetValueAddress(name);
 
                 bool ok = false;
                 if (outAddress != 0)
@@ -143,7 +143,7 @@ namespace GraphicalDebugging
                 {
                     string elemName, elemType;
                     ElementInfo(name, type, out elemName, out elemType);
-                    beginAddress = ExpressionParser.GetValueAddress(debugger, elemName);
+                    beginAddress = debugger.GetValueAddress(elemName);
                 }
                 return beginAddress;
             }
@@ -251,7 +251,7 @@ namespace GraphicalDebugging
                     string elemType = Util.Tparam(type, 0);
                     int size = Math.Max(int.Parse(Util.Tparam(type, 1)), 0);
 
-                    long elemOffset = ExpressionParser.GetAddressDifference(debugger, name, name + "._Elems[0]");
+                    long elemOffset = debugger.GetAddressDifference(name, name + "._Elems[0]");
                     if (elemOffset < 0)
                         return null;
 
@@ -309,7 +309,7 @@ namespace GraphicalDebugging
                     string elemType = Util.Tparam(type, 0);
                     int size = Math.Max(int.Parse(Util.Tparam(type, 1)), 0);
 
-                    long elemOffset = ExpressionParser.GetAddressDifference(debugger, name, name + ".elems[0]");
+                    long elemOffset = debugger.GetAddressDifference(name, name + ".elems[0]");
                     if (elemOffset < 0)
                         return null;
 
@@ -338,19 +338,19 @@ namespace GraphicalDebugging
             public SizeMember(Debugger debugger, string name, string sizeMember)
             {
                 this.sizeMember = sizeMember;
-                this.sizeType = ExpressionParser.GetValueType(debugger, name + sizeMember);
-                this.sizeSizeOf = ExpressionParser.GetTypeSizeof(debugger, sizeType);
-                long sizeOffset = ExpressionParser.GetAddressDifference(debugger, name, name + sizeMember);
+                this.sizeType = debugger.GetValueType(name + sizeMember);
+                this.sizeSizeOf = debugger.GetTypeSizeof(sizeType);
+                long sizeOffset = debugger.GetAddressDifference(name, name + sizeMember);
                 this.sizeOffset = (ulong)sizeOffset;
                 this.memoryOk = !Util.Empty(sizeType)
-                             && !ExpressionParser.IsInvalidSize(sizeSizeOf)
-                             && !ExpressionParser.IsInvalidAddressDifference(sizeOffset)
+                             && !Debugger.IsInvalidSize(sizeSizeOf)
+                             && !Debugger.IsInvalidAddressDifference(sizeOffset)
                              && sizeOffset >= 0;
             }
 
             public int LoadParsed(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSize(debugger, name + sizeMember);
+                return debugger.LoadSize(name + sizeMember);
             }
 
             // TODO: Return -1 or int.Min on failure
@@ -380,20 +380,20 @@ namespace GraphicalDebugging
             public PointerMember(Debugger debugger, string name, string ptrMember)
             {
                 this.ptrMember = ptrMember;
-                this.ptrMemberType = ExpressionParser.GetValueType(debugger, name + ptrMember);
-                this.ptrMemberSizeOf = ExpressionParser.GetTypeSizeof(debugger, ptrMemberType);
-                long ptrMemberOffset = ExpressionParser.GetAddressDifference(debugger, name, name + ptrMember);
+                this.ptrMemberType = debugger.GetValueType(name + ptrMember);
+                this.ptrMemberSizeOf = debugger.GetTypeSizeof(ptrMemberType);
+                long ptrMemberOffset = debugger.GetAddressDifference(name, name + ptrMember);
                 this.ptrMemberOffset = (ulong)ptrMemberOffset;
 
                 this.memoryOk = !Util.Empty(ptrMemberType)
-                             && !ExpressionParser.IsInvalidSize(ptrMemberSizeOf)
-                             && !ExpressionParser.IsInvalidAddressDifference(ptrMemberOffset)
+                             && !Debugger.IsInvalidSize(ptrMemberSizeOf)
+                             && !Debugger.IsInvalidAddressDifference(ptrMemberOffset)
                              && ptrMemberOffset >= 0;
             }
 
             public ulong LoadParsed(Debugger debugger, string name)
             {
-                return ExpressionParser.GetPointer(debugger, '(' + name + ptrMember + ')');
+                return debugger.GetPointer('(' + name + ptrMember + ')');
             }
 
             public ulong LoadMemory(MemoryReader mreader, ulong address)
@@ -425,13 +425,13 @@ namespace GraphicalDebugging
                 this.lastMember = lastMember;
                 this.first = new PointerMember(debugger, name, firstMember);
                 this.last = new PointerMember(debugger, name , lastMember);
-                string type = ExpressionParser.GetValueType(debugger, "*(" + name + firstMember + ")");
-                sizeOf = ExpressionParser.GetTypeSizeof(debugger, type);
+                string type = debugger.GetValueType("*(" + name + firstMember + ")");
+                sizeOf = debugger.GetTypeSizeof(type);
             }
 
             public int LoadParsed(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSize(debugger, '(' + name + lastMember + '-' + name + firstMember + ')');
+                return debugger.LoadSize('(' + name + lastMember + '-' + name + firstMember + ')');
             }
 
             // TODO: Return ulong?
@@ -555,7 +555,7 @@ namespace GraphicalDebugging
 
                     string elemType = Util.Tparam(type, 0);
 
-                    long elemOffset = ExpressionParser.GetAddressDifference(debugger, name, name + ".m_storage.data_.buf[0]");
+                    long elemOffset = debugger.GetAddressDifference(name, name + ".m_storage.data_.buf[0]");
                     if (elemOffset < 0)
                         return null;
 
@@ -756,7 +756,7 @@ namespace GraphicalDebugging
                 string name12 = name + "._Myfirst";
                 //string name14_15 = name + "._Mypair._Myval2._Myfirst";
 
-                if (debugger.GetExpression(name12).IsValidValue)
+                if (debugger.ValueExists(name12))
                     version = Version.Msvc12;
 
                 if (version == Version.Msvc12)
@@ -831,11 +831,11 @@ namespace GraphicalDebugging
                 string name12 = name + "._Mysize";
                 //string name14_15 = name + "._Mypair._Myval2._Mysize";
 
-                if (debugger.GetExpression(name12).IsValidValue)
+                if (debugger.ValueExists(name12))
                     version = Version.Msvc12;
 
                 // Block size
-                if (!ExpressionParser.TryLoadInt(debugger, "((int)" + name + "._EEN_DS)", out dequeSize))
+                if (!debugger.TryLoadInt("((int)" + name + "._EEN_DS)", out dequeSize))
                     dequeSize = 0;
 
                 if (version == Version.Msvc12)
@@ -998,7 +998,7 @@ namespace GraphicalDebugging
                 string name12 = name + "._Mysize";
                 //string name14_15 = name + "._Mypair._Myval2._Mysize";
 
-                if (debugger.GetExpression(name12).IsValidValue)
+                if (debugger.ValueExists(name12))
                     version = Version.Msvc12;
 
                 if (version == Version.Msvc12)
@@ -1015,12 +1015,10 @@ namespace GraphicalDebugging
                 string headStr = HeadStr(name);
                 string headNodeName = "(*(" + headStr + "->_Next))";
                 next = new PointerMember(debugger, headNodeName, "._Next");
-                nextDiff = ExpressionParser.GetAddressDifference(debugger,
-                                                                 headNodeName,
-                                                                 headStr + "->_Next->_Next");
-                valDiff = ExpressionParser.GetAddressDifference(debugger,
-                                                                headNodeName,
-                                                                headStr + "->_Next->_Myval");
+                nextDiff = debugger.GetAddressDifference(headNodeName,
+                                                         headStr + "->_Next->_Next");
+                valDiff = debugger.GetAddressDifference(headNodeName,
+                                                        headStr + "->_Next->_Myval");
 
             }
 
@@ -1051,8 +1049,8 @@ namespace GraphicalDebugging
                 if (headAddr == 0)
                     return false;
 
-                if (ExpressionParser.IsInvalidAddressDifference(nextDiff)
-                 || ExpressionParser.IsInvalidAddressDifference(valDiff)
+                if (Debugger.IsInvalidAddressDifference(nextDiff)
+                 || Debugger.IsInvalidAddressDifference(valDiff)
                  || nextDiff < 0
                  || valDiff < 0)
                     return false;
@@ -1147,7 +1145,7 @@ namespace GraphicalDebugging
                 string name12 = name + "._Mysize";
                 //string name14_15 = name + "._Mypair._Myval2._Myval2._Mysize";
 
-                if (debugger.GetExpression(name12).IsValidValue)
+                if (debugger.ValueExists(name12))
                     version = Version.Msvc12;
 
                 string headStr;
@@ -1172,11 +1170,11 @@ namespace GraphicalDebugging
 
                 nodePtrInfo = new TypeInfo(debugger, nodeName);
 
-                parentDiff = ExpressionParser.GetAddressDifference(debugger, "(*" + headStr + ")", nodeName);
-                leftDiff = ExpressionParser.GetAddressDifference(debugger, "(*" + nodeName + ")", leftName);
-                rightDiff = ExpressionParser.GetAddressDifference(debugger, "(*" + nodeName + ")", rightName);
-                isNilDiff = ExpressionParser.GetAddressDifference(debugger, "(*" + nodeName + ")", isNilName);
-                valDiff = ExpressionParser.GetAddressDifference(debugger, "(*" + nodeName + ")", valName);
+                parentDiff = debugger.GetAddressDifference("(*" + headStr + ")", nodeName);
+                leftDiff = debugger.GetAddressDifference("(*" + nodeName + ")", leftName);
+                rightDiff = debugger.GetAddressDifference("(*" + nodeName + ")", rightName);
+                isNilDiff = debugger.GetAddressDifference("(*" + nodeName + ")", isNilName);
+                valDiff = debugger.GetAddressDifference("(*" + nodeName + ")", valName);
                 
             }
 
@@ -1211,11 +1209,11 @@ namespace GraphicalDebugging
                 if (ptrConverter == null)
                     return false;
 
-                if (ExpressionParser.IsInvalidAddressDifference(parentDiff)
-                 || ExpressionParser.IsInvalidAddressDifference(leftDiff)
-                 || ExpressionParser.IsInvalidAddressDifference(rightDiff)
-                 || ExpressionParser.IsInvalidAddressDifference(isNilDiff)
-                 || ExpressionParser.IsInvalidAddressDifference(valDiff)
+                if (Debugger.IsInvalidAddressDifference(parentDiff)
+                 || Debugger.IsInvalidAddressDifference(leftDiff)
+                 || Debugger.IsInvalidAddressDifference(rightDiff)
+                 || Debugger.IsInvalidAddressDifference(isNilDiff)
+                 || Debugger.IsInvalidAddressDifference(valDiff)
                  || parentDiff < 0 || leftDiff < 0 || rightDiff < 0 || isNilDiff < 0 || valDiff < 0)
                     return false;
 
@@ -1348,7 +1346,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSize(debugger, name + ".Length");
+                return debugger.LoadSize(name + ".Length");
             }
 
             public override ulong MemoryBegin(MemoryReader mreader, ulong address)
@@ -1392,7 +1390,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSize(debugger, name + ".Count");
+                return debugger.LoadSize(name + ".Count");
             }
 
             public override ulong MemoryBegin(MemoryReader mreader, ulong address)
@@ -1423,8 +1421,8 @@ namespace GraphicalDebugging
                                                        MemoryReader.Converter<T> elementConverter,
                                                        MemoryBlockPredicate<T> memoryBlockPredicate)
             {
-                Expression expr = debugger.GetExpression(name + "._items");
-                if (!expr.IsValidValue || !CSArray.IsCSArrayType(expr.Type))
+                string itemsType = debugger.GetValueType(name + "._items");
+                if (itemsType == null || !CSArray.IsCSArrayType(itemsType))
                 {
                     return false;
                 }
@@ -1458,7 +1456,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSize(debugger, name + ".count");
+                return debugger.LoadSize(name + ".count");
             }
 
             public override Size LoadSize(MemoryReader mreader, ulong address)
@@ -1484,9 +1482,11 @@ namespace GraphicalDebugging
                 //   the container effectively stores pointers to objects.
                 //   So whether or not it's a pointer-container is defined by the
                 //   element type in C# and by the container in C++.
-                string elementType = debugger.GetExpression(name + ".head.item").Type;
-                Expression isValueTypeExpr = debugger.GetExpression("typeof(" + elementType + ").IsValueType");
-                if (!isValueTypeExpr.IsValidValue || isValueTypeExpr.Value != "true")
+                string elementType = debugger.GetValueType(name + ".head.item");
+                if (elementType == null)
+                    return false;
+                string isValueType = debugger.GetValue("typeof(" + elementType + ").IsValueType");
+                if (isValueType == null || isValueType != "true")
                     return false;
 
                 //string headPointerPointerName = "(void*)&(" + name + ".head)"; //(void*)IntPtr*
@@ -1504,14 +1504,14 @@ namespace GraphicalDebugging
                 if (pointerConverter == null)
                     return false;
 
-                long nextDiff = ExpressionParser.GetPointerDifference(debugger, headPointerName, nextPointerPointerName);
-                long valDiff = ExpressionParser.GetPointerDifference(debugger, headPointerName, valPointerName);
-                if (ExpressionParser.IsInvalidAddressDifference(nextDiff)
-                 || ExpressionParser.IsInvalidAddressDifference(valDiff)
+                long nextDiff = debugger.GetPointerDifference(headPointerName, nextPointerPointerName);
+                long valDiff = debugger.GetPointerDifference(headPointerName, valPointerName);
+                if (Debugger.IsInvalidAddressDifference(nextDiff)
+                 || Debugger.IsInvalidAddressDifference(valDiff)
                  || nextDiff < 0 || valDiff < 0)
                     return false;
 
-                ulong address = ExpressionParser.GetPointer(debugger, headPointerName);
+                ulong address = debugger.GetPointer(headPointerName);
                 if (address == 0)
                     return false;
 
@@ -1658,7 +1658,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSize(debugger, name + ".Length");
+                return debugger.LoadSize(name + ".Length");
             }
 
             public override Size LoadSize(MemoryReader mreader, ulong address)
@@ -1704,7 +1704,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSize(debugger, name + ".Count");
+                return debugger.LoadSize(name + ".Count");
             }
 
             public override Size LoadSize(MemoryReader mreader, ulong address)

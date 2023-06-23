@@ -478,9 +478,8 @@ namespace GraphicalDebugging
 
         public MemoryReader(Debugger debugger)
         {
-            string language = debugger.CurrentStackFrame.Language;
-            this.language = language == "C#" ? Language.CS
-                          : language == "Basic" ? Language.Basic
+            this.language = debugger.IsLanguageCs ? Language.CS
+                          : debugger.IsLanguageBasic ? Language.Basic
                           : Language.Cpp;
 
             this.process = GetDebuggedProcess(debugger);
@@ -523,7 +522,7 @@ namespace GraphicalDebugging
             {
                 foreach (DkmProcess proc in procs)
                 {
-                    if (proc.Path == debugger.CurrentProcess.Name)
+                    if (proc.Path == debugger.CurrentProcessName)
                         return proc;
                 }
             }

@@ -56,7 +56,6 @@
     <Compile Include="ExpressionLoader_BoostGil.cs" />
     <Compile Include="ExpressionLoader.cs" />
     <Compile Include="ExpressionLoader_Util.cs" />
-    <Compile Include="ExpressionParser.cs" />
     <Compile Include="GeneralOptionControl.cs">
       <SubType>UserControl</SubType>
     </Compile>

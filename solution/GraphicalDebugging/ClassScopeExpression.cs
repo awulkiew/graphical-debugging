@@ -107,7 +107,7 @@ namespace GraphicalDebugging
 
                 // The same check in both C++ and C#
                 string memVar = "(" + name + ")." + mIdentifier;
-                if (debugger.GetExpression(memVar).IsValidValue)
+                if (debugger.ValueExists(memVar))
                 {
                     mKind = Kind.MemberVariable;
                     return;
@@ -115,19 +115,19 @@ namespace GraphicalDebugging
 
                 string memType = "";
                 string memTypeCheck = "";
-                if (debugger.CurrentStackFrame.Language == "C++")
+                if (debugger.IsLanguageCpp)
                 {
                     memType = type + "::" + mIdentifier;
                     memTypeCheck = "(" + memType + "*)0";
                 }
-                else if (debugger.CurrentStackFrame.Language == "C#")
+                else if (debugger.IsLanguageCs)
                 {
                     // TODO: TEST IT
                     memType = type + "." + mIdentifier;
                     memTypeCheck = "(" + memType + " is object)";
                 }
 
-                if (debugger.GetExpression(memTypeCheck).IsValidValue)
+                if (debugger.ValueExists(memTypeCheck))
                 {
                     // Type name is constant for breakpoint
                     mValue = memType;
@@ -164,7 +164,7 @@ namespace GraphicalDebugging
 
             public void Reinitialize(Debugger debugger, string name, string type)
             {
-                mIsCxx = (debugger.CurrentStackFrame.Language == "C++");
+                mIsCxx = debugger.IsLanguageCpp;
             }
 
             public string GetString(string name)

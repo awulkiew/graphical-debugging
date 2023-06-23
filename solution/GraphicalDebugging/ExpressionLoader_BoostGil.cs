@@ -49,8 +49,8 @@ namespace GraphicalDebugging
                 // memory random size could be loaded here. Then also the memory probably points
                 // to some random place in memory (maybe protected?) so the result will probably
                 // be another exception which is fine or an image containing noise from memory.
-                int width = ExpressionParser.LoadSize(debugger, name + "._view._dimensions.x");
-                int height = ExpressionParser.LoadSize(debugger, name + "._view._dimensions.y");
+                int width = debugger.LoadSize(name + "._view._dimensions.x");
+                int height = debugger.LoadSize(name + "._view._dimensions.y");
                 if (width < 1 || height < 1)
                     return null;
 
@@ -106,7 +106,7 @@ namespace GraphicalDebugging
                 bool isLoaded = false;
                 if (mreader != null)
                 {
-                    ulong address = ExpressionParser.GetValueAddress(debugger, name + "._memory[0]");
+                    ulong address = debugger.GetValueAddress(name + "._memory[0]");
                     if (address == 0)
                         return null;
 
@@ -215,18 +215,10 @@ namespace GraphicalDebugging
                 }
 
                 channelValueSize = channelValueKind != ChannelValueKind.Unknown
-                                 ? GetSizeOfType(debugger, rawType)
+                                 ? debugger.GetCppSizeof(rawType)
                                  : 0;
             }
 
-            private int GetSizeOfType(Debugger debugger, string type)
-            {
-                Expression sizeExpr = debugger.GetExpression("sizeof(" + type + ")");
-                return sizeExpr.IsValidValue
-                     ? Util.ParseInt(sizeExpr.Value, debugger.HexDisplayMode)
-                     : 0;
-            }
-            
             enum ColorSpace { Unknown, Rgb, Rgba, Cmyk, Gray, GrayAlpha };
 
             ColorSpace ParseColorSpace(string colorSpaceType)

@@ -53,7 +53,7 @@ namespace GraphicalDebugging
 
         public static bool IsBreakMode
         {
-            get { return Debugger.CurrentMode == dbgDebugMode.dbgBreakMode; }
+            get => Debugger.IsBreakMode;
         }
 
         private static ExpressionLoader Instance { get; set; }
@@ -178,14 +178,6 @@ namespace GraphicalDebugging
                 if (!e.IsValidValue)
                     return false;
             return true;
-        }
-
-        public static bool AnyValidValue(Expression[] exprs)
-        {
-            foreach (Expression e in exprs)
-                if (e.IsValidValue)
-                    return true;
-            return false;
         }
 
         public static string TypeFromExpressions(Expression[] exprs)
@@ -321,10 +313,9 @@ namespace GraphicalDebugging
             if (exprs.Length < 1 || ! AllValidValues(exprs))
                 return;
 
-            string language = Instance.debugger.CurrentStackFrame.Language;
-            Loaders loaders = language == "C++" ? Instance.loadersCpp
-                            : language == "C#" ? Instance.loadersCS
-                            : language == "Basic" ? Instance.loadersBasic
+            Loaders loaders = Instance.debugger.IsLanguageCpp ? Instance.loadersCpp
+                            : Instance.debugger.IsLanguageCs ? Instance.loadersCS
+                            : Instance.debugger.IsLanguageBasic ? Instance.loadersBasic
                             : null;
 
             if (loaders == null)
@@ -473,13 +464,12 @@ namespace GraphicalDebugging
             public Loader FindByType(IKindConstraint kindConstraint, string name, string type)
             {
                 // Check if a Loader is cached for this type
-                string language = Instance.debugger.CurrentStackFrame.Language;
-                var loadersCache = language == "C++" ? Instance.loadersCacheCpp
-                                 : language == "C#" ? Instance.loadersCacheCS
-                                 : language == "Basic" ? Instance.loadersCacheBasic
+                var loadersCache = Instance.debugger.IsLanguageCpp ? Instance.loadersCacheCpp
+                                 : Instance.debugger.IsLanguageCs ? Instance.loadersCacheCS
+                                 : Instance.debugger.IsLanguageBasic ? Instance.loadersCacheBasic
                                  : null;
 
-                if (language == "C++")
+                if (Instance.debugger.IsLanguageCpp)
                 {
                     type = Util.CppRemoveCVRef(type);
                 }
@@ -800,9 +790,9 @@ namespace GraphicalDebugging
                 double x = 0, y = 0;
                 string ptrName = name + memberArraySuffix;
                 if (count >= 1)
-                    okx = ExpressionParser.TryLoadDouble(debugger, ptrName + "[0]", out x);
+                    okx = debugger.TryLoadDouble(ptrName + "[0]", out x);
                 if (count >= 2)
-                    oky = ExpressionParser.TryLoadDouble(debugger, ptrName + "[1]", out y);
+                    oky = debugger.TryLoadDouble(ptrName + "[1]", out y);
                 return Util.IsOk(okx, oky)
                      ? new ExpressionDrawer.Point(x, y)
                      : null;
@@ -837,16 +827,16 @@ namespace GraphicalDebugging
                 // TODO: byteSize and byteOffset could be created in LoaderCreator
                 string ptrName = name + memberArraySuffix;
                 string elemName = ptrName + "[0]";
-                int elemSize = ExpressionParser.GetTypeSizeof(debugger, coordType);
+                int elemSize = debugger.GetTypeSizeof(coordType);
                 MemoryReader.Converter<double> arrayConverter
                     = mreader.GetNumericArrayConverter(coordType, elemSize, count);
                 if (arrayConverter == null)
                     return null;
-                int byteSize = ExpressionParser.GetValueSizeof(debugger, name);
+                int byteSize = debugger.GetValueSizeof(name);
                 if (byteSize == 0)
                     return null;
-                long byteOffset = ExpressionParser.GetAddressDifference(debugger, name, elemName);
-                if (ExpressionParser.IsInvalidOffset(byteSize, byteOffset))
+                long byteOffset = debugger.GetAddressDifference(name, elemName);
+                if (Debugger.IsInvalidOffset(byteSize, byteOffset))
                     return null;
                 return new MemoryReader.StructConverter<double>(byteSize,
                             new MemoryReader.Member<double>(arrayConverter, (int)byteOffset));
@@ -971,13 +961,13 @@ namespace GraphicalDebugging
                     if (pointLoader == null)
                         return null;
 
-                    int sizeOf = ExpressionParser.GetTypeSizeof(debugger, type);
-                    if (ExpressionParser.IsInvalidSize(sizeOf))
+                    int sizeOf = debugger.GetTypeSizeof(type);
+                    if (Debugger.IsInvalidSize(sizeOf))
                         return null;
 
-                    long minDiff = ExpressionParser.GetAddressDifference(debugger, name, m_min_corner);
-                    long maxDiff = ExpressionParser.GetAddressDifference(debugger, name, m_max_corner);
-                    if (ExpressionParser.IsInvalidOffset(sizeOf, minDiff, maxDiff))
+                    long minDiff = debugger.GetAddressDifference(name, m_min_corner);
+                    long maxDiff = debugger.GetAddressDifference(name, m_max_corner);
+                    if (Debugger.IsInvalidOffset(sizeOf, minDiff, maxDiff))
                         return null;
 
                     return new BGBox(pointLoader, pointType, sizeOf, minDiff, maxDiff);
@@ -1062,13 +1052,13 @@ namespace GraphicalDebugging
                     if (pointLoader == null)
                         return null;
 
-                    int sizeOf = ExpressionParser.GetTypeSizeof(debugger, type);
-                    if (ExpressionParser.IsInvalidSize(sizeOf))
+                    int sizeOf = debugger.GetTypeSizeof(type);
+                    if (Debugger.IsInvalidSize(sizeOf))
                         return null;
 
-                    long firstDiff = ExpressionParser.GetAddressDifference(debugger, name, first);
-                    long secondDiff = ExpressionParser.GetAddressDifference(debugger, name, second);
-                    if (ExpressionParser.IsInvalidOffset(sizeOf, firstDiff, secondDiff))
+                    long firstDiff = debugger.GetAddressDifference(name, first);
+                    long secondDiff = debugger.GetAddressDifference(name, second);
+                    if (Debugger.IsInvalidOffset(sizeOf, firstDiff, secondDiff))
                         return null;
 
                     return new BGSegment(pointLoader, pointType, sizeOf, firstDiff, secondDiff);
@@ -1112,8 +1102,8 @@ namespace GraphicalDebugging
                 // NOTE: Because it can be created by derived class
                 //   and these members can be set to invalid values
                 //   e.g. BGReferringSegment
-                if (ExpressionParser.IsInvalidSize(sizeOf)
-                    || ExpressionParser.IsInvalidOffset(sizeOf, firstDiff, secondDiff))
+                if (Debugger.IsInvalidSize(sizeOf)
+                    || Debugger.IsInvalidOffset(sizeOf, firstDiff, secondDiff))
                     return null;
 
                 string first = name + ".first";
@@ -1213,7 +1203,7 @@ namespace GraphicalDebugging
                 Geometry.Point center = pointLoader.LoadPoint(mreader, debugger,
                                                               m_center, pointType);
                 double radius = 0;
-                bool ok = ExpressionParser.TryLoadDouble(debugger, m_radius, out radius);
+                bool ok = debugger.TryLoadDouble(m_radius, out radius);
 
                 return Util.IsOk(center, ok)
                      ? new ExpressionDrawer.NSphere(center, radius)
@@ -1560,16 +1550,17 @@ namespace GraphicalDebugging
                     string outerName = name + ".m_outer";
                     string innersName = name + ".m_inners";
 
-                    Expression outerExpr = debugger.GetExpression(outerName);
-                    Expression innersExpr = debugger.GetExpression(innersName);
-
-                    string outerType = outerExpr.Type;
+                    string outerType = debugger.GetValueType(outerName);
+                    if (outerType == null)
+                        return null;
                     BGRing outerLoader = loaders.FindByType(ExpressionLoader.Kind.Ring,
                                                             outerName, outerType) as BGRing;
                     if (outerLoader == null)
                         return null;
 
-                    string innersType = innersExpr.Type;
+                    string innersType = debugger.GetValueType(innersName);
+                    if (innersType == null)
+                        return null;
                     ContainerLoader innersLoader = loaders.FindByType(ExpressionLoader.Kind.Container,
                                                                       innersName, innersType) as ContainerLoader;
                     if (innersLoader == null)
@@ -1890,7 +1881,7 @@ namespace GraphicalDebugging
 
                 string nodePtrName = RootNodePtr(name);
                 string nodeVariantName = "*" + nodePtrName;
-                string nodeVariantType = ExpressionParser.GetValueType(debugger, nodeVariantName);
+                string nodeVariantType = debugger.GetValueType(nodeVariantName);
                 if (Util.Empty(nodeVariantType))
                     throw new CreationException();
 
@@ -1913,13 +1904,11 @@ namespace GraphicalDebugging
 
                 // For Memory Loading
 
-                nodePtrType = ExpressionParser.GetValueType(debugger, nodePtrName);
-                nodePtrSizeOf = ExpressionParser.GetTypeSizeof(debugger, nodePtrType);
+                nodePtrType = debugger.GetValueType(nodePtrName);
+                nodePtrSizeOf = debugger.GetTypeSizeof(nodePtrType);
 
-                leafElemsDiff = ExpressionParser.GetAddressDifference(debugger, nodeVariantName,
-                                                                      NodeElements(nodePtrName, leafType));
-                internalNodeElemsDiff = ExpressionParser.GetAddressDifference(debugger, nodeVariantName,
-                                                                              NodeElements(nodePtrName, internalNodeType));
+                leafElemsDiff = debugger.GetAddressDifference(nodeVariantName, NodeElements(nodePtrName, leafType));
+                internalNodeElemsDiff = debugger.GetAddressDifference(nodeVariantName, NodeElements(nodePtrName, internalNodeType));
                 string leafElemName;
                 leafElementsLoader.ElementInfo(leafElemsName, leafElemsType,
                                                out leafElemName, out leafElemType);
@@ -1927,19 +1916,17 @@ namespace GraphicalDebugging
                 internalNodeElementsLoader.ElementInfo(internalNodeElemsName, internalNodeElemsType,
                                                        out internalNodeElemName, out internalNodeElemType);
 
-                indexableDiff = ExpressionParser.GetAddressDifference(debugger, leafElemName,
-                                                                      leafElemName + indexableMember);
-                nodePtrDiff = ExpressionParser.GetAddressDifference(debugger, internalNodeElemName,
-                                                                    internalNodeElemName + ".second");
+                indexableDiff = debugger.GetAddressDifference(leafElemName, leafElemName + indexableMember);
+                nodePtrDiff = debugger.GetAddressDifference(internalNodeElemName, internalNodeElemName + ".second");
 
                 string whichName = "(" + nodeVariantName + ").which_";
-                whichType = ExpressionParser.GetValueType(debugger, whichName);
-                whichSizeOf = ExpressionParser.GetTypeSizeof(debugger, whichType);
-                whichDiff = ExpressionParser.GetAddressDifference(debugger, nodeVariantName, whichName);
+                whichType = debugger.GetValueType(whichName);
+                whichSizeOf = debugger.GetTypeSizeof(whichType);
+                whichDiff = debugger.GetAddressDifference(nodeVariantName, whichName);
 
-                nodeVariantSizeof = ExpressionParser.GetValueSizeof(debugger, nodeVariantName);
-                nodePtrPairSizeof = ExpressionParser.GetValueSizeof(debugger, internalNodeElemName);
-                valueSizeof = ExpressionParser.GetValueSizeof(debugger, leafElemName);
+                nodeVariantSizeof = debugger.GetValueSizeof(nodeVariantName);
+                nodePtrPairSizeof = debugger.GetValueSizeof(internalNodeElemName);
+                valueSizeof = debugger.GetValueSizeof(leafElemName);
             }
 
             public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
@@ -1990,14 +1977,14 @@ namespace GraphicalDebugging
                 if (mreader == null)
                     return;
 
-                if (ExpressionParser.IsInvalidAddressDifference(leafElemsDiff)
-                    || ExpressionParser.IsInvalidAddressDifference(internalNodeElemsDiff)
-                    || ExpressionParser.IsInvalidAddressDifference(indexableDiff)
-                    || ExpressionParser.IsInvalidAddressDifference(nodePtrDiff)
-                    || ExpressionParser.IsInvalidAddressDifference(whichDiff))
+                if (Debugger.IsInvalidAddressDifference(leafElemsDiff)
+                    || Debugger.IsInvalidAddressDifference(internalNodeElemsDiff)
+                    || Debugger.IsInvalidAddressDifference(indexableDiff)
+                    || Debugger.IsInvalidAddressDifference(nodePtrDiff)
+                    || Debugger.IsInvalidAddressDifference(whichDiff))
                     return;
 
-                ulong rootAddr = ExpressionParser.GetValueAddress(debugger, nodeVariantName);
+                ulong rootAddr = debugger.GetValueAddress(nodeVariantName);
                 if (rootAddr == 0)
                     return;
 
@@ -2213,7 +2200,7 @@ namespace GraphicalDebugging
                 // addresses can be calculated on loader creation and address 0 is
                 // currently reserved as invalid.
                 // So below the address of the R-tree object is used.
-                ulong address = ExpressionParser.GetValueAddress(debugger, name);
+                ulong address = debugger.GetValueAddress(name);
                 string addressStr = address.ToString();
 
                 string valueId = Util.TypeId(valueType);
@@ -2278,7 +2265,7 @@ namespace GraphicalDebugging
 
             int LoadSize(Debugger debugger, string name)
             {
-                return ExpressionParser.LoadSize(debugger, name + ".m_members.values_count");
+                return debugger.LoadSize(name + ".m_members.values_count");
             }
 
             static string RootNodePtr(string name)
@@ -2296,7 +2283,7 @@ namespace GraphicalDebugging
                 result = false;
 
                 int which = 0;
-                if (!ExpressionParser.TryLoadInt(debugger, nodePtrName + "->which_", out which))
+                if (!debugger.TryLoadInt(nodePtrName + "->which_", out which))
                     return false;
 
                 result = (which == 0);
@@ -2385,10 +2372,10 @@ namespace GraphicalDebugging
                                                             LoadCallback callback) // dummy callback
             {
                 double x0 = 0, y0 = 0, x1 = 0, y1 = 0;
-                bool okx0 = ExpressionParser.TryLoadDouble(debugger, name + ".points_[0].coords_[0]", out x0);
-                bool oky0 = ExpressionParser.TryLoadDouble(debugger, name + ".points_[0].coords_[1]", out y0);
-                bool okx1 = ExpressionParser.TryLoadDouble(debugger, name + ".points_[1].coords_[0]", out x1);
-                bool oky1 = ExpressionParser.TryLoadDouble(debugger, name + ".points_[1].coords_[1]", out y1);
+                bool okx0 = debugger.TryLoadDouble(name + ".points_[0].coords_[0]", out x0);
+                bool oky0 = debugger.TryLoadDouble(name + ".points_[0].coords_[1]", out y0);
+                bool okx1 = debugger.TryLoadDouble(name + ".points_[1].coords_[0]", out x1);
+                bool oky1 = debugger.TryLoadDouble(name + ".points_[1].coords_[1]", out y1);
 
                 if (! Util.IsOk(okx0, oky0, okx1, oky1))
                     return null;
@@ -2425,10 +2412,10 @@ namespace GraphicalDebugging
                                                             LoadCallback callback) // dummy callback
             {
                 double xl = 0, xh = 0, yl = 0, yh = 0;
-                bool okxl = ExpressionParser.TryLoadDouble(debugger, name + ".ranges_[0].coords_[0]", out xl);
-                bool okxh = ExpressionParser.TryLoadDouble(debugger, name + ".ranges_[0].coords_[1]", out xh);
-                bool okyl = ExpressionParser.TryLoadDouble(debugger, name + ".ranges_[1].coords_[0]", out yl);
-                bool okyh = ExpressionParser.TryLoadDouble(debugger, name + ".ranges_[1].coords_[1]", out yh);
+                bool okxl = debugger.TryLoadDouble(name + ".ranges_[0].coords_[0]", out xl);
+                bool okxh = debugger.TryLoadDouble(name + ".ranges_[0].coords_[1]", out xh);
+                bool okyl = debugger.TryLoadDouble(name + ".ranges_[1].coords_[0]", out yl);
+                bool okyh = debugger.TryLoadDouble(name + ".ranges_[1].coords_[1]", out yh);
 
                 if (! Util.IsOk(okxl, okxh, okyl, okyh))
                     return null;
@@ -2655,7 +2642,7 @@ namespace GraphicalDebugging
                                                       string name)
             {
                 int which = 0;
-                if (!ExpressionParser.TryLoadInt(debugger, name + ".which_", out which))
+                if (!debugger.TryLoadInt(name + ".which_", out which))
                     return null;
 
                 if (which < 0 || tparams.Count <= which || tparams.Count != loaders.Length)
@@ -2672,7 +2659,7 @@ namespace GraphicalDebugging
                                                             LoadCallback callback)
             {
                 int which = 0;
-                if (!ExpressionParser.TryLoadInt(debugger, name + ".which_", out which))
+                if (!debugger.TryLoadInt(name + ".which_", out which))
                     return null;
 
                 if (which < 0 || tparams.Count <= which || tparams.Count != loaders.Length)
@@ -2726,8 +2713,8 @@ namespace GraphicalDebugging
             public override ExpressionDrawer.Point LoadPointParsed(Debugger debugger, string name, string type)
             {
                 double x = 0, y = 0;
-                bool okx = ExpressionParser.TryLoadDouble(debugger, name + ".first", out x);
-                bool oky = ExpressionParser.TryLoadDouble(debugger, name + ".second", out y);
+                bool okx = debugger.TryLoadDouble(name + ".first", out x);
+                bool oky = debugger.TryLoadDouble(name + ".second", out y);
                 return Util.IsOk(okx, oky)
                      ? new ExpressionDrawer.Point(x, y)
                      : null;
@@ -2743,7 +2730,7 @@ namespace GraphicalDebugging
                 if (converter.ValueCount() != 2)
                     throw new ArgumentOutOfRangeException("converter.ValueCount()");
 
-                ulong address = ExpressionParser.GetValueAddress(debugger, name);
+                ulong address = debugger.GetValueAddress(name);
                 if (address == 0)
                     return null;
 
@@ -2762,20 +2749,20 @@ namespace GraphicalDebugging
             {
                 string first = name + ".first";
                 string second = name + ".second";
-                long firstOffset = ExpressionParser.GetAddressDifference(debugger, name, first);
-                long secondOffset = ExpressionParser.GetAddressDifference(debugger, name, second);
-                if (ExpressionParser.IsInvalidAddressDifference(firstOffset)
-                 || ExpressionParser.IsInvalidAddressDifference(secondOffset))
+                long firstOffset = debugger.GetAddressDifference(name, first);
+                long secondOffset = debugger.GetAddressDifference(name, second);
+                if (Debugger.IsInvalidAddressDifference(firstOffset)
+                 || Debugger.IsInvalidAddressDifference(secondOffset))
                     return null;
-                int firstSize = ExpressionParser.GetTypeSizeof(debugger, firstType);
-                int secondSize = ExpressionParser.GetTypeSizeof(debugger, secondType);
+                int firstSize = debugger.GetTypeSizeof(firstType);
+                int secondSize = debugger.GetTypeSizeof(secondType);
                 if (firstSize == 0 || secondSize == 0)
                     return null;
                 MemoryReader.ValueConverter<double> firstConverter = mreader.GetNumericConverter(firstType, firstSize);
                 MemoryReader.ValueConverter<double> secondConverter = mreader.GetNumericConverter(secondType, secondSize);
                 if (firstConverter == null || secondConverter == null)
                     return null;
-                int sizeOfPair = ExpressionParser.GetTypeSizeof(debugger, type);
+                int sizeOfPair = debugger.GetTypeSizeof(type);
                 if (sizeOfPair == 0)
                     return null;
                 return new MemoryReader.StructConverter<double>(
@@ -2871,19 +2858,19 @@ namespace GraphicalDebugging
                     return null;
 
                 char method = '?';
-                Expression expr_method = debugger.GetExpression(name + ".method");
-                if (expr_method.IsValidValue)
-                    method = MethodChar(expr_method.Value);
+                string methodValue = debugger.GetValue(name + ".method");
+                if (methodValue != null)
+                    method = MethodChar(methodValue);
 
                 char op0 = '?';
-                Expression expr_op0 = debugger.GetExpression(name + ".operations[0].operation");
-                if (expr_op0.IsValidValue)
-                    op0 = OperationChar(expr_op0.Value);
+                string op0Value = debugger.GetValue(name + ".operations[0].operation");
+                if (op0Value != null)
+                    op0 = OperationChar(op0Value);
 
                 char op1 = '?';
-                Expression expr_op1 = debugger.GetExpression(name + ".operations[1].operation");
-                if (expr_op1.IsValidValue)
-                    op1 = OperationChar(expr_op1.Value);
+                string op1Value = debugger.GetValue(name + ".operations[1].operation");
+                if (op1Value != null)
+                    op1 = OperationChar(op1Value);
 
                 return new ExpressionDrawer.Turn(p, method, op0, op1);
             }
@@ -3288,7 +3275,7 @@ namespace GraphicalDebugging
                 string elemName, elemType;
                 loader.ElementInfo(name, type, out elemName, out elemType);
 
-                int valSize = ExpressionParser.GetTypeSizeof(debugger, elemType);
+                int valSize = debugger.GetTypeSizeof(elemType);
 
                 MemoryReader.ValueConverter<double>
                     valueConverter = mreader.GetNumericConverter(elemType, valSize);
@@ -3318,7 +3305,7 @@ namespace GraphicalDebugging
                 bool ok = loader.ForEachElement(debugger, name, delegate (string elName)
                 {
                     double value = 0;
-                    if (! ExpressionParser.TryLoadDouble(debugger, elName, out value))
+                    if (!debugger.TryLoadDouble(elName, out value))
                         return false;
                     values.Add(value);
                     return callback();

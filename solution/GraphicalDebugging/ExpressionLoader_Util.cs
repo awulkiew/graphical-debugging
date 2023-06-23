@@ -115,10 +115,10 @@ namespace GraphicalDebugging
         {
             public TypeInfo(Debugger debugger, string name)
             {
-                Type = ExpressionParser.GetValueType(debugger, name);
+                Type = debugger.GetValueType(name);
                 if (Type == null)
                     return;
-                Size = ExpressionParser.GetTypeSizeof(debugger, Type);
+                Size = debugger.GetTypeSizeof(Type);
                 if (Size <= 0)
                     return;
                 IsValid = true;
@@ -136,8 +136,8 @@ namespace GraphicalDebugging
             {
                 if (!IsValid)
                     return;
-                Offset = ExpressionParser.GetAddressDifference(debugger, baseName, memberName);
-                if (ExpressionParser.IsInvalidAddressDifference(Offset))
+                Offset = debugger.GetAddressDifference(baseName, memberName);
+                if (Debugger.IsInvalidAddressDifference(Offset))
                     IsValid = false;
             }
 
@@ -151,7 +151,7 @@ namespace GraphicalDebugging
             {
                 if (base.IsValid)
                 {
-                    Address = ExpressionParser.GetValueAddress(debugger, name);
+                    Address = debugger.GetValueAddress(name);
                     if (Address == 0)
                         base.IsValid = false;
                 }
