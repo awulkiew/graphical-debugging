@@ -159,7 +159,7 @@ namespace GraphicalDebugging
         public static Expression[] GetExpressions(string name, char separator = ';')
         {
             var expr = Debugger.GetExpression(name);
-            if (expr.IsValidValue)
+            if (expr.IsValid)
                 return new Expression[] { expr };
 
             string[] subnames = name.Split(separator);
@@ -175,7 +175,7 @@ namespace GraphicalDebugging
         public static bool AllValidValues(Expression[] exprs)
         {
             foreach(Expression e in exprs)
-                if (!e.IsValidValue)
+                if (!e.IsValid)
                     return false;
             return true;
         }
@@ -2253,7 +2253,7 @@ namespace GraphicalDebugging
                 containerType = "";
 
                 Expression expr = debugger.GetExpression(elementsName);
-                if (!expr.IsValidValue)
+                if (!expr.IsValid)
                     return null;
 
                 elementsName = expr.Name;

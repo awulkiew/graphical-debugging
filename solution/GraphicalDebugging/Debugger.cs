@@ -4,23 +4,30 @@ using static GraphicalDebugging.MemoryReader;
 
 namespace GraphicalDebugging
 {
+    public class Expression
+    {
+        public string Name;
+        public string Type;
+        public bool IsValid;
+    }
+
     class Debugger
     {
         public Debugger(DTE dte)
         {
-            this.debugger = new DebuggerWrapper(dte);
+            this.debugger = dte.Debugger;
         }
 
         public int LoadSize(string name)
         {
-            Expression expr = debugger.GetExpression(name);
+            var expr = debugger.GetExpression(name);
             return expr.IsValidValue
                  ? Math.Max(Util.ParseInt(expr.Value, debugger.HexDisplayMode), 0)
                  : 0;
         }
         public int LoadInt(string name, int defaultValue = 0)
         {
-            Expression expr = debugger.GetExpression(name);
+            var expr = debugger.GetExpression(name);
             return expr.IsValidValue
                  ? Util.ParseInt(expr.Value, debugger.HexDisplayMode)
                  : defaultValue;
@@ -29,7 +36,7 @@ namespace GraphicalDebugging
         public bool TryLoadInt(string name, out int result)
         {
             result = 0;
-            Expression expr = debugger.GetExpression(name);
+            var expr = debugger.GetExpression(name);
             if (!expr.IsValidValue)
                 return false;
             result = Util.ParseInt(expr.Value, debugger.HexDisplayMode);
@@ -42,7 +49,7 @@ namespace GraphicalDebugging
             string castedName = "(double)" + name;
             if (IsLanguageBasic)
                 castedName = "CType(" + name + ", Double)";
-            Expression expr = debugger.GetExpression(castedName);
+            var expr = debugger.GetExpression(castedName);
             if (!expr.IsValidValue)
                 return false;
             result = Util.ParseDouble(expr.Value);
@@ -52,7 +59,7 @@ namespace GraphicalDebugging
         public bool TryLoadBool(string name, out bool result)
         {
             result = false;
-            Expression expr = debugger.GetExpression("(" + name + ") == true)");
+            var expr = debugger.GetExpression("(" + name + ") == true)");
             if (!expr.IsValidValue)
                 return false;
             result = (expr.Value == "true" || expr.Value == "1");
@@ -117,7 +124,7 @@ namespace GraphicalDebugging
 
         public ulong GetPointer(string pointerName)
         {
-            Expression ptrExpr = debugger.GetExpression("(void*)(" + pointerName + ")");
+            var ptrExpr = debugger.GetExpression("(void*)(" + pointerName + ")");
             if (!ptrExpr.IsValidValue)
                 return 0;
             string addr = ptrExpr.Value;
@@ -142,7 +149,7 @@ namespace GraphicalDebugging
             //if (!IsLanguageCpp(debugger))
             if (IsLanguageCs) // Change this when getting address in Basic works
             {
-                Expression valExpr = debugger.GetExpression(valName);
+                var valExpr = debugger.GetExpression(valName);
                 if (!valExpr.IsValidValue)
                     return 0;
                 typeName = valExpr.Type;
@@ -158,7 +165,7 @@ namespace GraphicalDebugging
                 return 0;
 
             string sizeOfStr = "sizeof(" + valType + ")";
-            Expression valSizeExpr = debugger.GetExpression(sizeOfStr);
+            var valSizeExpr = debugger.GetExpression(sizeOfStr);
             return valSizeExpr.IsValidValue
                  ? Util.ParseInt(valSizeExpr.Value, debugger.HexDisplayMode)
                  : 0;
@@ -167,7 +174,7 @@ namespace GraphicalDebugging
         public int GetCppSizeof(string valNameOrType)
         {
             string sizeOfStr = "sizeof(" + valNameOrType + ")";
-            Expression valSizeExpr = debugger.GetExpression(sizeOfStr);
+            var valSizeExpr = debugger.GetExpression(sizeOfStr);
             return valSizeExpr.IsValidValue
                  ? Util.ParseInt(valSizeExpr.Value, debugger.HexDisplayMode)
                  : 0;
@@ -176,16 +183,19 @@ namespace GraphicalDebugging
         // Valid type name or null
         public string GetValueType(string valName)
         {
-            Expression valExpr = debugger.GetExpression(valName);
-            return valExpr.IsValidValue
-                 ? valExpr.Type
-                 : null;
+            var valExpr = debugger.GetExpression(valName);
+            if (!valExpr.IsValidValue)
+                return null;
+            if (IsLanguageCpp)
+                return Util.CppNormalizeType(valExpr.Type);
+            else
+                return valExpr.Type;
         }
 
         // Valid value or null
         public string GetValue(string valName)
         {
-            Expression valExpr = debugger.GetExpression(valName);
+            var valExpr = debugger.GetExpression(valName);
             return valExpr.IsValidValue
                  ? valExpr.Value
                  : null;
@@ -193,7 +203,15 @@ namespace GraphicalDebugging
 
         public Expression GetExpression(string valName)
         {
-            return debugger.GetExpression(valName);
+            var expr = debugger.GetExpression(valName);
+            Expression result = new Expression();
+            result.IsValid = expr.IsValidValue;
+            result.Name = expr.Name;
+            if (IsLanguageCpp)
+                result.Type = Util.CppNormalizeType(expr.Type);
+            else
+                result.Type = expr.Type;
+            return result;
         }
 
         public bool ValueExists(string valName)
@@ -259,140 +277,6 @@ namespace GraphicalDebugging
             get { return debugger.CurrentStackFrame.Language == "Basic"; }
         }
 
-        DebuggerWrapper debugger;
-    }
-
-    class DebuggerWrapper : EnvDTE.Debugger
-    {
-        public DebuggerWrapper(DTE dte)
-        {
-            this.debugger = dte.Debugger;
-        }
-        public Expression GetExpression(string ExpressionText, bool UseAutoExpandRules = false, int Timeout = -1)
-        {
-            Expression expr = debugger.GetExpression(ExpressionText, UseAutoExpandRules, Timeout);
-            return CurrentStackFrame.Language == "C++" ? new CppExpression(expr) : expr;
-        }
-
-        public void DetachAll()
-        {
-            debugger.DetachAll();
-        }
-
-        public void StepInto(bool WaitForBreakOrEnd = true)
-        {
-            debugger.StepInto(WaitForBreakOrEnd);
-        }
-
-        public void StepOver(bool WaitForBreakOrEnd = true)
-        {
-            debugger.StepOver(WaitForBreakOrEnd);
-        }
-
-        public void StepOut(bool WaitForBreakOrEnd = true)
-        {
-            debugger.StepOut(WaitForBreakOrEnd);
-        }
-
-        public void Go(bool WaitForBreakOrEnd = true)
-        {
-            debugger.Go(WaitForBreakOrEnd);
-        }
-
-        public void Break(bool WaitForBreakMode = true)
-        {
-            debugger.Break(WaitForBreakMode);
-        }
-
-        public void Stop(bool WaitForDesignMode = true)
-        {
-            debugger.Stop(WaitForDesignMode);
-        }
-
-        public void SetNextStatement()
-        {
-            debugger.SetNextStatement();
-        }
-
-        public void RunToCursor(bool WaitForBreakOrEnd = true)
-        {
-            debugger.RunToCursor(WaitForBreakOrEnd);
-        }
-
-        public void ExecuteStatement(string Statement, int Timeout = -1, bool TreatAsExpression = false)
-        {
-            debugger.ExecuteStatement(Statement, Timeout, TreatAsExpression);
-        }
-
-        public void TerminateAll()
-        {
-            debugger.TerminateAll();
-        }
-
-        public Breakpoints Breakpoints => debugger.Breakpoints;
-
-        public Languages Languages => debugger.Languages;
-
-        public dbgDebugMode CurrentMode => debugger.CurrentMode;
-
-        public Process CurrentProcess { get => debugger.CurrentProcess; set => debugger.CurrentProcess = value; }
-        public Program CurrentProgram { get => debugger.CurrentProgram; set => debugger.CurrentProgram = value; }
-        public Thread CurrentThread { get => debugger.CurrentThread; set => debugger.CurrentThread = value; }
-        public StackFrame CurrentStackFrame { get => debugger.CurrentStackFrame; set => debugger.CurrentStackFrame = value; }
-        public bool HexDisplayMode { get => debugger.HexDisplayMode; set => debugger.HexDisplayMode = value; }
-        public bool HexInputMode { get => debugger.HexInputMode; set => debugger.HexInputMode = value; }
-
-        public dbgEventReason LastBreakReason => debugger.LastBreakReason;
-
-        public Breakpoint BreakpointLastHit => debugger.BreakpointLastHit;
-
-        public Breakpoints AllBreakpointsLastHit => debugger.AllBreakpointsLastHit;
-
-        public Processes DebuggedProcesses => debugger.DebuggedProcesses;
-
-        public Processes LocalProcesses => debugger.LocalProcesses;
-
-        public DTE DTE => debugger.DTE;
-
-        public DTE Parent => debugger.Parent;
-
-        private EnvDTE.Debugger debugger;
-    }
-
-    public class CppExpression : EnvDTE.Expression
-    {
-        public CppExpression(Expression expression)
-        {
-            this.expression = expression;
-        }
-
-        public string Name => expression.Name;
-
-        public string Type
-        {
-            get
-            {
-                if (string.IsNullOrEmpty(this.normalizedType))
-                {
-                    this.normalizedType = Util.CppNormalizeType(expression.Type);
-                }
-                return this.normalizedType;
-            }
-        }
-
-        public Expressions DataMembers => expression.DataMembers;
-
-        public string Value { get => expression.Value; set => expression.Value = value; }
-
-        public bool IsValidValue => expression.IsValidValue;
-
-        public DTE DTE => expression.DTE;
-
-        public EnvDTE.Debugger Parent => expression.Parent;
-
-        public Expressions Collection => expression.Collection;
-
-        private Expression expression;
-        private string normalizedType;
+        EnvDTE.Debugger debugger;
     }
 }
