@@ -61,9 +61,9 @@ namespace GraphicalDebugging
                                          elemType);
                 }
 
-                ITypeMatcher typeMatcher;
-                ClassScopeExpression exprPointer;
-                ClassScopeExpression exprSize;
+                readonly ITypeMatcher typeMatcher;
+                readonly ClassScopeExpression exprPointer;
+                readonly ClassScopeExpression exprSize;
             }
 
             private UserArray(ClassScopeExpression exprPointer,
@@ -78,7 +78,7 @@ namespace GraphicalDebugging
             public override void ElementInfo(string name, string type,
                                              out string elemName, out string elemType)
             {
-                elemType = this.elemType == null ? "" : this.elemType;
+                elemType = this.elemType ?? "";
                 elemName = exprPointer.GetString(name) + "[0]";
             }
 
@@ -116,8 +116,7 @@ namespace GraphicalDebugging
                 if (size <= 0)
                     return true;
 
-                string elemName, elemType;
-                ElementInfo(name, type, out elemName, out elemType);
+                ElementInfo(name, type, out string elemName, out string _);
                 ulong beginAddress = debugger.GetValueAddress(elemName);
                 if (beginAddress == 0)
                     return false;
@@ -129,9 +128,9 @@ namespace GraphicalDebugging
                 return memoryBlockPredicate(values);
             }
 
-            ClassScopeExpression exprPointer;
-            ClassScopeExpression exprSize;
-            string elemType;
+            readonly ClassScopeExpression exprPointer;
+            readonly ClassScopeExpression exprSize;
+            readonly string elemType;
         }
 
         // TODO: The code is similar to std::list loader, unify if possible
@@ -179,11 +178,11 @@ namespace GraphicalDebugging
                                               elemType);
                 }
 
-                ITypeMatcher typeMatcher;
-                ClassScopeExpression exprHeadPointer;
-                ClassScopeExpression exprNextPointer;
-                ClassScopeExpression exprValue;
-                ClassScopeExpression exprSize;
+                readonly ITypeMatcher typeMatcher;
+                readonly ClassScopeExpression exprHeadPointer;
+                readonly ClassScopeExpression exprNextPointer;
+                readonly ClassScopeExpression exprValue;
+                readonly ClassScopeExpression exprSize;
             }
 
             private UserLinkedList(ClassScopeExpression exprHeadPointer,
@@ -202,7 +201,7 @@ namespace GraphicalDebugging
             public override void ElementInfo(string name, string type,
                                              out string elemName, out string elemType)
             {
-                elemType = this.elemType == null ? "" : this.elemType;
+                elemType = this.elemType ?? "";
                 // TODO: Only C++ ?
                 elemName = exprValue.GetString('*' + exprHeadPointer.GetString(name));
             }
@@ -286,11 +285,11 @@ namespace GraphicalDebugging
                 return true;
             }
 
-            ClassScopeExpression exprHeadPointer;
-            ClassScopeExpression exprNextPointer;
-            ClassScopeExpression exprValue;
-            ClassScopeExpression exprSize;
-            string elemType;
+            readonly ClassScopeExpression exprHeadPointer;
+            readonly ClassScopeExpression exprNextPointer;
+            readonly ClassScopeExpression exprValue;
+            readonly ClassScopeExpression exprSize;
+            readonly string elemType;
         }
 
         class UserValue
@@ -342,9 +341,7 @@ namespace GraphicalDebugging
                                          string parentName)
             {
                 string name = expr.GetString(parentName);
-                double val = 0;
-                bool ok = debugger.TryLoadDouble(name, out val);
-                return Util.IsOk(ok)
+                return debugger.TryLoadDouble(name, out double val)
                      ? new UserValue(val)
                      : null;
             }
@@ -380,11 +377,11 @@ namespace GraphicalDebugging
 
             public bool IsValid;
 
-            ClassScopeExpression expr;
+            readonly ClassScopeExpression expr;
             // For memory loading:
-            string type;
-            int sizeOf;
-            long offset;
+            readonly string type;
+            readonly int sizeOf;
+            readonly long offset;
         }
 
         class UserPointMember
@@ -453,11 +450,11 @@ namespace GraphicalDebugging
 
             public bool IsValid;
 
-            ClassScopeExpression expr;
-            PointLoader loader;
+            readonly ClassScopeExpression expr;
+            readonly PointLoader loader;
             // For memory loading:
-            string type;
-            long offset;
+            readonly string type;
+            readonly long offset;
         }
 
         class UserSimpleGeometryMembers
@@ -648,11 +645,11 @@ namespace GraphicalDebugging
 
             public bool IsValid;
 
-            UserPointMember[] pointMembers;
-            UserValueMember[] valueMembers;
-            Geometry.Traits traits;
+            readonly UserPointMember[] pointMembers;
+            readonly UserValueMember[] valueMembers;
+            readonly Geometry.Traits traits;
             // For memory loading:
-            int sizeOf;
+            readonly int sizeOf;
         }
 
         class UserPoint : PointLoader
@@ -691,11 +688,11 @@ namespace GraphicalDebugging
                          : null;
                 }
 
-                ITypeMatcher typeMatcher;
-                ClassScopeExpression exprX;
-                ClassScopeExpression exprY;
-                Geometry.CoordinateSystem cs;
-                Geometry.Unit unit;
+                readonly ITypeMatcher typeMatcher;
+                readonly ClassScopeExpression exprX;
+                readonly ClassScopeExpression exprY;
+                readonly Geometry.CoordinateSystem cs;
+                readonly Geometry.Unit unit;
             }
 
             private UserPoint(UserSimpleGeometry simpleGeometry)
@@ -732,7 +729,7 @@ namespace GraphicalDebugging
                 return simpleGeometry.GetMemoryConverter(mreader, debugger, name, type);
             }
 
-            UserSimpleGeometry simpleGeometry;
+            readonly UserSimpleGeometry simpleGeometry;
         }
 
         class UserBoxPoints : BoxLoader
@@ -765,9 +762,9 @@ namespace GraphicalDebugging
                          : null;
                 }
 
-                ITypeMatcher typeMatcher;
-                ClassScopeExpression exprMin;
-                ClassScopeExpression exprMax;
+                readonly ITypeMatcher typeMatcher;
+                readonly ClassScopeExpression exprMin;
+                readonly ClassScopeExpression exprMax;
             }
 
             private UserBoxPoints(UserSimpleGeometry simpleGeometry)
@@ -799,7 +796,7 @@ namespace GraphicalDebugging
                 return simpleGeometry.GetMemoryConverter(mreader, debugger, name, type);
             }
 
-            UserSimpleGeometry simpleGeometry;
+            readonly UserSimpleGeometry simpleGeometry;
         }
 
         class UserBoxCoords : BoxLoader
@@ -850,14 +847,14 @@ namespace GraphicalDebugging
                          : null;
                 }
 
-                ITypeMatcher typeMatcher;
-                ClassScopeExpression exprX1;
-                ClassScopeExpression exprX2;
-                ClassScopeExpression exprY1;
-                ClassScopeExpression exprY2;
-                CoordsX coordsX;
-                CoordsY coordsY;
-                Geometry.Traits traits;
+                readonly ITypeMatcher typeMatcher;
+                readonly ClassScopeExpression exprX1;
+                readonly ClassScopeExpression exprX2;
+                readonly ClassScopeExpression exprY1;
+                readonly ClassScopeExpression exprY2;
+                readonly CoordsX coordsX;
+                readonly CoordsY coordsY;
+                readonly Geometry.Traits traits;
             }
 
             private UserBoxCoords(UserSimpleGeometry simpleGeometry,
@@ -930,9 +927,9 @@ namespace GraphicalDebugging
                             });
             }
 
-            UserSimpleGeometry simpleGeometry;
-            CoordsX coordsX;
-            CoordsY coordsY;
+            readonly UserSimpleGeometry simpleGeometry;
+            readonly CoordsX coordsX;
+            readonly CoordsY coordsY;
         }
 
         class UserSegmentCoords : SegmentLoader
@@ -974,12 +971,12 @@ namespace GraphicalDebugging
                          : null;
                 }
 
-                ITypeMatcher typeMatcher;
-                ClassScopeExpression exprFirstX;
-                ClassScopeExpression exprFirstY;
-                ClassScopeExpression exprSecondX;
-                ClassScopeExpression exprSecondY;
-                Geometry.Traits traits;
+                readonly ITypeMatcher typeMatcher;
+                readonly ClassScopeExpression exprFirstX;
+                readonly ClassScopeExpression exprFirstY;
+                readonly ClassScopeExpression exprSecondX;
+                readonly ClassScopeExpression exprSecondY;
+                readonly Geometry.Traits traits;
             }
 
             private UserSegmentCoords(UserSimpleGeometry simpleGeometry)
@@ -1014,7 +1011,7 @@ namespace GraphicalDebugging
                 return simpleGeometry.GetMemoryConverter(mreader, debugger, name, type);
             }
 
-            UserSimpleGeometry simpleGeometry;
+            readonly UserSimpleGeometry simpleGeometry;
         }
 
         class UserRayCoords : RayLoader
@@ -1054,12 +1051,12 @@ namespace GraphicalDebugging
                          : null;
                 }
 
-                ITypeMatcher typeMatcher;
-                ClassScopeExpression exprOrigX;
-                ClassScopeExpression exprOrigY;
-                ClassScopeExpression exprDirX;
-                ClassScopeExpression exprDirY;
-                Geometry.Traits traits;
+                readonly ITypeMatcher typeMatcher;
+                readonly ClassScopeExpression exprOrigX;
+                readonly ClassScopeExpression exprOrigY;
+                readonly ClassScopeExpression exprDirX;
+                readonly ClassScopeExpression exprDirY;
+                readonly Geometry.Traits traits;
             }
 
             private UserRayCoords(UserSimpleGeometry simpleGeometry)
@@ -1094,7 +1091,7 @@ namespace GraphicalDebugging
                 return simpleGeometry.GetMemoryConverter(mreader, debugger, name, type);
             }
 
-            UserSimpleGeometry simpleGeometry;
+            readonly UserSimpleGeometry simpleGeometry;
         }
 
         class UserLineCoords : LineLoader
@@ -1134,12 +1131,12 @@ namespace GraphicalDebugging
                          : null;
                 }
 
-                ITypeMatcher typeMatcher;
-                ClassScopeExpression exprFirstX;
-                ClassScopeExpression exprFirstY;
-                ClassScopeExpression exprSecondX;
-                ClassScopeExpression exprSecondY;
-                Geometry.Traits traits;
+                readonly ITypeMatcher typeMatcher;
+                readonly ClassScopeExpression exprFirstX;
+                readonly ClassScopeExpression exprFirstY;
+                readonly ClassScopeExpression exprSecondX;
+                readonly ClassScopeExpression exprSecondY;
+                readonly Geometry.Traits traits;
             }
 
             private UserLineCoords(UserSimpleGeometry simpleGeometry)
@@ -1174,7 +1171,7 @@ namespace GraphicalDebugging
                 return simpleGeometry.GetMemoryConverter(mreader, debugger, name, type);
             }
 
-            UserSimpleGeometry simpleGeometry;
+            readonly UserSimpleGeometry simpleGeometry;
         }
 
         class UserContainerLoaders<ElementLoaderT>
@@ -1227,25 +1224,26 @@ namespace GraphicalDebugging
                 if (containerLoader == null)
                     return null;
 
-                string elementName, elementType;
                 containerLoader.ElementInfo(containerName, containerType,
-                                            out elementName, out elementType);
+                                            out string elementName, out string elementType);
                 ElementLoader elementLoader = loaders.FindByType(elementKindConstraint,
                                                                  elementName,
                                                                  elementType) as ElementLoader;
                 if (elementLoader == null)
                     return null;
 
-                UserContainerLoaders<ElementLoader> result = new UserContainerLoaders<ElementLoader>();
-                result.ContainerLoader = containerLoader;
-                result.ElementLoader = elementLoader;
-                result.ContainerNameExpr = exprContainerName.DeepCopy();
-                result.ContainerType = containerType;
-                result.ElementType = elementType;
+                UserContainerLoaders<ElementLoader> result = new UserContainerLoaders<ElementLoader>
+                {
+                    ContainerLoader = containerLoader,
+                    ElementLoader = elementLoader,
+                    ContainerNameExpr = exprContainerName.DeepCopy(),
+                    ContainerType = containerType,
+                    ElementType = elementType
+                };
                 return result;
             }
 
-            ClassScopeExpression exprContainerName;
+            readonly ClassScopeExpression exprContainerName;
         }
 
         class UserArrayEntry : IUserContainerEntry
@@ -1266,26 +1264,27 @@ namespace GraphicalDebugging
                 if (containerLoader == null)
                     return null;
 
-                string elementName, elementType;
                 containerLoader.ElementInfo(name, type,
-                                            out elementName, out elementType);
+                                            out string elementName, out string elementType);
                 ElementLoader elementLoader = loaders.FindByType(elementKindConstraint,
                                                                  elementName,
                                                                  elementType) as ElementLoader;
                 if (elementLoader == null)
                     return null;
 
-                UserContainerLoaders<ElementLoader> result = new UserContainerLoaders<ElementLoader>();
-                result.ContainerLoader = containerLoader;
-                result.ElementLoader = elementLoader;
-                result.ContainerNameExpr = new ClassScopeExpression(new ClassScopeExpression.NamePart());
-                result.ContainerType = type;
-                result.ElementType = elementType;
+                UserContainerLoaders<ElementLoader> result = new UserContainerLoaders<ElementLoader>
+                {
+                    ContainerLoader = containerLoader,
+                    ElementLoader = elementLoader,
+                    ContainerNameExpr = new ClassScopeExpression(new ClassScopeExpression.NamePart()),
+                    ContainerType = type,
+                    ElementType = elementType
+                };
                 return result;
             }
 
-            ClassScopeExpression exprPointer;
-            ClassScopeExpression exprSize;
+            readonly ClassScopeExpression exprPointer;
+            readonly ClassScopeExpression exprSize;
         }
 
         class UserLinkedListEntry : IUserContainerEntry
@@ -1312,28 +1311,29 @@ namespace GraphicalDebugging
                 if (containerLoader == null)
                     return null;
 
-                string elementName, elementType;
                 containerLoader.ElementInfo(name, type,
-                                            out elementName, out elementType);
+                                            out string elementName, out string elementType);
                 ElementLoader elementLoader = loaders.FindByType(elementKindConstraint,
                                                                  elementName,
                                                                  elementType) as ElementLoader;
                 if (elementLoader == null)
                     return null;
 
-                UserContainerLoaders<ElementLoader> result = new UserContainerLoaders<ElementLoader>();
-                result.ContainerLoader = containerLoader;
-                result.ElementLoader = elementLoader;
-                result.ContainerNameExpr = new ClassScopeExpression(new ClassScopeExpression.NamePart());
-                result.ContainerType = type;
-                result.ElementType = elementType;
+                UserContainerLoaders<ElementLoader> result = new UserContainerLoaders<ElementLoader>
+                {
+                    ContainerLoader = containerLoader,
+                    ElementLoader = elementLoader,
+                    ContainerNameExpr = new ClassScopeExpression(new ClassScopeExpression.NamePart()),
+                    ContainerType = type,
+                    ElementType = elementType
+                };
                 return result;
             }
 
-            ClassScopeExpression exprHeadPointer;
-            ClassScopeExpression exprNextPointer;
-            ClassScopeExpression exprValue;
-            ClassScopeExpression exprSize;
+            readonly ClassScopeExpression exprHeadPointer;
+            readonly ClassScopeExpression exprNextPointer;
+            readonly ClassScopeExpression exprValue;
+            readonly ClassScopeExpression exprSize;
         }
 
         class UserPointRange<ResultType> : PointRange<ResultType>
@@ -1374,10 +1374,10 @@ namespace GraphicalDebugging
                     return derivedConstructor(containerLoaders);
                 }
 
-                ExpressionLoader.Kind kind;
-                ITypeMatcher typeMatcher;
-                IUserContainerEntry containerEntry;
-                DerivedConstructor derivedConstructor;
+                readonly ExpressionLoader.Kind kind;
+                readonly ITypeMatcher typeMatcher;
+                readonly IUserContainerEntry containerEntry;
+                readonly DerivedConstructor derivedConstructor;
             }
 
             protected UserPointRange(UserContainerLoaders<PointLoader> containerLoaders)
@@ -1400,10 +1400,9 @@ namespace GraphicalDebugging
                 string containerName = containerLoaders.ContainerNameExpr.GetString(name);
                 if (mreader != null)
                 {
-                    string elementName, elementType;
                     containerLoaders.ContainerLoader.ElementInfo(containerName,
                                                                  containerLoaders.ContainerType,
-                                                                 out elementName, out elementType);
+                                                                 out string elementName, out string elementType);
 
                     result = LoadMemory(mreader, debugger,
                                         containerName,
@@ -1429,7 +1428,7 @@ namespace GraphicalDebugging
                 return result;
             }
 
-            UserContainerLoaders<PointLoader> containerLoaders;
+            readonly UserContainerLoaders<PointLoader> containerLoaders;
         }
 
         class UserLinestring : UserPointRange<ExpressionDrawer.Linestring>
@@ -1517,8 +1516,8 @@ namespace GraphicalDebugging
                     return new UserMultiLinestring(containerLoaders);
                 }
 
-                ITypeMatcher typeMatcher;
-                IUserContainerEntry containerEntry;
+                readonly ITypeMatcher typeMatcher;
+                readonly IUserContainerEntry containerEntry;
             }
 
             private UserMultiLinestring(UserContainerLoaders<RangeLoader<ExpressionDrawer.Linestring>> containerLoaders)
@@ -1555,7 +1554,7 @@ namespace GraphicalDebugging
                 return ok ? mls : null;
             }
 
-            UserContainerLoaders<RangeLoader<ExpressionDrawer.Linestring>> containerLoaders;
+            readonly UserContainerLoaders<RangeLoader<ExpressionDrawer.Linestring>> containerLoaders;
         }
 
         class UserPolygon : PolygonLoader
@@ -1603,10 +1602,10 @@ namespace GraphicalDebugging
                                            innersOffset);
                 }
 
-                ITypeMatcher typeMatcher;
-                ClassScopeExpression exprOuter;
-                IUserContainerEntry innersContEntry;
-                int innersOffset;
+                readonly ITypeMatcher typeMatcher;
+                readonly ClassScopeExpression exprOuter;
+                readonly IUserContainerEntry innersContEntry;
+                readonly int innersOffset;
             }
 
             private UserPolygon(ClassScopeExpression exprOuter,
@@ -1675,11 +1674,11 @@ namespace GraphicalDebugging
                      : null;
             }
 
-            ClassScopeExpression exprOuter;
-            string outerType;
-            LoaderR<ExpressionDrawer.Ring> outerLoader;
-            UserContainerLoaders<LoaderR<ExpressionDrawer.Ring>> innersLoaders;
-            int innersOffset;
+            readonly ClassScopeExpression exprOuter;
+            readonly string outerType;
+            readonly LoaderR<ExpressionDrawer.Ring> outerLoader;
+            readonly UserContainerLoaders<LoaderR<ExpressionDrawer.Ring>> innersLoaders;
+            readonly int innersOffset;
         }
 
         class UserMultiPolygon : RangeLoader<ExpressionDrawer.MultiPolygon>
@@ -1710,8 +1709,8 @@ namespace GraphicalDebugging
                     return new UserMultiPolygon(containerLoaders);
                 }
 
-                ITypeMatcher typeMatcher;
-                IUserContainerEntry containerEntry;
+                readonly ITypeMatcher typeMatcher;
+                readonly IUserContainerEntry containerEntry;
             }
 
             public UserMultiPolygon(UserContainerLoaders<PolygonLoader> containerLoaders)
@@ -1748,7 +1747,7 @@ namespace GraphicalDebugging
                 return ok ? mpoly : null;
             }
 
-            UserContainerLoaders<PolygonLoader> containerLoaders;
+            readonly UserContainerLoaders<PolygonLoader> containerLoaders;
         }
 
         // TODO: If possible use one implementation for MultiLinestring, MultiPolygon and MultiGeometry
@@ -1779,8 +1778,8 @@ namespace GraphicalDebugging
                     return new UserMultiGeometry(containerLoaders);
                 }
 
-                ITypeMatcher typeMatcher;
-                IUserContainerEntry containerEntry;
+                readonly ITypeMatcher typeMatcher;
+                readonly IUserContainerEntry containerEntry;
             }
 
             public UserMultiGeometry(UserContainerLoaders<DrawableLoader> containerLoaders)
@@ -1817,7 +1816,7 @@ namespace GraphicalDebugging
                 return ok ? drawables : null;
             }
 
-            UserContainerLoaders<DrawableLoader> containerLoaders;
+            readonly UserContainerLoaders<DrawableLoader> containerLoaders;
         }
 
         private static bool ReloadUserTypes(Loaders loaders,
@@ -1918,9 +1917,7 @@ namespace GraphicalDebugging
                                 var elY = Util.GetXmlElementByTagName(elCoords, "Y");
                                 if (elX != null && elY != null)
                                 {
-                                    Geometry.CoordinateSystem cs = Geometry.CoordinateSystem.Cartesian;
-                                    Geometry.Unit unit = Geometry.Unit.None;
-                                    GetCSAndUnit(elEntry, out cs, out unit);
+                                    GetCSAndUnit(elEntry, out Geometry.CoordinateSystem cs, out Geometry.Unit unit);
 
                                     ClassScopeExpression exprX = new ClassScopeExpression(elX.InnerText);
                                     ClassScopeExpression exprY = new ClassScopeExpression(elY.InnerText);
@@ -1948,13 +1945,9 @@ namespace GraphicalDebugging
                             }
                             else if (elCoordinates != null || elCoordinatesDimensions != null)
                             {
-                                Geometry.CoordinateSystem cs = Geometry.CoordinateSystem.Cartesian;
-                                Geometry.Unit unit = Geometry.Unit.None;
-                                GetCSAndUnit(elEntry, out cs, out unit);
+                                GetCSAndUnit(elEntry, out Geometry.CoordinateSystem cs, out Geometry.Unit unit);
 
-                                var elParent = elCoordinates != null
-                                             ? elCoordinates
-                                             : elCoordinatesDimensions;
+                                var elParent = elCoordinates ?? elCoordinatesDimensions;
 
                                 var elLeft = Util.GetXmlElementByTagName(elParent, "MinX");
                                 var elBottom = Util.GetXmlElementByTagName(elParent, "MinY");
@@ -2048,9 +2041,7 @@ namespace GraphicalDebugging
                                 var secondY = Util.GetXmlElementByTagName(elCoords, "SecondY");
                                 if (firstX != null && firstY != null && secondX != null && secondY != null)
                                 {
-                                    Geometry.CoordinateSystem cs = Geometry.CoordinateSystem.Cartesian;
-                                    Geometry.Unit unit = Geometry.Unit.None;
-                                    GetCSAndUnit(elEntry, out cs, out unit);
+                                    GetCSAndUnit(elEntry, out Geometry.CoordinateSystem cs, out Geometry.Unit unit);
 
                                     ClassScopeExpression exprFirstX = new ClassScopeExpression(firstX.InnerText);
                                     ClassScopeExpression exprFirstY = new ClassScopeExpression(firstY.InnerText);
@@ -2132,9 +2123,7 @@ namespace GraphicalDebugging
                             if (elOuterName != null)
                             {
                                 ClassScopeExpression classExprOuter = new ClassScopeExpression(elOuterName.InnerText);
-                                IUserContainerEntry innersContEntry = GetContainerEntry(elEntry, "InteriorRings");
-                                if (innersContEntry == null)
-                                    innersContEntry = new UserEmptyEntry();
+                                IUserContainerEntry innersContEntry = GetContainerEntry(elEntry, "InteriorRings") ?? new UserEmptyEntry();
                                 // TODO: InteriorRings searched the second time
                                 var elInners = Util.GetXmlElementByTagName(elEntry, "InteriorRings");
                                 var elInnersOffset = Util.GetXmlElementByTagName(elInners, "Offset");
@@ -2263,25 +2252,23 @@ namespace GraphicalDebugging
             if (options == null)
                 return;
 
-            DateTime wtCpp;
             if (ReloadUserTypes(Instance.loadersCpp,
                                 Instance.loadersCacheCpp,
                                 options.UserTypesPathCpp,
                                 options.isUserTypesPathCppChanged,
                                 options.userTypesCppWriteTime,
-                                out wtCpp))
+                                out DateTime wtCpp))
             {
                 options.isUserTypesPathCppChanged = false;
                 options.userTypesCppWriteTime = wtCpp;
             }
 
-            DateTime wtCS;
             if (ReloadUserTypes(Instance.loadersCS,
                                 Instance.loadersCacheCS,
                                 options.UserTypesPathCS,
                                 options.isUserTypesPathCSChanged,
                                 options.userTypesCSWriteTime,
-                                out wtCS))
+                                out DateTime wtCS))
             {
                 options.isUserTypesPathCSChanged = false;
                 options.userTypesCSWriteTime = wtCS;

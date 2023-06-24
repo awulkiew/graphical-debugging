@@ -204,9 +204,7 @@ namespace GraphicalDebugging
         public Expression GetExpression(string valName)
         {
             var expr = debugger.GetExpression(valName);
-            Expression result = new Expression();
-            result.IsValid = expr.IsValidValue;
-            result.Name = expr.Name;
+            Expression result = new Expression { IsValid = expr.IsValidValue, Name = expr.Name };
             if (IsLanguageCpp)
                 result.Type = Util.CppNormalizeType(expr.Type);
             else
@@ -277,6 +275,6 @@ namespace GraphicalDebugging
             get { return debugger.CurrentStackFrame.Language == "Basic"; }
         }
 
-        EnvDTE.Debugger debugger;
+        readonly EnvDTE.Debugger debugger;
     }
 }
