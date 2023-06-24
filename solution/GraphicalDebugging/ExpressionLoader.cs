@@ -53,14 +53,10 @@ namespace GraphicalDebugging
 
         public static bool IsBreakMode
         {
-            get => Debugger.IsBreakMode;
+            get => Instance.debugger.IsBreakMode;
         }
 
         private static ExpressionLoader Instance { get; set; }
-        private static Debugger Debugger
-        {
-            get { return Instance.debugger; }
-        }
         
         public static void Initialize(GraphicalDebuggingPackage package)
         {
@@ -158,7 +154,7 @@ namespace GraphicalDebugging
 
         public static Expression[] GetExpressions(string name, char separator = ';')
         {
-            var expr = Debugger.GetExpression(name);
+            var expr = Instance.debugger.GetExpression(name);
             if (expr.IsValid)
                 return new Expression[] { expr };
 
@@ -166,7 +162,7 @@ namespace GraphicalDebugging
             Expression[] exprs = new Expression[subnames.Length];
             for (int i = 0; i < subnames.Length; ++i)
             {
-                exprs[i] = Debugger.GetExpression(subnames[i]);
+                exprs[i] = Instance.debugger.GetExpression(subnames[i]);
             }
 
             return exprs;
@@ -492,7 +488,7 @@ namespace GraphicalDebugging
                     int kindIndex = (int)kind;
                     foreach (LoaderCreator creator in lists[kindIndex])
                     {
-                        Loader loader = creator.Create(this, Debugger, name, type, id);
+                        Loader loader = creator.Create(this, Instance.debugger, name, type, id);
                         if (loader != null)
                         {
                             if (loadersCache != null)
@@ -511,7 +507,7 @@ namespace GraphicalDebugging
                         {
                             foreach (LoaderCreator creator in lists[i])
                             {
-                                Loader loader = creator.Create(this, Debugger, name, type, id);
+                                Loader loader = creator.Create(this, Instance.debugger, name, type, id);
                                 if (loader != null)
                                 {
                                     if (loadersCache != null)
