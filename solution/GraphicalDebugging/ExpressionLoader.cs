@@ -424,12 +424,12 @@ namespace GraphicalDebugging
 
             public Loaders()
             {
-                lists = new List<LoaderCreator>[KindsCount];
+                lists = new List<ILoaderCreator>[KindsCount];
                 for (int i = 0; i < KindsCount; ++i)
-                    lists[i] = new List<LoaderCreator>();
+                    lists[i] = new List<ILoaderCreator>();
             }
 
-            public void Add(LoaderCreator loaderCreator)
+            public void Add(ILoaderCreator loaderCreator)
             {
                 int i = (int)loaderCreator.Kind();
                 System.Diagnostics.Debug.Assert(0 <= i && i < KindsCount);
@@ -484,7 +484,7 @@ namespace GraphicalDebugging
                     // Single kind required, check only one list
                     Kind kind = (kindConstraint as KindConstraint).Kind;
                     int kindIndex = (int)kind;
-                    foreach (LoaderCreator creator in lists[kindIndex])
+                    foreach (ILoaderCreator creator in lists[kindIndex])
                     {
                         Loader loader = creator.Create(this, Instance.debugger, name, type, id);
                         if (loader != null)
@@ -502,7 +502,7 @@ namespace GraphicalDebugging
                         Kind kind = (Kind)i;
                         if (kindConstraint.Check(kind))
                         {
-                            foreach (LoaderCreator creator in lists[i])
+                            foreach (ILoaderCreator creator in lists[i])
                             {
                                 Loader loader = creator.Create(this, Instance.debugger, name, type, id);
                                 if (loader != null)
@@ -519,7 +519,7 @@ namespace GraphicalDebugging
 
             public void RemoveUserDefined()
             {
-                foreach (List<LoaderCreator> li in lists)
+                foreach (List<ILoaderCreator> li in lists)
                 {
                     for (int i = li.Count - 1; i >= 0; --i)
                         if (li[i].IsUserDefined())
@@ -527,13 +527,13 @@ namespace GraphicalDebugging
                 }                
             }
 
-            private readonly List<LoaderCreator>[] lists;
+            private readonly List<ILoaderCreator>[] lists;
         }
 
         /// <summary>
         /// The interface of a loader creator.
         /// </summary>
-        interface LoaderCreator
+        interface ILoaderCreator
         {
             /// <summary>
             /// Returns true for user-defined Loaders which has to be reloaded
@@ -841,7 +841,7 @@ namespace GraphicalDebugging
 
         class BGPoint : BXPoint
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Point; }
@@ -898,7 +898,7 @@ namespace GraphicalDebugging
 
         class BGPointXY : BGPoint
         {
-            public new class LoaderCreator : ExpressionLoader.LoaderCreator
+            public new class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Point; }
@@ -925,7 +925,7 @@ namespace GraphicalDebugging
 
         class BGBox : BoxLoader
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Box; }
@@ -1016,7 +1016,7 @@ namespace GraphicalDebugging
 
         class BGSegment : SegmentLoader
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Segment; }
@@ -1112,7 +1112,7 @@ namespace GraphicalDebugging
 
         class BGReferringSegment : BGSegment
         {
-            public new class LoaderCreator : ExpressionLoader.LoaderCreator
+            public new class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Segment; }
@@ -1142,7 +1142,7 @@ namespace GraphicalDebugging
 
         class BGNSphere : NSphereLoader
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.NSphere; }
@@ -1278,7 +1278,7 @@ namespace GraphicalDebugging
                              , Geometry.IContainer<Geometry.Point>
                              , new()
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public delegate Loader DerivedConstructor(ContainerLoader containerLoader, string containerType,
                                                           PointLoader pointLoader, string pointType);
@@ -1400,7 +1400,7 @@ namespace GraphicalDebugging
 
         class BGMultiLinestring : RangeLoader<ExpressionDrawer.MultiLinestring>
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.MultiLinestring; }
@@ -1517,7 +1517,7 @@ namespace GraphicalDebugging
 
         class BGPolygon : PolygonLoader
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Polygon; }
@@ -1602,7 +1602,7 @@ namespace GraphicalDebugging
 
         class BGMultiPolygon : RangeLoader<ExpressionDrawer.MultiPolygon>
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.MultiPolygon; }
@@ -1672,7 +1672,7 @@ namespace GraphicalDebugging
 
         class BGBufferedRing : RangeLoader<ExpressionDrawer.Ring>
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Ring; }
@@ -1724,7 +1724,7 @@ namespace GraphicalDebugging
         // NOTE: There is no MultiRing concept so use MultiPolygon for now
         class BGBufferedRingCollection : RangeLoader<ExpressionDrawer.MultiPolygon>
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.MultiPolygon; } // Or MultiGeometry
@@ -1803,7 +1803,7 @@ namespace GraphicalDebugging
 
         class BGIRtree : GeometryLoader<ExpressionDrawer.DrawablesContainer>
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.OtherGeometry; }
@@ -2275,7 +2275,7 @@ namespace GraphicalDebugging
 
         class BPPoint : BXPoint
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Point; }
@@ -2302,7 +2302,7 @@ namespace GraphicalDebugging
 
         class BPSegment : SegmentLoader
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Segment; }
@@ -2340,7 +2340,7 @@ namespace GraphicalDebugging
 
         class BPBox : BoxLoader
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Box; }
@@ -2378,7 +2378,7 @@ namespace GraphicalDebugging
 
         class BPRing : PointRange<ExpressionDrawer.Ring>
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Ring; }
@@ -2463,7 +2463,7 @@ namespace GraphicalDebugging
 
         class BPPolygon : PolygonLoader
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Polygon; }
@@ -2552,7 +2552,7 @@ namespace GraphicalDebugging
 
         class BVariant : DrawableLoader
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Variant; }
@@ -2624,7 +2624,7 @@ namespace GraphicalDebugging
 
         class StdPairPoint : PointLoader
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Point; }
@@ -2718,7 +2718,7 @@ namespace GraphicalDebugging
 
         class StdComplexPoint : BXPoint
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Point; }
@@ -2743,7 +2743,7 @@ namespace GraphicalDebugging
 
         class BGTurn : GeometryLoader<ExpressionDrawer.Turn>
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public LoaderCreator(string id)
                 {
@@ -2852,7 +2852,7 @@ namespace GraphicalDebugging
 
         class BGTurnContainer : GeometryLoader<ExpressionDrawer.TurnsContainer>
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.TurnsContainer; }
@@ -2922,7 +2922,7 @@ namespace GraphicalDebugging
         //   including User-Defined ones, so if possible unify all of them
         class GeometryContainer : GeometryLoader<ExpressionDrawer.DrawablesContainer>
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.GeometriesContainer; }
@@ -3060,7 +3060,7 @@ namespace GraphicalDebugging
 
         class PointContainer : PointRange<ExpressionDrawer.MultiPoint>
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.MultiPoint; }
@@ -3135,7 +3135,7 @@ namespace GraphicalDebugging
 
         class ValuesContainer : LoaderR<ExpressionDrawer.ValuesContainer>
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.ValuesContainer; }

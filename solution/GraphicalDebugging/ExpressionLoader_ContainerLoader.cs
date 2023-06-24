@@ -27,7 +27,8 @@ namespace GraphicalDebugging
             public static implicit operator int(Size s) { return s.value; }
 
             public bool IsValid { get; } = false;
-            private int value = 0;
+
+            readonly int value = 0;
         }
 
         abstract class ContainerLoader : Loader
@@ -118,9 +119,7 @@ namespace GraphicalDebugging
                 if (mreader == null)
                     return false;
 
-                ulong address = 0;
-                int size = 0;
-                CalcAddressSize(mreader, debugger, name, type, inAddress, out address, out size);
+                CalcAddressSize(mreader, debugger, name, type, inAddress, out ulong address, out int size);
                 if (size <= 0)
                     return true;
 
@@ -141,8 +140,7 @@ namespace GraphicalDebugging
                     beginAddress = MemoryBegin(mreader, address);
                 if (beginAddress == 0)
                 {
-                    string elemName, elemType;
-                    ElementInfo(name, type, out elemName, out elemType);
+                    ElementInfo(name, type, out string elemName, out string _);
                     beginAddress = debugger.GetValueAddress(elemName);
                 }
                 return beginAddress;
@@ -151,15 +149,13 @@ namespace GraphicalDebugging
 
         class CArray : ContiguousContainer
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Container; }
                 public Loader Create(Loaders loaders, Debugger debugger, string name, string type, string id)
                 {
-                    string elemType;
-                    int size;
-                    if (!NameSizeFromType(type, out elemType, out size))
+                    if (!NameSizeFromType(type, out string elemType, out int size))
                         return null;
 
                     return new CArray(elemType, size);
@@ -225,21 +221,20 @@ namespace GraphicalDebugging
                 if (commaPos >= 0)
                 {
                     string strSize = name.Substring(commaPos + 1);
-                    int size;
                     // Detect Hex in case various versions displayed sizes differently
-                    if (Util.TryParseInt(strSize, out size))
+                    if (Util.TryParseInt(strSize, out int _))
                         result = name.Substring(0, commaPos);
                 }
                 return result;
             }
 
-            string elemType;
-            int size;
+            readonly string elemType;
+            readonly int size;
         }
 
         class StdArray : ContiguousContainer
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Container; }
@@ -297,7 +292,7 @@ namespace GraphicalDebugging
 
         class BoostArray : StdArray
         {
-            public new class LoaderCreator : ExpressionLoader.LoaderCreator
+            public new class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Container; }
@@ -368,11 +363,11 @@ namespace GraphicalDebugging
                      : new Size();
             }
 
-            string sizeMember;
-            string sizeType;
-            int sizeSizeOf;
-            ulong sizeOffset;
-            bool memoryOk;
+            readonly string sizeMember;
+            readonly string sizeType;
+            readonly int sizeSizeOf;
+            readonly ulong sizeOffset;
+            readonly bool memoryOk;
         }
 
         class PointerMember
@@ -409,11 +404,11 @@ namespace GraphicalDebugging
                      : 0;
             }
 
-            string ptrMember;
-            string ptrMemberType;
-            ulong ptrMemberOffset;
-            int ptrMemberSizeOf;
-            bool memoryOk;
+            readonly string ptrMember;
+            readonly string ptrMemberType;
+            readonly ulong ptrMemberOffset;
+            readonly int ptrMemberSizeOf;
+            readonly bool memoryOk;
         }
 
         class PointerMembersDistance
@@ -449,16 +444,16 @@ namespace GraphicalDebugging
                 return new Size();
             }
 
-            string firstMember;
-            string lastMember;
-            PointerMember first;
-            PointerMember last;
-            int sizeOf;
+            readonly string firstMember;
+            readonly string lastMember;
+            readonly PointerMember first;
+            readonly PointerMember last;
+            readonly int sizeOf;
         }
 
         class BoostContainerVector : ContiguousContainer
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Container; }
@@ -509,7 +504,7 @@ namespace GraphicalDebugging
 
         class BoostContainerStaticVector : BoostContainerVector
         {
-            public new class LoaderCreator : ExpressionLoader.LoaderCreator
+            public new class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Container; }
@@ -544,7 +539,7 @@ namespace GraphicalDebugging
 
         class BGVarray : ContiguousContainer
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Container; }
@@ -595,14 +590,14 @@ namespace GraphicalDebugging
                 return sizeMember.LoadParsed(debugger, name);
             }
 
-            string elemType;
-            long elemOffset;
-            SizeMember sizeMember;
+            readonly string elemType;
+            readonly long elemOffset;
+            readonly SizeMember sizeMember;
         }
 
         class BoostCircularBuffer : RandomAccessContainer
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Container; }
@@ -649,8 +644,7 @@ namespace GraphicalDebugging
             {
                 int size = sizeMember.LoadParsed(debugger, name);
                 int size_fe = firstEndDistance.LoadParsed(debugger, name);
-                int size1, size2;
-                CalculateSizes(size, size_fe, out size1, out size2);
+                CalculateSizes(size, size_fe, out int size1, out int size2);
                 
                 for (int i = 0; i < size1; ++i)
                 {
@@ -677,9 +671,7 @@ namespace GraphicalDebugging
                 if (mreader == null)
                     return false;
 
-                ulong address = 0;
-                int size = 0;
-                CalcAddressSize(mreader, debugger, name, type, inAddress, out address, out size);
+                CalcAddressSize(mreader, debugger, name, type, inAddress, out ulong address, out int size);
                 if (address == 0)
                     return false;
                 if (size <= 0)
@@ -687,8 +679,7 @@ namespace GraphicalDebugging
 
                 int size_fe = firstEndDistance.LoadMemory(mreader, address);
                 // TODO: Check sizes at this point?
-                int size1, size2;
-                CalculateSizes(size, size_fe, out size1, out size2);
+                CalculateSizes(size, size_fe, out int size1, out int size2);
                 if (size1 <= 0)
                     return false;
 
@@ -731,15 +722,15 @@ namespace GraphicalDebugging
                 }
             }
 
-            SizeMember sizeMember;
-            PointerMember firstMember;
-            PointerMember buffMember;
-            PointerMembersDistance firstEndDistance;
+            readonly SizeMember sizeMember;
+            readonly PointerMember firstMember;
+            readonly PointerMember buffMember;
+            readonly PointerMembersDistance firstEndDistance;
         }
 
         class StdVector : ContiguousContainer
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Container; }
@@ -805,16 +796,16 @@ namespace GraphicalDebugging
                      : name + "._Mypair._Myval2._Myfirst";
             }
 
-            private enum Version { Unknown, Msvc12, Msvc14_15 };
-            private Version version = Version.Msvc14_15;
+            enum Version { Unknown, Msvc12, Msvc14_15 };
+            readonly Version version = Version.Msvc14_15;
 
-            PointerMember first;
-            PointerMembersDistance firstLastDist;
+            readonly PointerMember first;
+            readonly PointerMembersDistance firstLastDist;
         }
 
         class StdDeque : RandomAccessContainer
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Container; }
@@ -871,9 +862,7 @@ namespace GraphicalDebugging
                 if (mreader == null)
                     return false;
 
-                ulong address = 0;
-                int size = 0;
-                CalcAddressSize(mreader, debugger, name, type, inAddress, out address, out size);
+                CalcAddressSize(mreader, debugger, name, type, inAddress, out ulong address, out int size);
                 if (address == 0)
                     return false;
                 if (size <= 0)
@@ -968,20 +957,20 @@ namespace GraphicalDebugging
                      : name + "._Mypair._Myval2._Map[((" + i + " + " + name + "._Mypair._Myval2._Myoff) / " + name + "._EEN_DS) % " + name + "._Mypair._Myval2._Mapsize][(" + i + " + " + name + "._Mypair._Myval2._Myoff) % " + name + "._EEN_DS]";
             }
 
-            TypeInfo mapInfo;
-            SizeMember mapSize;
-            PointerMember map;
-            SizeMember offset;
-            SizeMember size;
-            int dequeSize;
+            readonly TypeInfo mapInfo;
+            readonly SizeMember mapSize;
+            readonly PointerMember map;
+            readonly SizeMember offset;
+            readonly SizeMember size;
+            readonly int dequeSize;
 
-            private enum Version { Unknown, Msvc12, Msvc14_15 };
-            private Version version = Version.Msvc14_15;
+            enum Version { Unknown, Msvc12, Msvc14_15 };
+            readonly Version version = Version.Msvc14_15;
         }
 
         class StdList : ContainerLoader
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Container; }
@@ -1037,9 +1026,7 @@ namespace GraphicalDebugging
                 if (mreader == null)
                     return false;
 
-                ulong address = 0;
-                int size = 0;
-                CalcAddressSize(mreader, debugger, name, type, inAddress, out address, out size);
+                CalcAddressSize(mreader, debugger, name, type, inAddress, out ulong address, out int size);
                 if (address == 0)
                     return false;
                 if (size <= 0)
@@ -1107,28 +1094,28 @@ namespace GraphicalDebugging
                      : name + "._Mypair._Myval2._Myhead";
             }
 
-            private string SizeStr(string name)
-            {
-                return version == Version.Msvc12
-                     ? name + "._Mysize"
-                     : name + "._Mypair._Myval2._Mysize";
-            }
+            //private string SizeStr(string name)
+            //{
+            //    return version == Version.Msvc12
+            //         ? name + "._Mysize"
+            //         : name + "._Mypair._Myval2._Mysize";
+            //}
 
-            SizeMember size;
-            PointerMember head;
-            PointerMember next;
-            long nextDiff;
-            long valDiff;
+            readonly SizeMember size;
+            readonly PointerMember head;
+            readonly PointerMember next;
+            readonly long nextDiff;
+            readonly long valDiff;
 
-            private enum Version { Unknown, Msvc12, Msvc14_15 };
-            private Version version = Version.Msvc14_15;
+            enum Version { Unknown, Msvc12, Msvc14_15 };
+            readonly Version version = Version.Msvc14_15;
         }
 
         // TODO: limit number of processed values with size
         //       in case some pointers were invalid
         class StdSet : ContainerLoader
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Container; }
@@ -1193,9 +1180,7 @@ namespace GraphicalDebugging
                 if (mreader == null)
                     return false;
 
-                ulong address = 0;
-                int size = 0;
-                CalcAddressSize(mreader, debugger, name, type, inAddress, out address, out size);
+                CalcAddressSize(mreader, debugger, name, type, inAddress, out ulong address, out int size);
                 if (address == 0)
                     return false;
                 if (size <= 0)
@@ -1286,8 +1271,7 @@ namespace GraphicalDebugging
 
             private bool ForEachElementRecursive(Debugger debugger, string nodeName, ElementPredicate elementPredicate)
             {
-                bool isNil;
-                if (debugger.TryLoadBool(nodeName + "->_Isnil", out isNil) && !isNil)
+                if (debugger.TryLoadBool(nodeName + "->_Isnil", out bool isNil) && !isNil)
                 {
                     return ForEachElementRecursive(debugger, nodeName + "->_Left", elementPredicate)
                         && elementPredicate(nodeName + "->_Myval")
@@ -1303,29 +1287,29 @@ namespace GraphicalDebugging
                      : name + "._Mypair._Myval2._Myval2._Myhead->_Parent";
             }
 
-            private string SizeStr(string name)
-            {
-                return version == Version.Msvc12
-                     ? name + "._Mysize"
-                     : name + "._Mypair._Myval2._Myval2._Mysize";
-            }
+            //private string SizeStr(string name)
+            //{
+            //    return version == Version.Msvc12
+            //         ? name + "._Mysize"
+            //         : name + "._Mypair._Myval2._Myval2._Mysize";
+            //}
 
-            SizeMember size;
-            PointerMember head;
-            TypeInfo nodePtrInfo;
-            long parentDiff;
-            long leftDiff;
-            long rightDiff;
-            long isNilDiff;
-            long valDiff;
+            readonly SizeMember size;
+            readonly PointerMember head;
+            readonly TypeInfo nodePtrInfo;
+            readonly long parentDiff;
+            readonly long leftDiff;
+            readonly long rightDiff;
+            readonly long isNilDiff;
+            readonly long valDiff;
 
-            private enum Version { Unknown, Msvc12, Msvc14_15 };
-            private Version version = Version.Msvc14_15;
+            enum Version { Unknown, Msvc12, Msvc14_15 };
+            readonly Version version = Version.Msvc14_15;
         }
 
         class CSArray : ContiguousContainer
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Container; }
@@ -1376,7 +1360,7 @@ namespace GraphicalDebugging
 
         class CSList : ContiguousContainer
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Container; }
@@ -1435,7 +1419,7 @@ namespace GraphicalDebugging
 
         class CSLinkedList : ContainerLoader
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Container; }
@@ -1542,7 +1526,7 @@ namespace GraphicalDebugging
                     string elName = nodeName + ".item";
                     if (!elementPredicate(elName))
                         return false;
-                    nodeName = nodeName + ".next";
+                    nodeName += ".next";
                 }
                 return true;
             }
@@ -1550,7 +1534,7 @@ namespace GraphicalDebugging
 
         class CSContainerBase : ContainerLoader
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Container; }
@@ -1624,15 +1608,15 @@ namespace GraphicalDebugging
                 return "((" + derivedType + ")" + name + ")";
             }
 
-            string derivedType = "";
-            ContainerLoader loader = null;
+            readonly string derivedType = "";
+            readonly ContainerLoader loader = null;
         }
 
         // TODO: ContiguousContainer if in the future I figure out how to get address of a variable in VB
         // and implement it in ExpressionParser
         class BasicArray : RandomAccessContainer
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Container; }
@@ -1690,7 +1674,7 @@ namespace GraphicalDebugging
 
         class BasicList : RandomAccessContainer
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public bool IsUserDefined() { return false; }
                 public Kind Kind() { return ExpressionLoader.Kind.Container; }

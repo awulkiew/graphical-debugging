@@ -29,7 +29,7 @@ namespace GraphicalDebugging
         // TODO: The code is similar to std::vector loader, unify if possible
         class UserArray : ContiguousContainer
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public LoaderCreator(ITypeMatcher typeMatcher,
                                      ClassScopeExpression exprPointer,
@@ -136,7 +136,7 @@ namespace GraphicalDebugging
         // TODO: The code is similar to std::list loader, unify if possible
         class UserLinkedList : ContainerLoader
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public LoaderCreator(ITypeMatcher typeMatcher,
                                      ClassScopeExpression exprHeadPointer,
@@ -654,7 +654,7 @@ namespace GraphicalDebugging
 
         class UserPoint : PointLoader
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public LoaderCreator(ITypeMatcher typeMatcher,
                                      ClassScopeExpression exprX,
@@ -734,7 +734,7 @@ namespace GraphicalDebugging
 
         class UserBoxPoints : BoxLoader
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public LoaderCreator(ITypeMatcher typeMatcher,
                                      ClassScopeExpression exprMin,
@@ -804,7 +804,7 @@ namespace GraphicalDebugging
             public enum CoordsX { LR, LW, WR };
             public enum CoordsY { BT, BH, HT };
 
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public LoaderCreator(ITypeMatcher typeMatcher,
                                      ClassScopeExpression exprX1, // left  left  right
@@ -934,7 +934,7 @@ namespace GraphicalDebugging
 
         class UserSegmentCoords : SegmentLoader
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public LoaderCreator(ITypeMatcher typeMatcher,
                                      ClassScopeExpression exprFirstX,
@@ -1016,7 +1016,7 @@ namespace GraphicalDebugging
 
         class UserRayCoords : RayLoader
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public LoaderCreator(ITypeMatcher typeMatcher,
                                      ClassScopeExpression exprOrigX,
@@ -1096,7 +1096,7 @@ namespace GraphicalDebugging
 
         class UserLineCoords : LineLoader
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public LoaderCreator(ITypeMatcher typeMatcher,
                                      ClassScopeExpression exprFirstX,
@@ -1342,7 +1342,7 @@ namespace GraphicalDebugging
                              , Geometry.IContainer<Geometry.Point>
                              , new()
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public delegate Loader DerivedConstructor(UserContainerLoaders<PointLoader> containerLoaders);
 
@@ -1490,7 +1490,7 @@ namespace GraphicalDebugging
 
         class UserMultiLinestring : RangeLoader<ExpressionDrawer.MultiLinestring>
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public LoaderCreator(ITypeMatcher typeMatcher,
                                      IUserContainerEntry containerEntry)
@@ -1559,7 +1559,7 @@ namespace GraphicalDebugging
 
         class UserPolygon : PolygonLoader
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public LoaderCreator(ITypeMatcher typeMatcher,
                                      ClassScopeExpression exprOuter,
@@ -1683,7 +1683,7 @@ namespace GraphicalDebugging
 
         class UserMultiPolygon : RangeLoader<ExpressionDrawer.MultiPolygon>
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public LoaderCreator(ITypeMatcher typeMatcher,
                                      IUserContainerEntry containerEntry)
@@ -1753,7 +1753,7 @@ namespace GraphicalDebugging
         // TODO: If possible use one implementation for MultiLinestring, MultiPolygon and MultiGeometry
         class UserMultiGeometry : RangeLoader<ExpressionDrawer.DrawablesContainer>
         {
-            public class LoaderCreator : ExpressionLoader.LoaderCreator
+            public class LoaderCreator : ExpressionLoader.ILoaderCreator
             {
                 public LoaderCreator(ITypeMatcher typeMatcher,
                                      IUserContainerEntry containerEntry)
