@@ -818,19 +818,17 @@ namespace GraphicalDebugging
                 // TODO: byteSize and byteOffset could be created in LoaderCreator
                 string ptrName = name + memberArraySuffix;
                 string elemName = ptrName + "[0]";
-                int elemSize = debugger.GetTypeSizeof(coordType);
+                if (!debugger.GetTypeSizeof(coordType, out int elemSize))
+                    return null;
                 MemoryReader.Converter<double> arrayConverter
                     = mreader.GetNumericArrayConverter(coordType, elemSize, count);
-                if (arrayConverter == null)
-                    return null;
-                int byteSize = debugger.GetValueSizeof(name);
-                if (byteSize == 0)
-                    return null;
-                long byteOffset = debugger.GetAddressDifference(name, elemName);
-                if (Debugger.IsInvalidOffset(byteSize, byteOffset))
-                    return null;
-                return new MemoryReader.StructConverter<double>(byteSize,
-                            new MemoryReader.Member<double>(arrayConverter, (int)byteOffset));
+                return arrayConverter != null
+                    && debugger.GetValueSizeof(name, out int byteSize)
+                    && debugger.GetAddressOffset(name, elemName, out long byteOffset)
+                    && !Debugger.IsInvalidOffset(byteSize, byteOffset)
+                     ? new MemoryReader.StructConverter<double>(byteSize,
+                            new MemoryReader.Member<double>(arrayConverter, (int)byteOffset))
+                     : null;
             }
 
             private readonly string memberArraySuffix;
@@ -945,19 +943,13 @@ namespace GraphicalDebugging
                     PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
                                                                  m_min_corner,
                                                                  pointType) as PointLoader;
-                    if (pointLoader == null)
-                        return null;
-
-                    int sizeOf = debugger.GetTypeSizeof(type);
-                    if (Debugger.IsInvalidSize(sizeOf))
-                        return null;
-
-                    long minDiff = debugger.GetAddressDifference(name, m_min_corner);
-                    long maxDiff = debugger.GetAddressDifference(name, m_max_corner);
-                    if (Debugger.IsInvalidOffset(sizeOf, minDiff, maxDiff))
-                        return null;
-
-                    return new BGBox(pointLoader, pointType, sizeOf, minDiff, maxDiff);
+                    return pointLoader != null
+                        && debugger.GetTypeSizeof(type, out int sizeOf)
+                        && debugger.GetAddressOffset(name, m_min_corner, out long minDiff)
+                        && debugger.GetAddressOffset(name, m_max_corner, out long maxDiff)
+                        && !Debugger.IsInvalidOffset(sizeOf, minDiff, maxDiff)
+                         ? new BGBox(pointLoader, pointType, sizeOf, minDiff, maxDiff)
+                         : null;
                 }
             }
 
@@ -1036,19 +1028,13 @@ namespace GraphicalDebugging
                     PointLoader pointLoader = loaders.FindByType(ExpressionLoader.Kind.Point,
                                                                  first,
                                                                  pointType) as PointLoader;
-                    if (pointLoader == null)
-                        return null;
-
-                    int sizeOf = debugger.GetTypeSizeof(type);
-                    if (Debugger.IsInvalidSize(sizeOf))
-                        return null;
-
-                    long firstDiff = debugger.GetAddressDifference(name, first);
-                    long secondDiff = debugger.GetAddressDifference(name, second);
-                    if (Debugger.IsInvalidOffset(sizeOf, firstDiff, secondDiff))
-                        return null;
-
-                    return new BGSegment(pointLoader, pointType, sizeOf, firstDiff, secondDiff);
+                    return pointLoader != null
+                        && debugger.GetTypeSizeof(type, out int sizeOf)
+                        && debugger.GetAddressOffset(name, first, out long firstDiff)
+                        && debugger.GetAddressOffset(name, second, out long secondDiff)
+                        && !Debugger.IsInvalidOffset(sizeOf, firstDiff, secondDiff)
+                         ? new BGSegment(pointLoader, pointType, sizeOf, firstDiff, secondDiff)
+                         : null;
                 }
             }
 
@@ -1089,8 +1075,8 @@ namespace GraphicalDebugging
                 // NOTE: Because it can be created by derived class
                 //   and these members can be set to invalid values
                 //   e.g. BGReferringSegment
-                if (Debugger.IsInvalidSize(sizeOf)
-                    || Debugger.IsInvalidOffset(sizeOf, firstDiff, secondDiff))
+                if (sizeOf <= 0
+                 || Debugger.IsInvalidOffset(sizeOf, firstDiff, secondDiff))
                     return null;
 
                 string first = name + ".first";
@@ -1869,26 +1855,29 @@ namespace GraphicalDebugging
                 // For Memory Loading
 
                 nodePtrType = debugger.GetValueType(nodePtrName);
-                nodePtrSizeOf = debugger.GetTypeSizeof(nodePtrType);
+                // TODO: Handle return values
+                debugger.GetTypeSizeof(nodePtrType, out nodePtrSizeOf);                
+                debugger.GetAddressOffset(nodeVariantName, NodeElements(nodePtrName, leafType), out leafElemsDiff);
+                debugger.GetAddressOffset(nodeVariantName, NodeElements(nodePtrName, internalNodeType), out internalNodeElemsDiff);
 
-                leafElemsDiff = debugger.GetAddressDifference(nodeVariantName, NodeElements(nodePtrName, leafType));
-                internalNodeElemsDiff = debugger.GetAddressDifference(nodeVariantName, NodeElements(nodePtrName, internalNodeType));
                 leafElementsLoader.ElementInfo(leafElemsName, leafElemsType,
                                                out string leafElemName, out string _);
                 internalNodeElementsLoader.ElementInfo(internalNodeElemsName, internalNodeElemsType,
                                                        out string internalNodeElemName, out string _);
 
-                indexableDiff = debugger.GetAddressDifference(leafElemName, leafElemName + indexableMember);
-                nodePtrDiff = debugger.GetAddressDifference(internalNodeElemName, internalNodeElemName + ".second");
+                // TODO: Handle return values
+                debugger.GetAddressOffset(leafElemName, leafElemName + indexableMember, out indexableDiff);
+                debugger.GetAddressOffset(internalNodeElemName, internalNodeElemName + ".second", out nodePtrDiff);
 
                 string whichName = "(" + nodeVariantName + ").which_";
                 whichType = debugger.GetValueType(whichName);
-                whichSizeOf = debugger.GetTypeSizeof(whichType);
-                whichDiff = debugger.GetAddressDifference(nodeVariantName, whichName);
 
-                nodeVariantSizeof = debugger.GetValueSizeof(nodeVariantName);
-                nodePtrPairSizeof = debugger.GetValueSizeof(internalNodeElemName);
-                valueSizeof = debugger.GetValueSizeof(leafElemName);
+                // TODO: Handle return values
+                debugger.GetTypeSizeof(whichType, out whichSizeOf);
+                debugger.GetAddressOffset(nodeVariantName, whichName, out whichDiff);
+                debugger.GetValueSizeof(nodeVariantName, out nodeVariantSizeof);
+                debugger.GetValueSizeof(internalNodeElemName, out nodePtrPairSizeof);
+                debugger.GetValueSizeof(leafElemName, out valueSizeof);
             }
 
             public override Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger,
@@ -1932,20 +1921,16 @@ namespace GraphicalDebugging
                 result = null;
 
                 string nodeVariantName = "*" + nodePtrName;
-                string whichName = "(" + nodeVariantName + ").which_";
+                //string whichName = "(" + nodeVariantName + ").which_";
 
                 if (mreader == null)
                     return;
 
-                if (Debugger.IsInvalidAddressDifference(leafElemsDiff)
-                    || Debugger.IsInvalidAddressDifference(internalNodeElemsDiff)
-                    || Debugger.IsInvalidAddressDifference(indexableDiff)
-                    || Debugger.IsInvalidAddressDifference(nodePtrDiff)
-                    || Debugger.IsInvalidAddressDifference(whichDiff))
+                // TODO: replace with something else
+                if (leafElemsDiff < 0 || internalNodeElemsDiff < 0 || indexableDiff < 0 || nodePtrDiff < 0 || whichDiff < 0)
                     return;
 
-                ulong rootAddr = debugger.GetValueAddress(nodeVariantName);
-                if (rootAddr == 0)
+                 if (!debugger.GetValueAddress(nodeVariantName, out ulong rootAddr))
                     return;
 
                 MemoryReader.Converter<int> whichConverter = mreader.GetValueConverter<int>(whichType, whichSizeOf);
@@ -2158,7 +2143,8 @@ namespace GraphicalDebugging
                 // addresses can be calculated on loader creation and address 0 is
                 // currently reserved as invalid.
                 // So below the address of the R-tree object is used.
-                ulong address = debugger.GetValueAddress(name);
+                if (!debugger.GetValueAddress(name, out ulong address))
+                    return null;
                 string addressStr = address.ToString();
 
                 string valueId = Util.TypeId(valueType);
@@ -2221,7 +2207,7 @@ namespace GraphicalDebugging
 
             int LoadSize(Debugger debugger, string name)
             {
-                return debugger.LoadSize(name + ".m_members.values_count");
+                return debugger.TryLoadUInt(name + ".m_members.values_count", out int size) ? size : 0;
             }
 
             static string RootNodePtr(string name)
@@ -2671,8 +2657,7 @@ namespace GraphicalDebugging
                 if (converter.ValueCount() != 2)
                     throw new ArgumentOutOfRangeException("converter.ValueCount()");
 
-                ulong address = debugger.GetValueAddress(name);
-                if (address == 0)
+                if (!debugger.GetValueAddress(name, out ulong address))
                     return null;
 
                 double[] values = new double[2];
@@ -2690,26 +2675,22 @@ namespace GraphicalDebugging
             {
                 string first = name + ".first";
                 string second = name + ".second";
-                long firstOffset = debugger.GetAddressDifference(name, first);
-                long secondOffset = debugger.GetAddressDifference(name, second);
-                if (Debugger.IsInvalidAddressDifference(firstOffset)
-                 || Debugger.IsInvalidAddressDifference(secondOffset))
-                    return null;
-                int firstSize = debugger.GetTypeSizeof(firstType);
-                int secondSize = debugger.GetTypeSizeof(secondType);
-                if (firstSize == 0 || secondSize == 0)
+                if (!debugger.GetAddressOffset(name, first, out long firstOffset)
+                 || !debugger.GetAddressOffset(name, second, out long secondOffset)
+                 || !debugger.GetTypeSizeof(firstType, out int firstSize)
+                 || !debugger.GetTypeSizeof(secondType, out int secondSize))
                     return null;
                 MemoryReader.ValueConverter<double> firstConverter = mreader.GetNumericConverter(firstType, firstSize);
                 MemoryReader.ValueConverter<double> secondConverter = mreader.GetNumericConverter(secondType, secondSize);
-                if (firstConverter == null || secondConverter == null)
-                    return null;
-                int sizeOfPair = debugger.GetTypeSizeof(type);
-                if (sizeOfPair == 0)
-                    return null;
-                return new MemoryReader.StructConverter<double>(
+                return firstConverter != null
+                    && secondConverter != null
+                    && debugger.GetTypeSizeof(type, out int sizeOfPair)
+                    && !Debugger.IsInvalidOffset(sizeOfPair, firstOffset, secondOffset)
+                     ? new MemoryReader.StructConverter<double>(
                             sizeOfPair,
                             new MemoryReader.Member<double>(firstConverter, (int)firstOffset),
-                            new MemoryReader.Member<double>(secondConverter, (int)secondOffset));
+                            new MemoryReader.Member<double>(secondConverter, (int)secondOffset))
+                     : null;
             }
 
             readonly string firstType;
@@ -3209,7 +3190,8 @@ namespace GraphicalDebugging
 
                 loader.ElementInfo(name, type, out string elemName, out string elemType);
 
-                int valSize = debugger.GetTypeSizeof(elemType);
+                if (!debugger.GetTypeSizeof(elemType, out int valSize))
+                    return;
 
                 MemoryReader.ValueConverter<double>
                     valueConverter = mreader.GetNumericConverter(elemType, valSize);

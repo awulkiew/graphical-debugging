@@ -85,7 +85,7 @@ namespace GraphicalDebugging
                 return new StringPart(mValue);
             }
 
-            string mValue;
+            readonly string mValue;
         }
 
         // TODO: Possible members may be used multiple times in an expression.
@@ -145,9 +145,11 @@ namespace GraphicalDebugging
 
             public IPart DeepCopy()
             {
-                PossibleMemberPart part = new PossibleMemberPart(mIdentifier);
-                part.mValue = mValue;
-                part.mKind = mKind;
+                PossibleMemberPart part = new PossibleMemberPart(mIdentifier)
+                {
+                    mValue = mValue,
+                    mKind = mKind
+                };
                 return part;
             }
 
@@ -176,8 +178,10 @@ namespace GraphicalDebugging
 
             public IPart DeepCopy()
             {
-                ThisPart part = new ThisPart();
-                part.mIsCxx = mIsCxx;
+                ThisPart part = new ThisPart
+                {
+                    mIsCxx = mIsCxx
+                };
                 return part;
             }
 
@@ -226,8 +230,10 @@ namespace GraphicalDebugging
 
             public IPart DeepCopy()
             {
-                TParamPart part = new TParamPart(index);
-                part.tparam = tparam;
+                TParamPart part = new TParamPart(index)
+                {
+                    tparam = tparam
+                };
                 return part;
             }
 
@@ -280,7 +286,10 @@ namespace GraphicalDebugging
                     if (s == "this")
                         result.Add(new ThisPart());
                     else if (s.Length > 2 && s[0] == '$' && s[1] == 'T')
-                        result.Add(new TParamPart(Util.ParseInt(s.Substring(2))));
+                    {
+                        if (Util.TryParseInt(s.Substring(2), out int index))
+                            result.Add(new TParamPart(index));
+                    }
                     else
                         result.Add(new PossibleMemberPart(s));
                 }
@@ -297,6 +306,6 @@ namespace GraphicalDebugging
             return result;
         }
 
-        List<IPart> mParts;
+        readonly List<IPart> mParts;
     }
 }

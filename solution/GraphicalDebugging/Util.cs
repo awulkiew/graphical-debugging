@@ -21,6 +21,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Threading;
 using Task = System.Threading.Tasks.Task;
+using Microsoft.VisualStudio.OLE.Interop;
 
 namespace GraphicalDebugging
 {
@@ -538,23 +539,11 @@ namespace GraphicalDebugging
             return val.Length > 1 /*&& val[0] == '0'*/ && val[1] == 'x';
         }
 
-        public static ulong ParseULong(string val)
+        public static bool TryParseULong(string val, out ulong result)
         {
             return IsHex(val)
-                 ? ulong.Parse(val.Substring(2), NumberStyles.HexNumber)
-                 : ulong.Parse(val);
-        }
-
-        public static int ParseInt(string val)
-        {
-            return ParseInt(val, IsHex(val));
-        }
-
-        public static int ParseInt(string val, bool isHex)
-        {
-            return isHex
-                 ? int.Parse(val.Substring(2), NumberStyles.HexNumber)
-                 : int.Parse(val);
+                 ? ulong.TryParse(val.Substring(2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result)
+                 : ulong.TryParse(val, out result);
         }
 
         public static bool TryParseInt(string val, out int result)
@@ -569,13 +558,13 @@ namespace GraphicalDebugging
                  : int.TryParse(val, out result);
         }
 
-        public static double ParseDouble(string s)
+        public static bool TryParseDouble(string s, out double result)
         {
-            return double.Parse(s, CultureInfo.InvariantCulture);
+            return double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out result);
         }
 
-        // class -> v != null
-        // bool  -> v != false
+// class -> v != null
+// bool  -> v != false
         public static bool IsOk<T1>(T1 v1)
         {
             return !EqualityComparer<T1>.Default.Equals(v1, default);

@@ -100,15 +100,15 @@ namespace GraphicalDebugging
                 window = null;
             }
 
-            string variableName;
-            long timeThreshold;
-            string messagePrefix;
-            string messagePostfix;
+            readonly string variableName;
+            readonly long timeThreshold;
+            readonly string messagePrefix;
+            readonly string messagePostfix;
 
             bool windowCreated = false;
             LoadingWindow window = null;
 
-            System.Diagnostics.Stopwatch stopWatch = new System.Diagnostics.Stopwatch();
+            readonly System.Diagnostics.Stopwatch stopWatch = new System.Diagnostics.Stopwatch();
         }
 
         class TypeInfo
@@ -116,12 +116,8 @@ namespace GraphicalDebugging
             public TypeInfo(Debugger debugger, string name)
             {
                 Type = debugger.GetValueType(name);
-                if (Type == null)
-                    return;
-                Size = debugger.GetTypeSizeof(Type);
-                if (Size <= 0)
-                    return;
-                IsValid = true;
+                IsValid = Type != null
+                      && debugger.GetTypeSizeof(Type, out Size);
             }
 
             public string Type = null;
@@ -134,11 +130,8 @@ namespace GraphicalDebugging
             public MemberInfo(Debugger debugger, string baseName, string memberName)
                 : base(debugger, memberName)
             {
-                if (!IsValid)
-                    return;
-                Offset = debugger.GetAddressDifference(baseName, memberName);
-                if (Debugger.IsInvalidAddressDifference(Offset))
-                    IsValid = false;
+                IsValid = IsValid
+                       && debugger.GetAddressOffset(baseName, memberName, out Offset);
             }
 
             public long Offset;
@@ -149,12 +142,8 @@ namespace GraphicalDebugging
             public VariableInfo(Debugger debugger, string name)
                 : base(debugger, name)
             {
-                if (base.IsValid)
-                {
-                    Address = debugger.GetValueAddress(name);
-                    if (Address == 0)
-                        base.IsValid = false;
-                }
+                IsValid = IsValid
+                       && debugger.GetValueAddress(name, out Address);
             }
 
             public ulong Address;
@@ -182,7 +171,7 @@ namespace GraphicalDebugging
                 return id == this.id;
             }
 
-            string id;
+            readonly string id;
         }
 
         class TypeMatcher : ITypeMatcher
@@ -194,7 +183,7 @@ namespace GraphicalDebugging
                 return type == this.type;
             }
 
-            string type;
+            readonly string type;
         }
 
         class TypePatternMatcher : ITypeMatcher
@@ -236,8 +225,8 @@ namespace GraphicalDebugging
                 return result;
             }
 
-            string pattern;
-            Regex regex;
+            readonly string pattern;
+            readonly Regex regex;
         }
 
         static string StdContainerType(string containerId, string elementType, string allocatorId)

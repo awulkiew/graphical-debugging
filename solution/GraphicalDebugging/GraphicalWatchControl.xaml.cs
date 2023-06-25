@@ -116,15 +116,17 @@ namespace GraphicalDebugging
         private ExpressionDrawer.Settings GetOptions()
         {
             // Empty color - use default
-            ExpressionDrawer.Settings settings = new ExpressionDrawer.Settings();
-            settings.showDir = false;
-            settings.showLabels = false;
-            settings.showDots = false;
-            settings.densify = true;            
-            settings.imageWidth = 100;
-            settings.imageHeight = 100;
-            settings.displayMultiPointsAsPlots = false;
-            settings.image_maintainAspectRatio = false;
+            ExpressionDrawer.Settings settings = new ExpressionDrawer.Settings
+            {
+                showDir = false,
+                showLabels = false,
+                showDots = false,
+                densify = true,
+                imageWidth = 100,
+                imageHeight = 100,
+                displayMultiPointsAsPlots = false,
+                image_maintainAspectRatio = false
+            };
             GraphicalWatchOptionPage optionPage = Util.GetDialogPage<GraphicalWatchOptionPage>();
             if (optionPage != null)
             {
@@ -201,9 +203,7 @@ namespace GraphicalDebugging
                         {
                             if (variable.Drawable == null)
                             {
-                                Geometry.Traits traits = null;
-                                ExpressionDrawer.IDrawable drawable = null;
-                                ExpressionLoader.Load(variable.Name, out traits, out drawable);
+                                ExpressionLoader.Load(variable.Name, out Geometry.Traits traits, out ExpressionDrawer.IDrawable drawable);
 
                                 if (drawable != null
                                     && settings.displayMultiPointsAsPlots

@@ -1,5 +1,7 @@
 ﻿using EnvDTE;
+using Microsoft.VisualStudio.Debugger.ComponentInterfaces;
 using System;
+using System.Windows.Forms;
 using static GraphicalDebugging.MemoryReader;
 
 namespace GraphicalDebugging
@@ -18,42 +20,30 @@ namespace GraphicalDebugging
             this.debugger = dte.Debugger;
         }
 
-        public int LoadSize(string name)
+        // TODO: return uint
+        public bool TryLoadUInt(string name, out int result)
         {
-            var expr = debugger.GetExpression(name);
-            return expr.IsValidValue
-                 ? Math.Max(Util.ParseInt(expr.Value, debugger.HexDisplayMode), 0)
-                 : 0;
-        }
-        public int LoadInt(string name, int defaultValue = 0)
-        {
-            var expr = debugger.GetExpression(name);
-            return expr.IsValidValue
-                 ? Util.ParseInt(expr.Value, debugger.HexDisplayMode)
-                 : defaultValue;
+            return TryLoadInt(name, out result)
+                && result >= 0;
         }
 
         public bool TryLoadInt(string name, out int result)
         {
             result = 0;
             var expr = debugger.GetExpression(name);
-            if (!expr.IsValidValue)
-                return false;
-            result = Util.ParseInt(expr.Value, debugger.HexDisplayMode);
-            return true;
+            return expr.IsValidValue
+                && Util.TryParseInt(expr.Value, debugger.HexDisplayMode, out result);
         }
 
         public bool TryLoadDouble(string name, out double result)
         {
             result = 0.0;
-            string castedName = "(double)" + name;
-            if (IsLanguageBasic)
-                castedName = "CType(" + name + ", Double)";
+            string castedName = !IsLanguageBasic
+                              ? "(double)" + name
+                              : "CType(" + name + ", Double)";
             var expr = debugger.GetExpression(castedName);
-            if (!expr.IsValidValue)
-                return false;
-            result = Util.ParseDouble(expr.Value);
-            return true;
+            return expr.IsValidValue
+                && Util.TryParseDouble(expr.Value, out result);
         }
 
         public bool TryLoadBool(string name, out bool result)
@@ -66,45 +56,39 @@ namespace GraphicalDebugging
             return true;
         }
 
-        /*struct AddressDifference
+        // TODO: take size to check against out of bounds
+        // TODO: return ulong?
+        // Difference of addresses of variables valName1 and valName2
+        // Returns false if addresses cannot be loaded, parsed, any of them is equal to 0 or offset is < 0
+        // In these cases result is negative
+        public bool GetAddressOffset(string valName1, string valName2, out long result)
         {
-            long Value;
-            bool IsValid;
-        }*/
-
-        // Valid difference of addresses of variables valName1 and valName2
-        // or long.MinValue
-        // detect invalid address difference with IsInvalidAddressDifference()
-        public long GetAddressDifference(string valName1, string valName2)
-        {
-            ulong addr1 = GetValueAddress(valName1);
-            ulong addr2 = GetValueAddress(valName2);
-            if (addr1 == 0 || addr2 == 0)
-                return long.MinValue;
-            return (addr2 >= addr1)
-                 ? (long)(addr2 - addr1)
-                 : -(long)(addr1 - addr2);
+            result = long.MinValue;
+            if (GetValueAddress(valName1, out ulong addr1)
+             && GetValueAddress(valName2, out ulong addr2)
+             && addr2 >= addr1)
+            {
+                result = (long)(addr2 - addr1);
+                return true;
+            }
+            return false;
         }
 
-        public long GetPointerDifference(string pointerName1, string pointerName2)
+        // TODO: take size to check against out of bounds
+        // TODO: return ulong?
+        // Returns false if addresses cannot be loaded, parsed, any of them is equal to 0 or offset is < 0
+        // In these cases result is negative
+        public bool GetPointerOffset(string pointerName1, string pointerName2, out long result)
         {
-            ulong addr1 = GetPointer(pointerName1);
-            ulong addr2 = GetPointer(pointerName2);
-            if (addr1 == 0 || addr2 == 0)
-                return long.MinValue;
-            return (addr2 >= addr1)
-                 ? (long)(addr2 - addr1)
-                 : -(long)(addr1 - addr2);
-        }
-
-        public static long InvalidAddressDifference()
-        {
-            return long.MinValue;
-        }
-
-        public static bool IsInvalidAddressDifference(long diff)
-        {
-            return diff == long.MinValue;
+            result = long.MinValue;
+            if (GetPointer(pointerName1, out ulong addr1)
+             && GetPointer(pointerName2, out ulong addr2)
+             && addr2 >= addr1)
+            {
+                result = (long)(addr2 - addr1);
+                return true;
+            }
+            return false;
         }
 
         // C++ and C# only!
@@ -122,62 +106,67 @@ namespace GraphicalDebugging
         // - size: "System.Runtime.InteropServices.Marshal.ReadInt32(typeof(" + type + ").TypeHandle.Value, 4)"
         // - size: "*(((int*)(void*)typeof(" + type + ").TypeHandle.Value) + 1)"
 
-        public ulong GetPointer(string pointerName)
+        // Value of pointer, aka address pointed to
+        // Returns false if address cannot be loaded, parsed or if it is equal to 0
+        public bool GetPointer(string pointerName, out ulong result)
         {
+            result = 0;
             var ptrExpr = debugger.GetExpression("(void*)(" + pointerName + ")");
-            if (!ptrExpr.IsValidValue)
-                return 0;
-            string addr = ptrExpr.Value;
-
-            // NOTE: Hexadecimal value is automatically detected, this is probably not needed.
-            // But automatically detect the format just in case of various versions
-            // of VS displayed it differently regardless of debugger mode.
-            return Util.ParseULong(addr/*, true*/);
+            return ptrExpr.IsValidValue
+                // NOTE: Hexadecimal value is automatically detected, this is probably not needed.
+                // But automatically detect the format just in case of various versions
+                // of VS displayed it differently regardless of debugger mode.
+                && Util.TryParseULong(ptrExpr.Value/*, true*/, out result)
+                && result != 0;
         }
 
-        // Valid address of variable valName or 0
-        public ulong GetValueAddress(string valName)
+        // Address of variable
+        // Returns false if address cannot be loaded, parsed or if it is equal to 0
+        public bool GetValueAddress(string valName, out ulong result)
         {
-            return GetPointer("&(" + valName + ")");
+            return GetPointer("&(" + valName + ")", out result);
         }
 
-        // Valid size or 0
         // NOTE: In C++ the actual byte size depends on CHAR_BIT
-        public int GetValueSizeof(string valName)
+        // Returns false if size of variable cannot be loaded, parsed or if it is <= 0
+        public bool GetValueSizeof(string valName, out int result)
         {
+            result = 0;
             string typeName = valName; // In C++ value and type is interchangeable when passed into sizeof
-            //if (!IsLanguageCpp(debugger))
+            //if (!IsLanguageCpp)
             if (IsLanguageCs) // Change this when getting address in Basic works
             {
                 var valExpr = debugger.GetExpression(valName);
                 if (!valExpr.IsValidValue)
-                    return 0;
+                    return false;
                 typeName = valExpr.Type;
             }
-            return GetTypeSizeof(typeName);
+            return GetTypeSizeof(typeName, out result);
         }
 
-        // Valid size or 0
-        public int GetTypeSizeof(string valType)
+        // Returns false if size of type cannot be loaded, parsed or if it is <= 0
+        public bool GetTypeSizeof(string valType, out int result)
         {
+            result = 0;
             if (IsLanguageBasic) // Change this when getting address in Basic works
                 //sizeOfStr = "System.Runtime.InteropServices.Marshal.SizeOf(GetType(" + valType + "))";
-                return 0;
-
+                return false;
             string sizeOfStr = "sizeof(" + valType + ")";
             var valSizeExpr = debugger.GetExpression(sizeOfStr);
             return valSizeExpr.IsValidValue
-                 ? Util.ParseInt(valSizeExpr.Value, debugger.HexDisplayMode)
-                 : 0;
+                && Util.TryParseInt(valSizeExpr.Value, debugger.HexDisplayMode, out result)
+                && result > 0;
         }
 
-        public int GetCppSizeof(string valNameOrType)
+        // Returns false if size of type cannot be loaded, parsed or if it is <= 0
+        public bool GetCppSizeof(string valNameOrType, out int result)
         {
+            result = 0;
             string sizeOfStr = "sizeof(" + valNameOrType + ")";
             var valSizeExpr = debugger.GetExpression(sizeOfStr);
             return valSizeExpr.IsValidValue
-                 ? Util.ParseInt(valSizeExpr.Value, debugger.HexDisplayMode)
-                 : 0;
+                && Util.TryParseInt(valSizeExpr.Value, debugger.HexDisplayMode, out result)
+                && result > 0;
         }
 
         // Valid type name or null
@@ -227,21 +216,9 @@ namespace GraphicalDebugging
             return string.IsNullOrEmpty(type1) || string.IsNullOrEmpty(type2);
         }
 
-        public static bool IsInvalidSize(int size)
-        {
-            return size <= 0;
-        }
-
-        public static bool IsInvalidSize(int size1, int size2)
-        {
-            return size1 <= 0 || size2 <= 0;
-        }
-
         public static bool IsInvalidOffset(long size, long offset)
         {
-            return IsInvalidAddressDifference(offset)
-                || offset < 0
-                || offset >= size;
+            return offset < 0 || offset >= size;
         }
 
         public static bool IsInvalidOffset(long size, long offset1, long offset2)

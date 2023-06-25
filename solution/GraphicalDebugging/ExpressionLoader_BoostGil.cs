@@ -49,9 +49,9 @@ namespace GraphicalDebugging
                 // memory random size could be loaded here. Then also the memory probably points
                 // to some random place in memory (maybe protected?) so the result will probably
                 // be another exception which is fine or an image containing noise from memory.
-                int width = debugger.LoadSize(name + "._view._dimensions.x");
-                int height = debugger.LoadSize(name + "._view._dimensions.y");
-                if (width < 1 || height < 1)
+                if (!debugger.TryLoadUInt(name + "._view._dimensions.x", out int width)
+                 || !debugger.TryLoadUInt(name + "._view._dimensions.y", out int height)
+                 || width < 1 || height < 1)
                     return null;
 
                 if (! Util.Tparams(type, out string pixelType, out string isPlanarStr))
@@ -101,8 +101,7 @@ namespace GraphicalDebugging
                 bool isLoaded = false;
                 if (mreader != null)
                 {
-                    ulong address = debugger.GetValueAddress(name + "._memory[0]");
-                    if (address == 0)
+                     if (!debugger.GetValueAddress(name + "._memory[0]", out ulong address))
                         return null;
 
                     isLoaded = mreader.ReadBytes(address, memory);
@@ -208,9 +207,9 @@ namespace GraphicalDebugging
                     }
                 }
 
-                channelValueSize = channelValueKind != ChannelValueKind.Unknown
-                                 ? debugger.GetCppSizeof(rawType)
-                                 : 0;
+                channelValueSize = 0;
+                if (channelValueKind != ChannelValueKind.Unknown)
+                    debugger.GetCppSizeof(rawType, out channelValueSize);
             }
 
             enum ColorSpace { Unknown, Rgb, Rgba, Cmyk, Gray, GrayAlpha };

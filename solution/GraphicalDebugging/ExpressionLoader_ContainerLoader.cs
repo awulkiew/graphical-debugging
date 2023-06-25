@@ -63,7 +63,9 @@ namespace GraphicalDebugging
                 outSize = 0;
 
                 if (outAddress == 0)
-                    outAddress = debugger.GetValueAddress(name);
+                {
+                    debugger.GetValueAddress(name, out outAddress);
+                }
 
                 bool ok = false;
                 if (outAddress != 0)
@@ -141,7 +143,7 @@ namespace GraphicalDebugging
                 if (beginAddress == 0)
                 {
                     ElementInfo(name, type, out string elemName, out string _);
-                    beginAddress = debugger.GetValueAddress(elemName);
+                    debugger.GetValueAddress(elemName, out beginAddress);
                 }
                 return beginAddress;
             }
@@ -246,11 +248,9 @@ namespace GraphicalDebugging
                     string elemType = Util.Tparam(type, 0);
                     int size = Math.Max(int.Parse(Util.Tparam(type, 1)), 0);
 
-                    long elemOffset = debugger.GetAddressDifference(name, name + "._Elems[0]");
-                    if (elemOffset < 0)
-                        return null;
-
-                    return new StdArray(elemType, elemOffset, size);
+                    return debugger.GetAddressOffset(name, name + "._Elems[0]", out long elemOffset)
+                         ? new StdArray(elemType, elemOffset, size)
+                         : null;
                 }
             }
 
@@ -304,11 +304,9 @@ namespace GraphicalDebugging
                     string elemType = Util.Tparam(type, 0);
                     int size = Math.Max(int.Parse(Util.Tparam(type, 1)), 0);
 
-                    long elemOffset = debugger.GetAddressDifference(name, name + ".elems[0]");
-                    if (elemOffset < 0)
-                        return null;
-
-                    return new BoostArray(elemType, elemOffset, size);
+                    return debugger.GetAddressOffset(name, name + ".elems[0]", out long elemOffset)
+                         ? new BoostArray(elemType, elemOffset, size)
+                         : null;
                 }
             }
 
@@ -332,20 +330,18 @@ namespace GraphicalDebugging
             // sizeMember has to start with '.', e.g. ".m_size"
             public SizeMember(Debugger debugger, string name, string sizeMember)
             {
+                long sizeOffset = 0;
                 this.sizeMember = sizeMember;
-                this.sizeType = debugger.GetValueType(name + sizeMember);
-                this.sizeSizeOf = debugger.GetTypeSizeof(sizeType);
-                long sizeOffset = debugger.GetAddressDifference(name, name + sizeMember);
-                this.sizeOffset = (ulong)sizeOffset;
+                this.sizeType = debugger.GetValueType(name + sizeMember);               
                 this.memoryOk = !Util.Empty(sizeType)
-                             && !Debugger.IsInvalidSize(sizeSizeOf)
-                             && !Debugger.IsInvalidAddressDifference(sizeOffset)
-                             && sizeOffset >= 0;
+                             && debugger.GetTypeSizeof(sizeType, out this.sizeSizeOf)
+                             && debugger.GetAddressOffset(name, name + sizeMember, out sizeOffset);
+                this.sizeOffset = (ulong)sizeOffset;
             }
 
             public int LoadParsed(Debugger debugger, string name)
             {
-                return debugger.LoadSize(name + sizeMember);
+                return debugger.TryLoadUInt(name + sizeMember, out int size) ? size : 0;
             }
 
             // TODO: Return -1 or int.Min on failure
@@ -374,21 +370,18 @@ namespace GraphicalDebugging
         {
             public PointerMember(Debugger debugger, string name, string ptrMember)
             {
+                long ptrMemberOffset = 0;
                 this.ptrMember = ptrMember;
                 this.ptrMemberType = debugger.GetValueType(name + ptrMember);
-                this.ptrMemberSizeOf = debugger.GetTypeSizeof(ptrMemberType);
-                long ptrMemberOffset = debugger.GetAddressDifference(name, name + ptrMember);
-                this.ptrMemberOffset = (ulong)ptrMemberOffset;
-
                 this.memoryOk = !Util.Empty(ptrMemberType)
-                             && !Debugger.IsInvalidSize(ptrMemberSizeOf)
-                             && !Debugger.IsInvalidAddressDifference(ptrMemberOffset)
-                             && ptrMemberOffset >= 0;
+                             && debugger.GetTypeSizeof(ptrMemberType, out this.ptrMemberSizeOf)
+                             && debugger.GetAddressOffset(name, name + ptrMember, out ptrMemberOffset);
+                this.ptrMemberOffset = (ulong)ptrMemberOffset;
             }
 
             public ulong LoadParsed(Debugger debugger, string name)
             {
-                return debugger.GetPointer('(' + name + ptrMember + ')');
+                return debugger.GetPointer('(' + name + ptrMember + ')', out ulong address) ? address : 0;
             }
 
             public ulong LoadMemory(MemoryReader mreader, ulong address)
@@ -421,12 +414,12 @@ namespace GraphicalDebugging
                 this.first = new PointerMember(debugger, name, firstMember);
                 this.last = new PointerMember(debugger, name , lastMember);
                 string type = debugger.GetValueType("*(" + name + firstMember + ")");
-                sizeOf = debugger.GetTypeSizeof(type);
+                debugger.GetTypeSizeof(type, out sizeOf);
             }
 
             public int LoadParsed(Debugger debugger, string name)
             {
-                return debugger.LoadSize('(' + name + lastMember + '-' + name + firstMember + ')');
+                return debugger.TryLoadUInt('(' + name + lastMember + '-' + name + firstMember + ')', out int size) ? size : 0;
             }
 
             // TODO: Return ulong?
@@ -550,11 +543,9 @@ namespace GraphicalDebugging
 
                     string elemType = Util.Tparam(type, 0);
 
-                    long elemOffset = debugger.GetAddressDifference(name, name + ".m_storage.data_.buf[0]");
-                    if (elemOffset < 0)
-                        return null;
-
-                    return new BGVarray(elemType, elemOffset, new SizeMember(debugger, name, ".m_size"));
+                    return debugger.GetAddressOffset(name, name + ".m_storage.data_.buf[0]", out long elemOffset)
+                         ? new BGVarray(elemType, elemOffset, new SizeMember(debugger, name, ".m_size"))
+                         : null;
                 }
             }
 
@@ -1004,11 +995,9 @@ namespace GraphicalDebugging
                 string headStr = HeadStr(name);
                 string headNodeName = "(*(" + headStr + "->_Next))";
                 next = new PointerMember(debugger, headNodeName, "._Next");
-                nextDiff = debugger.GetAddressDifference(headNodeName,
-                                                         headStr + "->_Next->_Next");
-                valDiff = debugger.GetAddressDifference(headNodeName,
-                                                        headStr + "->_Next->_Myval");
-
+                // TODO: handle return values instead
+                debugger.GetAddressOffset(headNodeName, headStr + "->_Next->_Next", out nextDiff);
+                debugger.GetAddressOffset(headNodeName, headStr + "->_Next->_Myval", out valDiff);
             }
 
             public override void ElementInfo(string name, string type,
@@ -1036,10 +1025,7 @@ namespace GraphicalDebugging
                 if (headAddr == 0)
                     return false;
 
-                if (Debugger.IsInvalidAddressDifference(nextDiff)
-                 || Debugger.IsInvalidAddressDifference(valDiff)
-                 || nextDiff < 0
-                 || valDiff < 0)
+                if (nextDiff < 0 || valDiff < 0)
                     return false;
 
                 ulong next = 0;
@@ -1157,12 +1143,12 @@ namespace GraphicalDebugging
 
                 nodePtrInfo = new TypeInfo(debugger, nodeName);
 
-                parentDiff = debugger.GetAddressDifference("(*" + headStr + ")", nodeName);
-                leftDiff = debugger.GetAddressDifference("(*" + nodeName + ")", leftName);
-                rightDiff = debugger.GetAddressDifference("(*" + nodeName + ")", rightName);
-                isNilDiff = debugger.GetAddressDifference("(*" + nodeName + ")", isNilName);
-                valDiff = debugger.GetAddressDifference("(*" + nodeName + ")", valName);
-                
+                // TODO: handle return values instead
+                debugger.GetAddressOffset("(*" + headStr + ")", nodeName, out parentDiff);
+                debugger.GetAddressOffset("(*" + nodeName + ")", leftName, out leftDiff);
+                debugger.GetAddressOffset("(*" + nodeName + ")", rightName, out rightDiff);
+                debugger.GetAddressOffset("(*" + nodeName + ")", isNilName, out isNilDiff);
+                debugger.GetAddressOffset("(*" + nodeName + ")", valName, out valDiff);
             }
 
             public override void ElementInfo(string name, string type,
@@ -1194,12 +1180,7 @@ namespace GraphicalDebugging
                 if (ptrConverter == null)
                     return false;
 
-                if (Debugger.IsInvalidAddressDifference(parentDiff)
-                 || Debugger.IsInvalidAddressDifference(leftDiff)
-                 || Debugger.IsInvalidAddressDifference(rightDiff)
-                 || Debugger.IsInvalidAddressDifference(isNilDiff)
-                 || Debugger.IsInvalidAddressDifference(valDiff)
-                 || parentDiff < 0 || leftDiff < 0 || rightDiff < 0 || isNilDiff < 0 || valDiff < 0)
+                if (parentDiff < 0 || leftDiff < 0 || rightDiff < 0 || isNilDiff < 0 || valDiff < 0)
                     return false;
 
                 ulong headAddr = this.head.LoadMemory(mreader, address);
@@ -1330,7 +1311,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return debugger.LoadSize(name + ".Length");
+                return debugger.TryLoadUInt(name + ".Length", out int size) ? size : 0;
             }
 
             public override ulong MemoryBegin(MemoryReader mreader, ulong address)
@@ -1374,7 +1355,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return debugger.LoadSize(name + ".Count");
+                return debugger.TryLoadUInt(name + ".Count", out int size) ? size : 0;
             }
 
             public override ulong MemoryBegin(MemoryReader mreader, ulong address)
@@ -1440,7 +1421,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return debugger.LoadSize(name + ".count");
+                return debugger.TryLoadUInt(name + ".count", out int size) ? size : 0;
             }
 
             public override Size LoadSize(MemoryReader mreader, ulong address)
@@ -1488,15 +1469,9 @@ namespace GraphicalDebugging
                 if (pointerConverter == null)
                     return false;
 
-                long nextDiff = debugger.GetPointerDifference(headPointerName, nextPointerPointerName);
-                long valDiff = debugger.GetPointerDifference(headPointerName, valPointerName);
-                if (Debugger.IsInvalidAddressDifference(nextDiff)
-                 || Debugger.IsInvalidAddressDifference(valDiff)
-                 || nextDiff < 0 || valDiff < 0)
-                    return false;
-
-                ulong address = debugger.GetPointer(headPointerName);
-                if (address == 0)
+                if (!debugger.GetPointerOffset(headPointerName, nextPointerPointerName, out long nextDiff)
+                 || !debugger.GetPointerOffset(headPointerName, valPointerName, out long valDiff)
+                 || !debugger.GetPointer(headPointerName, out ulong address))
                     return false;
 
                 for (int i = 0; i < size; ++i)
@@ -1642,7 +1617,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return debugger.LoadSize(name + ".Length");
+                return debugger.TryLoadUInt(name + ".Length", out int size) ? size : 0;
             }
 
             public override Size LoadSize(MemoryReader mreader, ulong address)
@@ -1688,7 +1663,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return debugger.LoadSize(name + ".Count");
+                return debugger.TryLoadUInt(name + ".Count", out int size) ? size : 0;
             }
 
             public override Size LoadSize(MemoryReader mreader, ulong address)

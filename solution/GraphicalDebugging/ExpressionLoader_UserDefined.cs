@@ -89,7 +89,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return debugger.LoadSize(exprSize.GetString(name));
+                return debugger.TryLoadUInt(exprSize.GetString(name), out int size) ? size : 0;
             }
 
             public override ulong MemoryBegin(MemoryReader mreader, ulong address)
@@ -117,8 +117,7 @@ namespace GraphicalDebugging
                     return true;
 
                 ElementInfo(name, type, out string elemName, out string _);
-                ulong beginAddress = debugger.GetValueAddress(elemName);
-                if (beginAddress == 0)
+                if (!debugger.GetValueAddress(elemName, out ulong beginAddress))
                     return false;
 
                 var blockConverter = new MemoryReader.ArrayConverter<T>(elementConverter, size);
@@ -208,7 +207,7 @@ namespace GraphicalDebugging
 
             public override int LoadSize(Debugger debugger, string name)
             {
-                return debugger.LoadSize(exprSize.GetString(name));
+                return debugger.TryLoadUInt(exprSize.GetString(name), out int result) ? result : 0;
             }
 
             public override Size LoadSize(MemoryReader mreader, ulong address)
@@ -242,15 +241,9 @@ namespace GraphicalDebugging
                 if (nextConverter == null)
                     return false;
 
-                long nextDiff = debugger.GetAddressDifference(headName, nextPointerName);
-                long valDiff = debugger.GetAddressDifference(headName, valName);
-                if (Debugger.IsInvalidAddressDifference(nextDiff)
-                 || Debugger.IsInvalidAddressDifference(valDiff)
-                 || nextDiff < 0 || valDiff < 0)
-                    return false;
-
-                ulong nodeAddress = debugger.GetValueAddress(headName);
-                if (nodeAddress == 0)
+                if (!debugger.GetAddressOffset(headName, nextPointerName, out long nextDiff)
+                 || !debugger.GetAddressOffset(headName, valName, out long valDiff)
+                 || !debugger.GetValueAddress(headName, out ulong nodeAddress))
                     return false;
 
                 for (int i = 0; i < size; ++i)
@@ -311,16 +304,11 @@ namespace GraphicalDebugging
                 
                 string name = expr.GetString(parentName);
                 type = debugger.GetValueType(name);
-                if (Debugger.IsInvalidType(type))
-                    return;
-
-                sizeOf = debugger.GetTypeSizeof(type);
-                if (Debugger.IsInvalidSize(sizeOf))
-                    return;
-
-                offset = debugger.GetAddressDifference(parentName, name);
-                // offset + size > sizeOf
-                if (Debugger.IsInvalidOffset(parentSizeOf, offset))
+                if (Debugger.IsInvalidType(type)
+                 || !debugger.GetTypeSizeof(type, out sizeOf)
+                 || !debugger.GetAddressOffset(parentName, name, out offset)
+                    // offset + size > sizeOf
+                 || Debugger.IsInvalidOffset(parentSizeOf, offset))
                     return;
 
                 IsValid = true;
@@ -354,8 +342,7 @@ namespace GraphicalDebugging
                     return null;
 
                 string name = expr.GetString(parentName);
-                ulong address = debugger.GetValueAddress(name);
-                if (address == 0)
+                if (!debugger.GetValueAddress(name, out ulong address))
                     return null;
 
                 double[] values = new double[1];
@@ -404,12 +391,9 @@ namespace GraphicalDebugging
                 if (loader == null)
                     return;
 
-                offset = debugger.GetAddressDifference(parentName, name);
                 // offset + size > sizeOf
-                if (Debugger.IsInvalidOffset(parentSizeOf, offset))
-                    return;
-
-                IsValid = true;
+                IsValid = debugger.GetAddressOffset(parentName, name, out offset)
+                       && Debugger.IsInvalidOffset(parentSizeOf, offset);
             }
 
             public Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger, string parentName)
@@ -473,8 +457,7 @@ namespace GraphicalDebugging
             {
                 IsValid = false;
 
-                sizeOf = debugger.GetTypeSizeof(type);
-                if (Debugger.IsInvalidSize(sizeOf))
+                if (!debugger.GetTypeSizeof(type, out sizeOf))
                     return;
 
                 bool allValid = true;
