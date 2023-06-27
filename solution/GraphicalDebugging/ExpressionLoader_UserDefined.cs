@@ -666,7 +666,7 @@ namespace GraphicalDebugging
                                                                 exprs,
                                                                 new Geometry.Traits(2, cs, unit));
 
-                    return simpleGeometry != null
+                    return simpleGeometry != null && simpleGeometry.IsValid
                          ? new UserPoint(simpleGeometry)
                          : null;
                 }
