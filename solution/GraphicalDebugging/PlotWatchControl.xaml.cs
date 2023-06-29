@@ -27,19 +27,19 @@ namespace GraphicalDebugging
     /// </summary>
     public partial class PlotWatchControl : UserControl
     {
-        Util.IntsPool m_colorIds;
+        readonly Util.IntsPool m_colorIds;
 
-        private bool m_isDataGridEdited;
+        bool m_isDataGridEdited;
 
-        Bitmap m_emptyBitmap;
+        readonly Bitmap m_emptyBitmap;
 
-        System.Windows.Shapes.Rectangle m_selectionRect = new System.Windows.Shapes.Rectangle();
-        System.Windows.Shapes.Line m_mouseVLine = new System.Windows.Shapes.Line();
-        System.Windows.Shapes.Line m_mouseHLine = new System.Windows.Shapes.Line();
-        TextBlock m_mouseTxt = new TextBlock();
-        Geometry.Point m_pointDown = new Geometry.Point(0, 0);
+        readonly System.Windows.Shapes.Rectangle m_selectionRect = new System.Windows.Shapes.Rectangle();
+        readonly System.Windows.Shapes.Line m_mouseVLine = new System.Windows.Shapes.Line();
+        readonly System.Windows.Shapes.Line m_mouseHLine = new System.Windows.Shapes.Line();
+        readonly TextBlock m_mouseTxt = new TextBlock();
+        readonly Geometry.Point m_pointDown = new Geometry.Point(0, 0);
         bool m_mouseDown = false;
-        ZoomBox m_zoomBox = new ZoomBox();
+        readonly ZoomBox m_zoomBox = new ZoomBox();
         Geometry.Box m_currentBox = null;
         LocalCS m_currentLocalCS = null;
 
@@ -307,9 +307,8 @@ namespace GraphicalDebugging
                                 {
                                     try
                                     {
-                                        ExpressionDrawer.IDrawable d = null;
-                                        Geometry.Traits t = null;
-                                        ExpressionLoader.Load(names[i], ExpressionLoader.OnlyMultiPoints, out t, out d);
+                                        ExpressionLoader.Load(names[i], ExpressionLoader.OnlyMultiPoints,
+                                                              out Geometry.Traits t, out ExpressionDrawer.IDrawable d);
                                         if (d != null)
                                         {
                                             if (t != null)
@@ -350,15 +349,19 @@ namespace GraphicalDebugging
             }
 
             imageGrid.ContextMenu = new ContextMenu();
-            MenuItem mi = new MenuItem();
-            mi.Header = "Copy";
+            MenuItem mi = new MenuItem
+            {
+                Header = "Copy"
+            };
             mi.Click += MenuItem_Copy;
             if (imageEmpty)
                 mi.IsEnabled = false;
             imageGrid.ContextMenu.Items.Add(mi);
             imageGrid.ContextMenu.Items.Add(new Separator());
-            MenuItem mi2 = new MenuItem();
-            mi2.Header = "Reset View";
+            MenuItem mi2 = new MenuItem
+            {
+                Header = "Reset View"
+            };
             mi2.Click += MenuItem_ResetZoom;
             if (imageEmpty)
                 mi2.IsEnabled = false;

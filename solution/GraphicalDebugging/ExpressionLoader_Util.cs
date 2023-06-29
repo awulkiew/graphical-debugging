@@ -37,8 +37,10 @@ namespace GraphicalDebugging
                         IntPtr mainWindowHandle = Util.GetWindowHandle(System.Windows.Application.Current.MainWindow);
                         System.Threading.Thread thread = new System.Threading.Thread(() =>
                         {
-                            LoadingWindow w = new LoadingWindow();
-                            w.Title = "Loading takes much time.";
+                            LoadingWindow w = new LoadingWindow
+                            {
+                                Title = "Loading takes much time."
+                            };
                             w.Show();
                             w.Closed += (sender2, e2) => w.Dispatcher.InvokeShutdown();
                             IntPtr wHandle = Util.GetWindowHandle(w);
