@@ -75,14 +75,12 @@
                         <!--Override Highlighting so that its easy to see what is selected even when the control is not focused-->
                         <Style.Triggers>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="{x:Static SystemColors.HighlightBrush}" />
-                                <Setter Property="Foreground" Value="{x:Static SystemColors.HighlightTextBrush}" />
-                                <Setter Property="BorderBrush" Value="{x:Static SystemColors.HighlightBrush}" />
+                                <Setter Property="Background" Value="{DynamicResource VsBrush.Highlight}" />
+                                <Setter Property="Foreground" Value="{DynamicResource VsBrush.HighlightText}" />
                             </Trigger>
                             <Trigger Property="IsSelected" Value="False">
                                 <Setter Property="Background" Value="{DynamicResource VsBrush.ToolWindowBackground}" />
                                 <Setter Property="Foreground" Value="{DynamicResource VsBrush.ToolWindowText}" />
-                                <Setter Property="BorderBrush" Value="{DynamicResource VsBrush.ToolWindowBorder}" />
                             </Trigger>
                             <MultiDataTrigger>
                                 <MultiDataTrigger.Conditions>
@@ -92,14 +90,21 @@
                                 <MultiDataTrigger.Setters>
                                     <Setter Property="Background" Value="{DynamicResource VsBrush.ToolWindowBackground}" />
                                     <Setter Property="Foreground" Value="{DynamicResource VsBrush.ToolWindowText}" />
-                                    <Setter Property="BorderBrush" Value="{DynamicResource VsBrush.ToolWindowBorder}" />
                                 </MultiDataTrigger.Setters>
                             </MultiDataTrigger>
                         </Style.Triggers>
                     </Style>
                 </DataGrid.CellStyle>
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="100" />
+                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="100">
+                        <DataGridTextColumn.EditingElementStyle>
+                            <Style TargetType="TextBox">
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Setter Property="Background" Value="{DynamicResource VsBrush.ToolWindowBackground}" />
+                                <Setter Property="Foreground" Value="{DynamicResource VsBrush.ToolWindowText}" />
+                            </Style>
+                        </DataGridTextColumn.EditingElementStyle>
+                    </DataGridTextColumn>
                     <DataGridCheckBoxColumn Binding="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}"/>
                     <DataGridTemplateColumn Header="Color" Width="50">
                         <DataGridTemplateColumn.CellTemplate>
