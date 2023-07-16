@@ -6,19 +6,12 @@
 
 namespace GraphicalDebugging
 {
-    using System.Diagnostics.CodeAnalysis;
+    using System;
+    using System.Collections.ObjectModel;
+    using System.Drawing;
     using System.Windows;
     using System.Windows.Controls;
-    using System.Windows.Media.Imaging;
-    using System.Windows.Media;
-    using System.Drawing;
-
-    using EnvDTE;
-    using Microsoft.VisualStudio.PlatformUI;
-
-    using System.Collections.ObjectModel;
-    using System;
-
+    
     /// <summary>
     /// Interaction logic for GraphicalWatchControl.
     /// </summary>
@@ -244,6 +237,14 @@ namespace GraphicalDebugging
                         }
 
                         variable.Type = ExpressionLoader.TypeFromExpressions(expressions);
+                    }
+                    else
+                    {
+                        var errorStr = ExpressionLoader.ErrorFromExpressions(expressions);
+                        if (!string.IsNullOrEmpty(errorStr))
+                        {
+                            variable.Error = errorStr;
+                        }
                     }
                 }
             }

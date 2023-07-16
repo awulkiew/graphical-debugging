@@ -7,20 +7,11 @@
 namespace GraphicalDebugging
 {
     using System;
-    using System.Diagnostics.CodeAnalysis;
+    using System.Collections.ObjectModel;
+    using System.Drawing;
     using System.Windows;
     using System.Windows.Controls;
-
-    using System.Drawing;
-    using System.Drawing.Imaging;
-    using System.IO;
     using System.Windows.Media.Imaging;
-
-    using EnvDTE;
-    using Microsoft.VisualStudio.PlatformUI;
-
-    using System.Collections.Generic;
-    using System.Collections.ObjectModel;
 
     /// <summary>
     /// Interaction logic for GeometryWatchControl.
@@ -264,6 +255,14 @@ namespace GraphicalDebugging
                             settings[index] = referenceSettings.CopyColored(geometry.Color);
 
                             tryDrawing = true;
+                        }
+                        else if (expressions != null)
+                        {
+                            var errorStr = ExpressionLoader.ErrorFromExpressions(expressions);
+                            if (!string.IsNullOrEmpty(errorStr))
+                            {
+                                geometry.Error = errorStr;
+                            }
                         }
                     }
 

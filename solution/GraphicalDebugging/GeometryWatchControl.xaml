@@ -115,9 +115,9 @@
                     <DataGridTemplateColumn Header="Type" Width="*" IsReadOnly="True">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding Type}">
+                                <TextBlock Text="{Binding TypeOrError}">
                                     <TextBlock.ToolTip>
-                                        <TextBlock Text="{Binding TypeOrError}" TextWrapping="Wrap">
+                                        <TextBlock Text="{Binding ErrorOrType}" TextWrapping="Wrap">
                                             <TextBlock.Style>
                                                 <Style TargetType="{x:Type TextBlock}">
                                                     <Style.Triggers>
@@ -132,7 +132,7 @@
                                     <TextBlock.Style>
                                         <Style TargetType="{x:Type TextBlock}">
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsError}" Value="true">
+                                                <DataTrigger Binding="{Binding IsTypeAndError}" Value="true">
                                                     <Setter Property="Foreground" Value="{x:Static Brushes.Red}" />
                                                 </DataTrigger>
                                                 <Trigger Property="Text" Value="{x:Static sys:String.Empty}">

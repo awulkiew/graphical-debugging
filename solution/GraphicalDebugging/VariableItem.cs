@@ -58,14 +58,24 @@ namespace GraphicalDebugging
             }
         }
 
-        public bool IsError
-        {
-            get { return Error != null && Error != ""; }
-        }
-
         public string TypeOrError
         {
-            get { return IsError ? Error : Type; }
+            get { return string.IsNullOrEmpty(Type) ? Error : Type; }
+        }
+
+        public string ErrorOrType
+        {
+            get { return string.IsNullOrEmpty(Error) ? Type : Error; }
+        }
+
+        public bool IsError
+        {
+            get { return !string.IsNullOrEmpty(Error); }
+        }
+
+        public bool IsTypeAndError
+        {
+            get { return !string.IsNullOrEmpty(Type) && !string.IsNullOrEmpty(Error); }
         }
     }
 

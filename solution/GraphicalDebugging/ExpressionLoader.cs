@@ -175,6 +175,13 @@ namespace GraphicalDebugging
                     return false;
             return true;
         }
+        public static string ErrorFromExpressions(Expression[] exprs)
+        {
+            foreach (Expression e in exprs)
+                if (!e.IsValid)
+                    return e.Value;
+            return "";
+        }
 
         public static string TypeFromExpressions(Expression[] exprs)
         {
