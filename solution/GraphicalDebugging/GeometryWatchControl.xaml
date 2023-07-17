@@ -23,6 +23,17 @@
               MouseWheel="imageGrid_MouseWheel" >
             <Image x:Name="image" Stretch="Fill" Height="Auto" Width="Auto" />
             <Canvas x:Name="imageCanvas" Height="Auto" Width="Auto" />
+            <Grid.ContextMenu>
+                <ContextMenu x:Name="imageGridContextMenu">
+                    <!--
+                    VsBrushes.DebuggerDataTipInactiveBackground
+                    VsBrushes.DebuggerDataTipInactiveText
+                    -->
+                    <MenuItem x:Name="imageGridContextMenuCopy" Header="Copy" Click="MenuItem_Copy" />
+                    <Separator />
+                    <MenuItem x:Name="imageGridContextMenuResetZoom" Header="Reset View" Click="MenuItem_ResetZoom" />
+                </ContextMenu>
+            </Grid.ContextMenu>
         </Grid>
         <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch"
                       ResizeDirection="Rows"

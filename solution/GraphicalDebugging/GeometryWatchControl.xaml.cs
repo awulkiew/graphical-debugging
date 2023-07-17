@@ -342,24 +342,8 @@ namespace GraphicalDebugging
                 image.Source = Util.BitmapToBitmapImage(m_emptyBitmap);
             }
 
-            imageGrid.ContextMenu = new ContextMenu();
-            MenuItem mi = new MenuItem
-            {
-                Header = "Copy"
-            };
-            mi.Click += MenuItem_Copy;
-            if (imageEmpty)
-                mi.IsEnabled = false;
-            imageGrid.ContextMenu.Items.Add(mi);
-            imageGrid.ContextMenu.Items.Add(new Separator());
-            MenuItem mi2 = new MenuItem
-            {
-                Header = "Reset View"
-            };
-            mi2.Click += MenuItem_ResetZoom;
-            if (imageEmpty)
-                mi2.IsEnabled = false;
-            imageGrid.ContextMenu.Items.Add(mi2);
+            imageGridContextMenuCopy.IsEnabled = !imageEmpty;
+            imageGridContextMenuResetZoom.IsEnabled = !imageEmpty;
         }
 
         private void MenuItem_Copy(object sender, RoutedEventArgs e)
