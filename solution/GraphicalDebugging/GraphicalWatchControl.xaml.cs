@@ -271,5 +271,13 @@ namespace GraphicalDebugging
                 UpdateItem(false, i);
             }
         }
+
+        private void dataGridContextMenuDelete_Click(object sender, RoutedEventArgs e)
+        {
+            Util.RemoveDataGridItems(dataGrid, Variables,
+                (int selectIndex) => ResetAt(new GraphicalItem(), selectIndex),
+                (GraphicalItem variable) => { },
+                () => { });
+        }
     }
 }

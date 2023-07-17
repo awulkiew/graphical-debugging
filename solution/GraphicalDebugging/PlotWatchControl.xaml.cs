@@ -9,6 +9,7 @@ namespace GraphicalDebugging
     using System;
     using System.Collections.ObjectModel;
     using System.Drawing;
+    using System.Reflection;
     using System.Windows;
     using System.Windows.Controls;
     using System.Windows.Media.Imaging;
@@ -552,6 +553,26 @@ namespace GraphicalDebugging
                     UpdateItems(false); // TODO: pass modified_index?
                 }
             }
+        }
+
+        private void dataGridContextMenuDelete_Click(object sender, RoutedEventArgs e)
+        {
+            Util.RemoveDataGridItems(dataGrid, Plots,
+                (int selectIndex) => ResetAt(new PlotItem(), selectIndex),
+                (PlotItem plot) => m_colorIds.Push(plot.ColorId),
+                () => UpdateItems(false));
+        }
+
+        private void dataGridContextMenuEnable_Click(object sender, RoutedEventArgs e)
+        {
+            Util.EnableDataGridItems(dataGrid, Plots,
+                (PlotItem plot) => plot.IsEnabled = true);
+        }
+
+        private void dataGridContextMenuDisable_Click(object sender, RoutedEventArgs e)
+        {
+            Util.EnableDataGridItems(dataGrid, Plots,
+                (PlotItem plot) => plot.IsEnabled = false);
         }
     }
 }

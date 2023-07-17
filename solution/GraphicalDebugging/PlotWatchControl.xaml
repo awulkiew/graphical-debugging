@@ -56,6 +56,14 @@
                       BeginningEdit="dataGrid_BeginningEdit"
                       CellEditEnding="dataGrid_CellEditEnding"
                       PreviewMouseLeftButtonDown="dataGrid_PreviewMouseLeftButtonDown">
+                <DataGrid.ContextMenu>
+                    <ContextMenu x:Name="dataGridContextMenu">
+                        <MenuItem x:Name="dataGridContextMenuEnable" Header="Enable" Click="dataGridContextMenuEnable_Click" />
+                        <MenuItem x:Name="dataGridContextMenuDisable" Header="Disable" Click="dataGridContextMenuDisable_Click" />
+                        <Separator />
+                        <MenuItem x:Name="dataGridContextMenuDelete" Header="Delete" Click="dataGridContextMenuDelete_Click" />
+                    </ContextMenu>
+                </DataGrid.ContextMenu>
                 <DataGrid.ColumnHeaderStyle>
                     <Style TargetType="{x:Type DataGridColumnHeader}">
                         <Setter Property="Background" Value="{DynamicResource VsBrush.GridHeadingBackground}" />

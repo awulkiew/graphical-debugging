@@ -466,6 +466,29 @@ namespace GraphicalDebugging
                                         delegate (int index) { } );
         }
 
+        public delegate void ItemEnablePredicate<Item>(Item item);
+        public static void EnableDataGridItems<Item>(System.Windows.Controls.DataGrid dataGrid,
+                                                     System.Collections.ObjectModel.ObservableCollection<Item> itemsCollection,
+                                                     ItemEnablePredicate<Item> enablePredicate)
+        {
+            if (dataGrid.SelectedItems.Count < 1)
+                return;
+
+            int[] indexes = new int[dataGrid.SelectedItems.Count];
+            int i = 0;
+            foreach (var item in dataGrid.SelectedItems)
+            {
+                indexes[i] = dataGrid.Items.IndexOf(item);
+                ++i;
+            }
+
+            foreach (int index in indexes)
+            {
+                Item item = itemsCollection[index];
+                enablePredicate(item);
+            }
+        }
+
         // https://softwaremechanik.wordpress.com/2013/10/02/how-to-make-all-wpf-datagrid-cells-have-a-single-click-to-edit/
         public static void DataGridSingleClickHack(DependencyObject originalSource)
         {

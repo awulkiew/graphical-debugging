@@ -546,5 +546,25 @@ namespace GraphicalDebugging
                 }
             }
         }
+
+        private void dataGridContextMenuDelete_Click(object sender, RoutedEventArgs e)
+        {
+            Util.RemoveDataGridItems(dataGrid, Geometries,
+                (int selectIndex) => ResetAt(new GeometryItem(), selectIndex),
+                (GeometryItem geometry) => m_colorIds.Push(geometry.ColorId),
+                () => UpdateItems(false));
+        }
+
+        private void dataGridContextMenuEnable_Click(object sender, RoutedEventArgs e)
+        {
+            Util.EnableDataGridItems(dataGrid, Geometries,
+                (GeometryItem geometry) => geometry.IsEnabled = true);
+        }
+
+        private void dataGridContextMenuDisable_Click(object sender, RoutedEventArgs e)
+        {
+            Util.EnableDataGridItems(dataGrid, Geometries,
+                (GeometryItem geometry) => geometry.IsEnabled = false);
+        }
     }
 }
