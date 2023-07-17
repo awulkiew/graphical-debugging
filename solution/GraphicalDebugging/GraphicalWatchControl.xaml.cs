@@ -81,13 +81,10 @@ namespace GraphicalDebugging
                 if (m_isDataGridEdited)
                     return;
 
-                Util.RemoveDataGridItems(dataGrid,
-                                         Variables,
-                                         delegate (int selectIndex) {
-                                             ResetAt(new GraphicalItem(), selectIndex);
-                                         },
-                                         delegate (GraphicalItem variable) { },
-                                         delegate () { });
+                Util.RemoveDataGridItems(dataGrid, Variables,
+                    (int selectIndex) => ResetAt(new GraphicalItem(), selectIndex),
+                    (GraphicalItem variable) => { },
+                    () => { });
             }
         }
 

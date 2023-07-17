@@ -155,17 +155,10 @@ namespace GraphicalDebugging
                 if (m_isDataGridEdited)
                     return;
 
-                Util.RemoveDataGridItems(dataGrid,
-                                         Geometries,
-                                         delegate (int selectIndex) {
-                                             ResetAt(new GeometryItem(), selectIndex);
-                                         },
-                                         delegate (GeometryItem geometry) {
-                                             m_colorIds.Push(geometry.ColorId);
-                                         },
-                                         delegate () {
-                                             UpdateItems(false);
-                                         });
+                Util.RemoveDataGridItems(dataGrid, Geometries,
+                    (int selectIndex) => ResetAt(new GeometryItem(), selectIndex),
+                    (GeometryItem geometry) => m_colorIds.Push(geometry.ColorId),
+                    () => UpdateItems(false));
             }
         }
 
