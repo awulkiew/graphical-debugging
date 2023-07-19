@@ -151,15 +151,19 @@ namespace GraphicalDebugging
 
         private void dataGrid_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
+            if (m_isDataGridEdited)
+                return;
+
             if (e.Key == System.Windows.Input.Key.Delete)
             {
-                if (m_isDataGridEdited)
-                    return;
-
                 Util.RemoveDataGridItems(dataGrid, Plots,
                     (int selectIndex) => ResetAt(new PlotItem(), selectIndex),
                     (PlotItem plot) => m_colorIds.Push(plot.ColorId),
                     () => UpdateItems(false));
+            }
+            else if (e.Key == System.Windows.Input.Key.V && e.KeyboardDevice.Modifiers.HasFlag(System.Windows.Input.ModifierKeys.Control))
+            {
+                Util.PasteDataGridItemFromClipboard(dataGrid, Plots);
             }
         }
 

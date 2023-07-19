@@ -324,11 +324,23 @@ namespace GraphicalDebugging
             });
         }
 
+        public static int[] DataGridSelectedIndexes(System.Windows.Controls.DataGrid dataGrid)
+        {
+            int[] indexes = new int[dataGrid.SelectedItems.Count];
+            int i = 0;
+            foreach (var item in dataGrid.SelectedItems)
+            {
+                indexes[i] = dataGrid.Items.IndexOf(item);
+                ++i;
+            }
+            return indexes;
+        }
+
         public delegate void ItemUpdatedPredicate(int index);
         public delegate void ItemInsertEmptyPredicate(int index);
         public delegate void ItemRemovePredicate<Item>(Item item);
         public delegate void ItemRemovedPredicate(int index);
-        public delegate void ItemsRemovedPredicate();        
+        public delegate void ItemsRemovedPredicate();
 
         public static void RemoveDataGridItems<Item>(System.Windows.Controls.DataGrid dataGrid,
                                                      System.Collections.ObjectModel.ObservableCollection<Item> itemsCollection,
@@ -339,13 +351,7 @@ namespace GraphicalDebugging
             if (dataGrid.SelectedItems.Count < 1)
                 return;
 
-            int[] indexes = new int[dataGrid.SelectedItems.Count];
-            int i = 0;
-            foreach (var item in dataGrid.SelectedItems)
-            {
-                indexes[i] = dataGrid.Items.IndexOf(item);
-                ++i;
-            }
+            int[] indexes = DataGridSelectedIndexes(dataGrid);
 
             Util.SortDsc(indexes);
 
@@ -474,19 +480,32 @@ namespace GraphicalDebugging
             if (dataGrid.SelectedItems.Count < 1)
                 return;
 
-            int[] indexes = new int[dataGrid.SelectedItems.Count];
-            int i = 0;
-            foreach (var item in dataGrid.SelectedItems)
-            {
-                indexes[i] = dataGrid.Items.IndexOf(item);
-                ++i;
-            }
+            int[] indexes = DataGridSelectedIndexes(dataGrid);
 
             foreach (int index in indexes)
             {
                 Item item = itemsCollection[index];
                 enablePredicate(item);
             }
+        }
+
+        public static void PasteDataGridItemFromClipboard<Item>(System.Windows.Controls.DataGrid dataGrid,
+                                                                System.Collections.ObjectModel.ObservableCollection<Item> itemsCollection)
+            where Item : VariableItem
+        {
+            string text = Clipboard.GetText();
+            if (string.IsNullOrEmpty(text))
+                return;
+
+            if (dataGrid.SelectedItems.Count != 1)
+                return;
+
+            int index = dataGrid.Items.IndexOf(dataGrid.SelectedItems[0]);
+            if (index < 0 || index >= dataGrid.Items.Count)
+                return;
+
+            Item item = itemsCollection[index];
+            item.Name = text;
         }
 
         // https://softwaremechanik.wordpress.com/2013/10/02/how-to-make-all-wpf-datagrid-cells-have-a-single-click-to-edit/

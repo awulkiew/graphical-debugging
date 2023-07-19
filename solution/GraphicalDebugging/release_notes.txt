@@ -6,7 +6,8 @@ bugfixes:
 
 additions:
 - expression error in Type column
-- context menus for variables
+- context menus for row of list of variables
+- support for ctrl+v for row of list of variables
 
 version 0.52
 
