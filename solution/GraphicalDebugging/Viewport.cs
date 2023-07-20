@@ -740,7 +740,7 @@ namespace GraphicalDebugging
                     // NOTE: For bug coordinates anti_mer_step may be 0 which results in infinite loop
                     && Util.Assign(ref anti_mer_f, anti_mer_f + anti_mer_step))
                 {
-                    if (anti_mer_f >= 0)
+                    if (anti_mer_f >= 0 && anti_mer_f <= w)
                     {
                         graphics.DrawLine(anti_pen, anti_mer_f, 0, anti_mer_f, h);
                     }
@@ -751,7 +751,7 @@ namespace GraphicalDebugging
                     // NOTE: For bug coordinates anti_mer_step may be 0 which results in infinite loop
                     && Util.Assign(ref prime_mer_f, prime_mer_f += prime_mer_step))
                 {
-                    if (prime_mer_f >= 0)
+                    if (prime_mer_f >= 0 && prime_mer_f <= w)
                     {
                         graphics.DrawLine(prime_pen, prime_mer_f, 0, prime_mer_f, h);
                         primeMeridiansDrawn = true;
