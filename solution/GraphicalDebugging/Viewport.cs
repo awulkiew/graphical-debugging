@@ -550,7 +550,8 @@ namespace GraphicalDebugging
 
                 float cx = c_rel.X - r + translation;
                 float cy = c_rel.Y - r;
-                float d = r * 2;
+                // DrawEllipse throws 'Out of memory' exception for sizes around 0.05
+                float d = Math.Max(r * 2, 1.0f);
 
                 if (!drawDots || Math.Abs(translation) < 0.001)
                 {
@@ -565,6 +566,7 @@ namespace GraphicalDebugging
                 {
                     drawer.graphics.FillEllipse(drawer.brush, cx, cy, d, d);
                 }
+                
             }
 
             protected PointF c_rel;
