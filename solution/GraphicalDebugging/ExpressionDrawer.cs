@@ -289,13 +289,20 @@ namespace GraphicalDebugging
                 }
                 else // Radian, Degree
                 {
+                    
                     if (rx == 0 || ry == 0)
                         drawer.DrawPeriodicPoint(cs, Center, box, traits.Unit, settings.showDots);
                     else
                     {
                         Drawer.PeriodicDrawableNSphere pd = new Drawer.PeriodicDrawableNSphere(cs, this, traits.Unit);
                         Geometry.Interval interval = RelativeEnvelopeLon(this, traits.Unit);
-                        drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, true, false, settings.showDots);
+                        try
+                        {
+                            drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, true, false, settings.showDots);
+                        } catch (Exception e)
+                        {
+                            int a = 10;
+                        }
                     }
                 }
             }
