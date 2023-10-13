@@ -141,6 +141,8 @@ namespace GraphicalDebugging
                 type = type.Remove(0, 9);
             if (type.EndsWith(" const"))
                 type = type.Remove(type.Length - 6);
+            if (type.EndsWith(" &&"))
+                type = type.Remove(type.Length - 3);
             if (type.EndsWith(" &"))
                 type = type.Remove(type.Length - 2);
             return type;
