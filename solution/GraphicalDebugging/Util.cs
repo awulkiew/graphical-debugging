@@ -135,6 +135,14 @@ namespace GraphicalDebugging
 
         public static string CppRemoveCVRef(string type)
         {
+            if (type.EndsWith("}"))
+            {
+                int i = type.LastIndexOf("{");
+                if (i > 0) // including space
+                {
+                    type = type.Remove(i - 1);
+                }
+            }
             if (type.StartsWith("const "))
                 type = type.Remove(0, 6);
             if (type.StartsWith("volatile "))
