@@ -37,7 +37,7 @@ namespace GraphicalDebugging
         {
             result = 0.0;
             string castedName = !IsLanguageBasic
-                              ? "(double)" + name
+                              ? "(double)(" + name + ")"
                               : "CType(" + name + ", Double)";
             var expr = debugger.GetExpression(castedName);
             return expr.IsValidValue
