@@ -36,5 +36,11 @@ namespace GraphicalDebugging
             // the object returned by the Content property.
             this.Content = new GeometryWatchControl();
         }
+
+        protected override void OnClose()
+        {
+            (this.Content as GeometryWatchControl).OnClose();
+            base.OnClose();
+        }
     }
 }

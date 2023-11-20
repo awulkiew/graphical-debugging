@@ -571,5 +571,10 @@ namespace GraphicalDebugging
             Util.EnableDataGridItems(dataGrid, Plots,
                 (PlotItem plot) => plot.IsEnabled = false);
         }
+
+        public void OnClose()
+        {
+            Plots.Clear();
+        }
     }
 }

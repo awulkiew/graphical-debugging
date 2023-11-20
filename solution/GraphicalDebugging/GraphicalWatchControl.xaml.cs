@@ -280,5 +280,10 @@ namespace GraphicalDebugging
                 (GraphicalItem variable) => { },
                 () => { });
         }
+
+        public void OnClose()
+        {
+            Variables.Clear();
+        }
     }
 }

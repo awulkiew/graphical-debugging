@@ -563,5 +563,10 @@ namespace GraphicalDebugging
             Util.EnableDataGridItems(dataGrid, Geometries,
                 (GeometryItem geometry) => geometry.IsEnabled = false);
         }
+
+        public void OnClose()
+        {
+            Geometries.Clear();
+        }
     }
 }
