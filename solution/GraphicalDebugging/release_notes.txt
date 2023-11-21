@@ -1,3 +1,15 @@
+version 0.54
+
+bugfixes:
+- fixed drawing of small circles
+- variables are no longer loaded after closing watch window
+
+additions:
+- direct memory access for Boost.Geometry nsphere
+- support for C++ rvalue references
+- support for types defined in DLLs
+- support for std::chrono::duration
+
 version 0.53
 
 bugfixes:

@@ -128,8 +128,10 @@ Watch window displaying plot representation of variables in a single image. Type
   * Boost.Geometry: `rtree`
 * Complex numbers
   * STL: `complex`
+* Values
+  * STL: `chrono::duration` (incl. aliases, e.g. `chrono::milliseconds`, `chrono::seconds`, etc.)
 * Images
-  * Boost.Gil: `image` (incl. typedefs, e.g. `rgb8_image_t`, `abgr16_image_t`, `cmyk32_image_t`, `rgb64f_planar_image_t`, etc.)
+  * Boost.Gil: `image` (incl. aliases, e.g. `rgb8_image_t`, `abgr16_image_t`, `cmyk32_image_t`, `rgb64f_planar_image_t`, etc.)
 * Variants of geometries
   * Boost.Variant: `variant`
 
