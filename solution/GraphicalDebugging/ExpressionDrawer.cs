@@ -296,13 +296,7 @@ namespace GraphicalDebugging
                     {
                         Drawer.PeriodicDrawableNSphere pd = new Drawer.PeriodicDrawableNSphere(cs, this, traits.Unit);
                         Geometry.Interval interval = RelativeEnvelopeLon(this, traits.Unit);
-                        try
-                        {
-                            drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, true, false, settings.showDots);
-                        } catch (Exception e)
-                        {
-                            int a = 10;
-                        }
+                        drawer.DrawPeriodic(cs, box, interval, traits.Unit, pd, true, false, settings.showDots);
                     }
                 }
             }
