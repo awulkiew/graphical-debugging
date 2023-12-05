@@ -143,6 +143,15 @@ namespace GraphicalDebugging
                     type = type.Remove(i - 1);
                 }
             }
+            if (type.Contains("!"))
+            {
+                //remove bracket-less module declaration sometimes appearing in the variable type (ends with "!" symbol)
+                int i = type.LastIndexOf("!");
+                if (i > 0) // including space
+                {
+                    type = type.Remove(0, i + 1);
+                }
+            }
             if (type.StartsWith("const "))
                 type = type.Remove(0, 6);
             if (type.StartsWith("volatile "))
