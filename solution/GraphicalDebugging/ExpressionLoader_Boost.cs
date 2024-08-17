@@ -1294,7 +1294,8 @@ namespace GraphicalDebugging
                 else
                     return false;
 
-                return callback();
+                callback();
+                return true;
             }
             
             private bool LoadParsedRecursive(MemoryReader mreader, Debugger debugger,
@@ -1338,7 +1339,8 @@ namespace GraphicalDebugging
                             return false;
                     }
 
-                    return callback();
+                    callback();
+                    return true;
                 });
 
                 return ok;
@@ -1641,7 +1643,8 @@ namespace GraphicalDebugging
                     if (turn == null)
                         return false;
                     turns.Add(turn);
-                    return callback();
+                    callback();
+                    return true;
                 });
                 return ok
                      ? new ExpressionDrawer.TurnsContainer(turns)

@@ -27,7 +27,7 @@ namespace GraphicalDebugging
                 stopWatch.Start();
             }
 
-            public bool Update()
+            public void ThrowOnCancel()
             {
                 if (stopWatch.ElapsedMilliseconds > timeThreshold)
                 {
@@ -85,13 +85,10 @@ namespace GraphicalDebugging
                             // This also means that the thread already finished
                             // or will do it in the near future because window
                             // closing shuts down the dispatcher.
+                            throw new Exception("Cancelled");
                         }
-
-                        return result;
                     }
                 }
-
-                return true;
             }
 
             public void Reset()

@@ -148,8 +148,7 @@ namespace GraphicalDebugging
 
                         // TODO: Checked per pixel. Too often?
                         //   But it's the same for geometries (ForEachMemoryBlock).
-                        if (! callback())
-                            return null;
+                        callback();
                     }
                 }
 

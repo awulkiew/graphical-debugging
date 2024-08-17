@@ -365,7 +365,7 @@ namespace GraphicalDebugging
                                      exprs[0].Name, exprs[0].Type,
                                      delegate ()
                                      {
-                                        return timeGuard.Update();
+                                        timeGuard.ThrowOnCancel();
                                      });
             }
             else //if (exprs.Length > 1)
@@ -380,7 +380,7 @@ namespace GraphicalDebugging
                                      exprs,
                                      delegate ()
                                      {
-                                        return timeGuard.Update();
+                                        timeGuard.ThrowOnCancel();
                                      });
             }
 
@@ -596,7 +596,7 @@ namespace GraphicalDebugging
             /// <summary>
             /// Callback function allowing to break loading of variable.
             /// </summary>
-            public delegate bool LoadCallback();
+            public delegate void LoadCallback();
 
             /// <summary>
             /// Returns geometrical information of a Drawable.
@@ -819,7 +819,8 @@ namespace GraphicalDebugging
                     }
                     result.Add(p);
 
-                    return callback();
+                    callback();
+                    return true;
                 });
                 return result;
             }
@@ -844,7 +845,10 @@ namespace GraphicalDebugging
                         delegate (double[] values)
                         {
                             if (dimension == 0 || values.Length % dimension != 0)
+                            {
+                                result = null;
                                 return false;
+                            }
                             int size = dimension > 0
                                         ? values.Length / dimension
                                         : 0;
@@ -856,7 +860,8 @@ namespace GraphicalDebugging
                                 result.Add(p);
                             }
 
-                            return callback();
+                            callback();
+                            return true;
                         }))
                 {
                     return result;
@@ -969,7 +974,8 @@ namespace GraphicalDebugging
                                 result.Add(d);
                             }
 
-                            return callback();
+                            callback();
+                            return true;
                         }))
                 {
                     return result;
@@ -1218,7 +1224,8 @@ namespace GraphicalDebugging
                     {
                         foreach (double v in values)
                             list.Add(v);
-                        return callback();
+                        callback();
+                        return true;
                     });
 
                 if (ok)
@@ -1248,7 +1255,8 @@ namespace GraphicalDebugging
                             return false;
                     }
                     values.Add(value);
-                    return callback();
+                    callback();
+                    return true;
                 });
 
                 if (ok)
