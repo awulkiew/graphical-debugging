@@ -304,14 +304,12 @@ namespace GraphicalDebugging
                 
                 string name = expr.GetString(parentName);
                 type = debugger.GetValueType(name);
-                if (Debugger.IsInvalidType(type)
-                 || !debugger.GetTypeSizeof(type, out sizeOf)
-                 || !debugger.GetAddressOffset(parentName, name, out offset)
-                    // offset + size > sizeOf
-                 || Debugger.IsInvalidOffset(parentSizeOf, offset))
-                    return;
 
-                IsValid = true;
+                IsValid = !Debugger.IsInvalidType(type)
+                       && debugger.GetTypeSizeof(type, out sizeOf)
+                       && debugger.GetAddressOffset(parentName, name, out offset)
+                       // offset + size > sizeOf
+                       && !Debugger.IsInvalidOffset(parentSizeOf, offset);
             }
 
             public UserValue Load(MemoryReader mreader, Debugger debugger,
@@ -393,7 +391,7 @@ namespace GraphicalDebugging
 
                 // offset + size > sizeOf
                 IsValid = debugger.GetAddressOffset(parentName, name, out offset)
-                       && Debugger.IsInvalidOffset(parentSizeOf, offset);
+                       && !Debugger.IsInvalidOffset(parentSizeOf, offset);
             }
 
             public Geometry.Traits GetTraits(MemoryReader mreader, Debugger debugger, string parentName)
