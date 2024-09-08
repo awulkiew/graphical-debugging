@@ -26,7 +26,7 @@ You can download this extension from [Visual Studio Marketplace](https://marketp
 
 #### Supported Versions
 
-Visual Studio 2013, 2015, 2017 and 2019 - [version 0.34](https://github.com/awulkiew/graphical-debugging/releases/tag/v0.34)
+Visual Studio 2013, 2015, 2017 and 2019 - [version 0.34](https://github.com/awulkiew/graphical-debugging/releases/tag/v0.34) or [newer version backported by Murkas94](https://github.com/Murkas94/graphical-debugging-pre-vs2022/releases)
 
 Visual Studio 2022 - [version 0.50 and newer](https://github.com/awulkiew/graphical-debugging/releases)
 
