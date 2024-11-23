@@ -1,4 +1,4 @@
-﻿using EnvDTE;
+using EnvDTE;
 using Microsoft.VisualStudio.Shell;
 
 namespace GraphicalDebugging
@@ -108,14 +108,21 @@ namespace GraphicalDebugging
         // Returns false if address cannot be loaded, parsed or if it is equal to 0
         public bool GetPointer(string pointerName, out ulong result)
         {
+            var genericPtrExpr = debugger.GetExpression("(void*)(" + pointerName + ")");
+            if (genericPtrExpr.IsValidValue)
+            {
+                return Util.TryParseULong(genericPtrExpr.Value, out result) && result != 0;
+            }
+
+            // fallback for c#
+            var elementPtrExpr = debugger.GetExpression(pointerName);
+            if (elementPtrExpr.IsValidValue)
+            {
+                return Util.TryParseULong(elementPtrExpr.Value, out result) && result != 0;
+            }
+
             result = 0;
-            var ptrExpr = debugger.GetExpression("(void*)(" + pointerName + ")");
-            return ptrExpr.IsValidValue
-                // NOTE: Hexadecimal value is automatically detected, this is probably not needed.
-                // But automatically detect the format just in case of various versions
-                // of VS displayed it differently regardless of debugger mode.
-                && Util.TryParseULong(ptrExpr.Value/*, true*/, out result)
-                && result != 0;
+            return false;
         }
 
         // Address of variable
